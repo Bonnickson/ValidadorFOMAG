@@ -125,7 +125,6 @@ export function actualizarHeadersTabla(
                 <th>Tipo</th>
                 <th>Carpeta</th>
                 <th>Servicios</th>
-                <th>Autorizaciones</th>
                 <th>Evoluciones</th>
                 <th>Archivos</th>
                 <th>Evoluciones Detalle</th>
@@ -143,7 +142,6 @@ export function actualizarHeadersTabla(
                 <col style="width: 100px;">
                 <col style="width: 130px;">
                 <col style="width: 130px;">
-                <col style="width: 70px;">
                 <col style="width: 70px;">
                 <col style="width: 130px;">
                 <col style="width: 130px;">
@@ -174,7 +172,6 @@ export function createPlaceholderRow(
         tr.innerHTML = `
             <td>—</td>
             <td>${carpeta} <span class="spinner" aria-hidden></span></td>
-            <td>…</td>
             <td>…</td>
             <td>…</td>
             <td>…</td>
@@ -333,6 +330,7 @@ function renderPaqueteFilas(
         "VM",
         "ENF",
         "ENF12",
+        "NUT",
         "TR",
         "TF",
         "SUCCION",
@@ -397,11 +395,24 @@ function renderPaqueteFilas(
         }
         tr.setAttribute("data-estado", estado);
 
-        // Para "General", no mostrar archivos (es solo para validación general)
+        // Para "General", mostrar 2 PAQ.pdf si existe
         let archivosHTML = "—";
-        if (s !== "General") {
-            // Mostrar siempre los archivos 2, 4, 5 (existan o no)
-            const archivosEsperados = ["2", "4", "5"];
+        if (s === "General") {
+            const tiene2Paq = (r.listaArchivos || []).some(a => a.toLowerCase() === "2 paq.pdf");
+            if (tiene2Paq) {
+                const nombreArchivo = (r.listaArchivos || []).find(a => a.toLowerCase() === "2 paq.pdf") || "2 PAQ.pdf";
+                const urlKey = Object.keys(r.fileUrls).find(k => k.toLowerCase() === "2 paq.pdf");
+                const url = urlKey ? r.fileUrls[urlKey] : null;
+                const cls = "ok";
+                if (url) {
+                    archivosHTML = `<a href="#" onclick="abrirPDFModal('${url}', '${nombreArchivo}', this); return false;" class="archivo-link ${cls}" title="Abrir ${nombreArchivo}">${nombreArchivo}</a>`;
+                } else {
+                    archivosHTML = `<span class="archivo-link ${cls}">${nombreArchivo}</span>`;
+                }
+            }
+        } else {
+            // Mostrar siempre los archivos 4, 5 (existan o no)
+            const archivosEsperados = ["4", "5"];
             archivosHTML = archivosEsperados
                 .map((num) => {
                     const nombreArchivo = `${num} ${servicioLower}.pdf`;
@@ -415,8 +426,8 @@ function renderPaqueteFilas(
                         status === "✔"
                             ? "ok"
                             : status === "—"
-                            ? "missing"
-                            : "fail";
+                                ? "missing"
+                                : "fail";
                     const label = `${num} ${status}`;
                     if (url) {
                         return `<a href="#" onclick="abrirPDFModal('${url}', '${nombreArchivo}', this); return false;" class="archivo-link ${cls}" title="Abrir ${nombreArchivo}">${label}</a>`;
@@ -463,8 +474,7 @@ function renderPaqueteFilas(
         const exitosHTML = exitosOrdenados
             .map(
                 (e) =>
-                    `<div class="exito-item validacion-exitosa" style="display: ${
-                        mostrarExitos ? "" : "none"
+                    `<div class="exito-item validacion-exitosa" style="display: ${mostrarExitos ? "" : "none"
                     }">✓ ${e}</div>`
             )
             .join("");
@@ -496,11 +506,10 @@ function renderPaqueteFilas(
                 <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar número" aria-label="Copiar número">📋</button>
             </span>
                 <div class="carpeta-contenido">${(r.listaArchivos || [])
-                    .map((a) => `<span class='archivo-mini'>${a}</span>`)
-                    .join(" ")}</div>
+                .map((a) => `<span class='archivo-mini'>${a}</span>`)
+                .join(" ")}</div>
             </td>
             <td class="servicio-nombre">${nombreCompleto}</td>
-            <td>${numero2}</td>
             <td>${cant5}</td>
             <td>${archivosHTML || "—"}</td>
             <td>${fechasHTML}</td>
@@ -525,7 +534,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const match = archivo
             .toLowerCase()
             .match(
-                /^([2-5])\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon)\.pdf$/
+                /^([2-5])\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon|nut)\.pdf$/
             );
         if (match) {
             let serv = match[2];
@@ -576,6 +585,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         "VM",
         "ENF",
         "ENF12",
+        "NUT",
         "TR",
         "TF",
         "SUCCION",
@@ -607,25 +617,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const servicioLower =
             servicio === "SUCCION" ? "succion" : servicio.toLowerCase();
 
-        // Generar links a los archivos
-        // Si el servicio tiene autorizaciones pero no tiene archivo 2 individual, agregar 2 paq.pdf
-        // Solo archivos "2 [servicio].pdf" contienen autorizaciones (no el 4)
-        const tiene2Individual = archivosServicio.some((a) =>
-            a.match(/^2\s+/i)
-        );
-        const tieneAutoDe2Paq =
-            r.numerosPorServicio?.[servicio] && !tiene2Individual;
-
         let archivosParaMostrar = [...archivosServicio];
-        if (tieneAutoDe2Paq) {
-            // Agregar 2 paq.pdf al inicio si se usó para este servicio
-            const tiene2Paq = (r.listaArchivos || []).some(
-                (a) => a.toLowerCase() === "2 paq.pdf"
-            );
-            if (tiene2Paq) {
-                archivosParaMostrar.unshift("2 paq.pdf");
-            }
-        }
 
         const archivosHTML = archivosParaMostrar
             .map((archivo) => {
@@ -671,13 +663,12 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const exitosHTML =
             exitosServicio.length > 0
                 ? exitosServicio
-                      .map(
-                          (e) =>
-                              `<div class="exito-item validacion-exitosa" style="display: ${
-                                  mostrarExitos ? "" : "none"
-                              }">✓ ${e}</div>`
-                      )
-                      .join("")
+                    .map(
+                        (e) =>
+                            `<div class="exito-item validacion-exitosa" style="display: ${mostrarExitos ? "" : "none"
+                            }">✓ ${e}</div>`
+                    )
+                    .join("")
                 : "";
 
         const tieneErrores = erroresServicio.length > 0;
@@ -742,9 +733,9 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const erroresHTML = renderErrorItems(erroresGeneralesNoServicio);
 
         tr.innerHTML = `
+            <td>${tipoDisplay}</td>
             <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta}</span></td>
             <td class="servicio-nombre">⚠️ General</td>
-            <td>—</td>
             <td>—</td>
             <td>—</td>
             <td>—</td>
@@ -781,20 +772,18 @@ function renderEvento(
 
     return `
         <td class="tipo">${tipoDisplay}</td>
-        <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta} ${
-        isProcessing ? '<span class="spinner"></span>' : ""
-    }
+        <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta} ${isProcessing ? '<span class="spinner"></span>' : ""
+        }
                 <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar número" aria-label="Copiar número">📋</button>
             </span>
             <div class="carpeta-contenido">${(r.listaArchivos || [])
-                .map((a) => `<span class='archivo-mini'>${a}</span>`)
-                .join(" ")}</div>
+            .map((a) => `<span class='archivo-mini'>${a}</span>`)
+            .join(" ")}</div>
         </td>
         ${pdfCells}
         <td class="count">${fechasUnicas.length}</td>
-        <td class="fechas"><div class="fechas-list ${scrollClass}">${
-        fechasPills || "—"
-    }</div></td>
+        <td class="fechas"><div class="fechas-list ${scrollClass}">${fechasPills || "—"
+        }</div></td>
         <td class="errores">${erroresHTML}</td>
     `;
 }

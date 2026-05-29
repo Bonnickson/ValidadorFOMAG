@@ -13,6 +13,8 @@ export const ALLOWED_TYPES = [
     "TS",
     "PSI",
     "FON",
+    "NUT",
+    "VENF",
 ];
 
 export const SERVICIOS_TERAPIA = ["TF", "TR", "SUCCION", "TO", "FON"];
@@ -29,6 +31,8 @@ export const SERVICIOS_NOMBRES = {
     TS: "🤝 Trabajo Social",
     PSI: "🧠 Psicología",
     FON: "🗣️ Fonoaudiología",
+    NUT: "🥗 Nutrición",
+    VENF: "🩺 Visita Enfermería (Aux)",
 };
 
 export const PDF_WORKER_URL =

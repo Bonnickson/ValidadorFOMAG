@@ -58,8 +58,9 @@ Contiene todas las constantes de configuración:
 
 **paqueteValidator.js**: Validación por paquete
 
--   `validarPorPaquete()`: Valida carpeta completa en modo paquete
--   Funciones internas para paquetes crónicos y con terapias
+-   `validarPorPaquete()`: Valida carpeta completa en modo paquete.
+-   `validarNuevoPaquete()`: Aplica la lógica de los nuevos paquetes CPF (Validación estricta desde `2 PAQ.pdf`, validación de requerimientos, rangos de suma de terapias).
+-   Funciones internas para paquetes antiguos o manejo especial FOMAG.
 
 ### `src/ui/tableRenderer.js`
 
@@ -97,11 +98,24 @@ Punto de entrada principal:
 
 ## 📝 Reglas de Validación
 
-Las reglas se definen en `src/reglas.js`:
+Las reglas se definen en `src/reglas.js` y `src/validators/paqueteValidator.js`:
 
--   `obtenerReglasEvento(convenio)`: Genera reglas según el convenio seleccionado
--   `REGLAS_POR_CARPETA`: Para validación por paquete
--   `REGEX_FECHA`: Expresión regular para detectar fechas
+-   `obtenerReglasEvento(convenio)`: Genera reglas según el convenio seleccionado.
+-   `obtenerReglasPaquete(convenio)`: Genera reglas para la antigua modalidad de paquetes (modo retro-compatibilidad).
+-   `REGEX_FECHA`: Expresión regular para detectar fechas.
+
+### Nuevos Paquetes Basados en Reglas (Familia CPF)
+
+Para los nuevos códigos de paquete (CPF1109, CPF1108, CPF1110, CPF1105, CPF1106) el sistema cambia a un **modelo basado en reglas estrictas**, donde se abandona la comparación "Cant Auto vs Cant Evoluciones" del archivo 2 individual para centralizar el flujo en el documento maestro **`2 PAQ.pdf`**:
+
+-   **Fuente única**: La existencia del código y número de autorizaciones se extrae únicamente de `2 PAQ.pdf` (no se admiten archivos `2 [servicio].pdf` individuales para estos paquetes).
+-   **Servicios Obligatorios**: Todos estos paquetes exigen 1 evolución de `VM`, `ENF` y `VENF` (Auxiliar de Enfermería).
+-   **Opción de Selección Única ("Uno de los siguientes")**: Obligan a la existencia de un (1) solo servicio opcional entre `PSI`, `NUT` y `TS`, que a su vez debe contar con exactamente 1 evolución.
+-   **Regla de Sumatoria de Terapias**: Suma todas las evoluciones de las terapias (`TF`, `TO`, `TR`, `FON`, `TRS` - Terapia de Succión) y verifica que el total se encuentre en un rango de requerimiento específico para cada paquete:
+    -   **CPF1109**: 6 - 12 terapias
+    -   **CPF1108**: (no requiere sumatoria de terapias)
+    -   **CPF1110**: 12 - 20 terapias
+    -   **CPF1105 y CPF1106**: 12 - 30 terapias
 
 ### Convenios
 

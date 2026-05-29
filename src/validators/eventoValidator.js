@@ -23,6 +23,7 @@ function obtenerTextoServicioFomag(servicio) {
         PSI: "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
         TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
         TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
+        NUT: "ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA",
     };
     return textos[servicio] || null;
 }
@@ -52,7 +53,7 @@ export function validarArchivosPermitidosEvento(
     // En FOMAG por evento, también se aceptan archivos por servicio:
     // Ej: "2 tf.pdf", "4 tr.pdf", "5 enf.pdf", "2 paq.pdf" (insensible a mayúsculas)
     const patronServicio =
-        /^[2-5]\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon)\.pdf$/i;
+        /^[2-5]\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon|nut)\.pdf$/i;
     const es2Paq = (nombre) => nombre.toLowerCase() === "2 paq.pdf";
 
     for (const archivo of archivos) {
@@ -133,7 +134,7 @@ export async function validarPDF(
         // Detectar si el archivo es por servicio (FOMAG) ej: "2 tf.pdf"
         const nombreLower = file.name.toLowerCase();
         const matchServicio = nombreLower.match(
-            /^([2-5])\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon)\.pdf$/
+            /^([2-5])\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon|nut)\.pdf$/
         );
         let servicioUpper = null;
         let numeroArchivo = null;
@@ -264,6 +265,57 @@ export async function validarPDF(
                 if (resultados[carpeta].pdfs?.[file.name] !== undefined) {
                     resultados[carpeta].pdfs[file.name] = "❌";
                 }
+            } else {
+                // Éxito: texto encontrado
+                const msg = `${file.name}: contiene "${textoEncontrado}"`;
+                if (servicioUpper && convenio === "fomag") {
+                    resultados[carpeta].exitosPorServicio[servicioUpper].push(
+                        msg
+                    );
+                } else {
+                    resultados[carpeta].exitosPorServicio["General"] =
+                        resultados[carpeta].exitosPorServicio["General"] || [];
+                    resultados[carpeta].exitosPorServicio["General"].push(msg);
+                }
+            }
+
+            // Validar páginas para archivo 4.pdf (Firmas) o archivos por servicio número 4
+            const esArchivo4 =
+                file.name === "4.pdf" ||
+                (servicioUpper && numeroArchivo === "4");
+
+            if (esArchivo4) {
+                if (pdf.numPages > 1) {
+                    const msg = `${file.name}: Tiene ${pdf.numPages} páginas (se espera 1)`;
+                    if (servicioUpper && convenio === "fomag") {
+                        resultados[carpeta].alertasPorServicio[
+                            servicioUpper
+                        ].push(msg);
+                    } else {
+                        resultados[carpeta].alertasPorServicio["General"] =
+                            resultados[carpeta].alertasPorServicio[
+                            "General"
+                            ] || [];
+                        resultados[carpeta].alertasPorServicio["General"].push(
+                            msg
+                        );
+                    }
+                } else {
+                    const msg = `${file.name}: 1 página (correcto)`;
+                    if (servicioUpper && convenio === "fomag") {
+                        resultados[carpeta].exitosPorServicio[
+                            servicioUpper
+                        ].push(msg);
+                    } else {
+                        resultados[carpeta].exitosPorServicio["General"] =
+                            resultados[carpeta].exitosPorServicio[
+                            "General"
+                            ] || [];
+                        resultados[carpeta].exitosPorServicio["General"].push(
+                            msg
+                        );
+                    }
+                }
             }
 
             // Para FOMAG: extraer el número que aparece después del texto
@@ -317,7 +369,7 @@ export async function validarPDF(
                             resultados[carpeta].alertasPorServicio || {};
                         resultados[carpeta].alertasPorServicio[servicioUpper] =
                             resultados[carpeta].alertasPorServicio[
-                                servicioUpper
+                            servicioUpper
                             ] || [];
                         resultados[carpeta].alertasPorServicio[
                             servicioUpper

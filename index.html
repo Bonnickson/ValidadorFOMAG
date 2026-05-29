@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8" />
     <title>Validador de PDFs</title>
@@ -8,856 +9,1184 @@
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZMHK58V1KG"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
+        function gtag() { dataLayer.push(arguments); }
         gtag('js', new Date());
 
         gtag('config', 'G-ZMHK58V1KG');
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.min.js"></script>
 </head>
+
 <body>
 
-<div class="card">
-    <div class="header-row">
-        <h1>Validador</h1>
-        <button id="btnAyuda" class="btn-ayuda" onclick="toggleWiki()">❓ Ayuda</button>
-    </div>
-
-    <div class="config-section">
-        <div class="select-wrapper">
-            <label for="tipoValidacion">Tipo de validación</label>
-            <select id="tipoValidacion">
-                <option value="evento">📋 Por evento</option>
-                <option value="paquete" selected>📦 Por paquete</option>
-            </select>
+    <div class="card">
+        <div class="header-row">
+            <h1>Validador</h1>
+            <button id="btnAyuda" class="btn-ayuda" onclick="toggleWiki()">❓ Ayuda</button>
         </div>
 
-        <div id="paqueteOptions" class="paquete-options">
+        <div class="config-section">
             <div class="select-wrapper">
-                <label for="tipoPaquete">Tipo de paquete</label>
-                <select id="tipoPaquete">
-                    <option value="cronico">🏥 Crónico</option>
-                    <option value="cronico-terapias" selected>💊 Crónico con terapias</option>
+                <label for="tipoValidacion">Tipo de validación</label>
+                <select id="tipoValidacion">
+                    <option value="evento">📋 Por evento</option>
+                    <option value="paquete" selected>📦 Por paquete</option>
+                </select>
+            </div>
+
+            <div id="paqueteOptions" class="paquete-options">
+                <div class="select-wrapper">
+                    <label for="tipoPaquete" style="display: flex; align-items: center; gap: 8px;">
+                        Tipo de paquete
+                        <div class="tooltip-container" id="paqueteCondicionesIcon" style="display: none;">
+                            <span class="info-icon">❓</span>
+                            <div class="tooltip-content" id="paqueteCondicionesContent"></div>
+                        </div>
+                    </label>
+                    <select id="tipoPaquete">
+                        <option value="CPF1105">CPF1105 - PAQUETE DE REHABILITACIÓN MENSUAL DOMICILIARIO (PACIENTE
+                            NEUROLOGICO AGUDO)</option>
+                        <option value="CPF1106">CPF1106 - PAQUETE DE TRAQUEOSTOMIA MENSUAL DOMICILIARIO</option>
+                        <option value="CPF1108" selected>CPF1108 - PAQUETE DE ATENCIÓN DOMICILIARIA CRÓNICO</option>
+                        <option value="CPF1109">CPF1109 - PAQUETE DE ATENCIÓN DOMICILIARIA PACIENTE CRONICO CON TERAPIAS
+                            (MENSUAL)</option>
+                        <option value="CPF1110">CPF1110 - PAQUETE DE ATENCIÓN DOMICILIARIO PAQUETE INTERMEDIO (MENSUAL)
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="select-wrapper">
+                <label for="convenio">Convenio</label>
+                <select id="convenio">
+                    <option value="capital-salud">🏢 Capital Salud</option>
+                    <option value="fomag" selected>🏛️ FOMAG</option>
                 </select>
             </div>
         </div>
 
-        <div class="select-wrapper">
-            <label for="convenio">Convenio</label>
-            <select id="convenio">
-                <option value="capital-salud">🏢 Capital Salud</option>
-                <option value="fomag" selected>🏛️ FOMAG</option>
-            </select>
-        </div>
-    </div>
+        <label class="file">
+            📁 Seleccionar carpeta
+            <input type="file" id="inputFolder" webkitdirectory directory multiple />
+        </label>
+        <button id="btnAbrirFS" class="btn-limpiar">⚡ Abrir carpeta (rápido)</button>
 
-    <label class="file">
-        📁 Seleccionar carpeta
-        <input type="file" id="inputFolder" webkitdirectory directory multiple />
-    </label>
-    <button id="btnAbrirFS" class="btn-limpiar">⚡ Abrir carpeta (rápido)</button>
+        <button id="btnDescargar" class="btn-descargar oculto">⬇️ Descargar XLSX</button>
+        <button id="btnDescargarMatriz" class="btn-descargar oculto"
+            style="background-color: #059669; margin-left: 10px;">⬇️ Descarga reporte Matriz</button>
 
-    <button id="btnDescargar" class="btn-descargar oculto">⬇️ Descargar XLSX</button>
+        <button id="btnLimpiar" class="btn-limpiar-todo oculto">🗑️ Limpiar todo</button>
 
-    <button id="btnLimpiar" class="btn-limpiar-todo oculto">🗑️ Limpiar todo</button>
-
-    <!-- Modal de progreso de descarga -->
-    <div id="modalProgresoBajada" class="modal-progreso-bajada oculto">
-        <div class="modal-progreso-bajada-contenido">
-            <h3>📥 Preparando archivo XLSX...</h3>
-            <div class="progreso-barra-bajada">
-                <div id="progresoFillBajada" class="progreso-fill-bajada"></div>
-            </div>
-            <div class="progreso-info-bajada">
-                <span id="progresoPorcentajeBajada">0%</span>
-                <span id="progresoTextoBajada">Iniciando...</span>
-            </div>
-        </div>
-    </div>
-
-    <div id="estado" class="estado oculto"></div>
-
-    <!-- Barra de progreso -->
-    <div id="barraProgreso" class="barra-progreso oculto">
-        <div class="progreso-header">
-            <div class="progreso-info">
-                <span id="progresoTexto">Procesando...</span>
-                <span id="progresoDetalle" class="progreso-detalle"></span>
-            </div>
-            <span id="progresoPorcentaje" class="progreso-porcentaje">0%</span>
-        </div>
-        <div class="progreso-barra">
-            <div id="progresoFill" class="progreso-fill"></div>
-        </div>
-    </div>
-
-    <!-- Resumen de validación -->
-    <div id="resumen" class="resumen oculto">
-        <h3>📊 Resumen de Validación</h3>
-        <div class="resumen-container">
-            <!-- Columna izquierda: Estadísticas generales -->
-            <div class="resumen-general">
-                <div class="resumen-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Total carpetas:</span>
-                        <span class="stat-value" id="statTotal">0</span>
-                    </div>
-                    <div class="stat-item success">
-                        <span class="stat-label">✔ Sin errores:</span>
-                        <span class="stat-value" id="statExito">0</span>
-                    </div>
-                    <div class="stat-item warning">
-                        <span class="stat-label">⚠ Con alertas:</span>
-                        <span class="stat-value" id="statAlertas">0</span>
-                    </div>
-                    <div class="stat-item error">
-                        <span class="stat-label">✖ Con errores:</span>
-                        <span class="stat-value" id="statErrores">0</span>
-                    </div>
+        <!-- Modal de progreso de descarga -->
+        <div id="modalProgresoBajada" class="modal-progreso-bajada oculto">
+            <div class="modal-progreso-bajada-contenido">
+                <h3>📥 Preparando archivo XLSX...</h3>
+                <div class="progreso-barra-bajada">
+                    <div id="progresoFillBajada" class="progreso-fill-bajada"></div>
+                </div>
+                <div class="progreso-info-bajada">
+                    <span id="progresoPorcentajeBajada">0%</span>
+                    <span id="progresoTextoBajada">Iniciando...</span>
                 </div>
             </div>
-            
-            <!-- Columna derecha: Errores por tipo -->
-            <div id="resumenErrores" class="resumen-errores oculto">
-                <h4>📄 Errores por tipo</h4>
-                <div id="listaErrores" class="lista-errores"></div>
+        </div>
+
+        <div id="estado" class="estado oculto"></div>
+
+        <!-- Barra de progreso -->
+        <div id="barraProgreso" class="barra-progreso oculto">
+            <div class="progreso-header">
+                <div class="progreso-info">
+                    <span id="progresoTexto">Procesando...</span>
+                    <span id="progresoDetalle" class="progreso-detalle"></span>
+                </div>
+                <span id="progresoPorcentaje" class="progreso-porcentaje">0%</span>
+            </div>
+            <div class="progreso-barra">
+                <div id="progresoFill" class="progreso-fill"></div>
+            </div>
+        </div>
+
+        <!-- Resumen de validación -->
+        <div id="resumen" class="resumen oculto">
+            <h3>📊 Resumen de Validación</h3>
+            <div class="resumen-container">
+                <!-- Columna izquierda: Estadísticas generales -->
+                <div class="resumen-general">
+                    <div class="resumen-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total carpetas:</span>
+                            <span class="stat-value" id="statTotal">0</span>
+                        </div>
+                        <div class="stat-item success">
+                            <span class="stat-label">✔ Sin errores:</span>
+                            <span class="stat-value" id="statExito">0</span>
+                        </div>
+                        <div class="stat-item warning">
+                            <span class="stat-label">⚠ Con alertas:</span>
+                            <span class="stat-value" id="statAlertas">0</span>
+                        </div>
+                        <div class="stat-item error">
+                            <span class="stat-label">✖ Con errores:</span>
+                            <span class="stat-value" id="statErrores">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Columna derecha: Errores por tipo -->
+                <div id="resumenErrores" class="resumen-errores oculto">
+                    <h4>📄 Errores por tipo</h4>
+                    <div id="listaErrores" class="lista-errores"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de búsqueda y filtros -->
+        <div id="filtros" class="filtros oculto">
+            <div class="filtro-item">
+                <label for="buscarDocumento">🔍 Buscar por documento:</label>
+                <input type="text" id="buscarDocumento" placeholder="Ingrese número de documento..." />
+            </div>
+            <div class="filtro-item">
+                <label for="filtroEstado">📊 Filtrar por estado:</label>
+                <select id="filtroEstado">
+                    <option value="">📋 Todos los estados</option>
+                    <option value="sin-errores">✅ Sin errores</option>
+                    <option value="con-alertas">⚠️ Con alertas</option>
+                    <option value="con-errores">❌ Con errores</option>
+                </select>
+            </div>
+            <div class="filtro-item">
+                <label for="filtroServicio">🏥 Filtrar por servicio:</label>
+                <select id="filtroServicio">
+                    <option value="">🎯 Todos los servicios</option>
+                    <option value="VM">🩺 VM - Visita Médica</option>
+                    <option value="ENF">💉 ENF - Enfermería</option>
+                    <option value="TF">🏃 TF - Terapia Física</option>
+                    <option value="TR">🫁 TR - Terapia Respiratoria</option>
+                    <option value="SUCCION">🌬️ SUCCION - Terapia Succión</option>
+                    <option value="PSI">🧠 PSI - Psicología</option>
+                    <option value="TS">👥 TS - Trabajo Social</option>
+                    <option value="FON">🗣️ FON - Fonoaudiología</option>
+                    <option value="NUT">🥗 NUT - Nutrición</option>
+                </select>
+            </div>
+            <div class="filtro-item checkbox-item destacado">
+                <label>
+                    <input type="checkbox" id="mostrarExitos" checked />
+                    ✓ Mostrar validaciones exitosas
+                </label>
+            </div>
+            <button id="limpiarFiltros" class="btn-limpiar">🔄 Limpiar filtros</button>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="tabla">
+                <thead id="tablaHeader">
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Carpeta</th>
+                        <th>2.pdf</th>
+                        <th>3.pdf</th>
+                        <th>4.pdf</th>
+                        <th>5.pdf</th>
+                        <th>Cant.</th>
+                        <th>Evoluciones (cantidad y detalle)</th>
+                        <th>Errores</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Modal para mostrar PDFs -->
+    <div id="pdfModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="pdfModalTitle">PDF</h2>
+                <span class="modal-close" onclick="cerrarModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <iframe id="pdfFrame" src="" frameborder="0"></iframe>
             </div>
         </div>
     </div>
 
-    <!-- Barra de búsqueda y filtros -->
-    <div id="filtros" class="filtros oculto">
-        <div class="filtro-item">
-            <label for="buscarDocumento">🔍 Buscar por documento:</label>
-            <input type="text" id="buscarDocumento" placeholder="Ingrese número de documento..." />
-        </div>
-        <div class="filtro-item">
-            <label for="filtroEstado">📊 Filtrar por estado:</label>
-            <select id="filtroEstado">
-                <option value="">📋 Todos los estados</option>
-                <option value="sin-errores">✅ Sin errores</option>
-                <option value="con-alertas">⚠️ Con alertas</option>
-                <option value="con-errores">❌ Con errores</option>
-            </select>
-        </div>
-        <div class="filtro-item">
-            <label for="filtroServicio">🏥 Filtrar por servicio:</label>
-            <select id="filtroServicio">
-                <option value="">🎯 Todos los servicios</option>
-                <option value="VM">🩺 VM - Visita Médica</option>
-                <option value="ENF">💉 ENF - Enfermería</option>
-                <option value="TF">🏃 TF - Terapia Física</option>
-                <option value="TR">🫁 TR - Terapia Respiratoria</option>
-                <option value="SUCCION">🌬️ SUCCION - Terapia Succión</option>
-                <option value="PSI">🧠 PSI - Psicología</option>
-                <option value="TS">👥 TS - Trabajo Social</option>
-                <option value="FON">🗣️ FON - Fonoaudiología</option>
-            </select>
-        </div>
-        <div class="filtro-item checkbox-item destacado">
-            <label>
-                <input type="checkbox" id="mostrarExitos" />
-                ✓ Mostrar validaciones exitosas
-            </label>
-        </div>
-        <button id="limpiarFiltros" class="btn-limpiar">🔄 Limpiar filtros</button>
-    </div>
-
-    <div class="table-wrapper">
-        <table id="tabla">
-            <thead id="tablaHeader">
-                <tr>
-                    <th>Tipo</th>
-                    <th>Carpeta</th>
-                    <th>2.pdf</th>
-                    <th>3.pdf</th>
-                    <th>4.pdf</th>
-                    <th>5.pdf</th>
-                    <th>Cant.</th>
-                    <th>Evoluciones (cantidad y detalle)</th>
-                    <th>Errores</th>
-                </tr>
-            </thead>
-            <tbody id="tablaBody"></tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Modal para mostrar PDFs -->
-<div id="pdfModal" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h2 id="pdfModalTitle">PDF</h2>
-            <span class="modal-close" onclick="cerrarModal()">&times;</span>
-        </div>
-        <div class="modal-body">
-            <iframe id="pdfFrame" src="" frameborder="0"></iframe>
-        </div>
-    </div>
-</div>
-
-<!-- Wiki Section -->
-<div id="wikiContainer" class="wiki-container oculto">
-    <div class="wiki-modal-wrapper">
-        <div class="wiki-sidebar">
-        <div class="wiki-sidebar-header">
-            <h3>📚 Documentación</h3>
-            <button class="wiki-close" onclick="toggleWiki()">&times;</button>
-        </div>
-        <nav class="wiki-nav">
-            <a href="#wiki-inicio" class="wiki-nav-item active" onclick="showWikiSection('inicio')">🏠 Inicio</a>
-            <div class="wiki-nav-section">Conceptos básicos</div>
-            <a href="#wiki-estructura" class="wiki-nav-item" onclick="showWikiSection('estructura')">📁 Estructura de carpetas</a>
-            <a href="#wiki-servicios" class="wiki-nav-item" onclick="showWikiSection('servicios')">🏥 Servicios</a>
-            <div class="wiki-nav-section">Por convenio</div>
-            <a href="#wiki-capital" class="wiki-nav-item" onclick="showWikiSection('capital')">📑 Capital Salud</a>
-            <a href="#wiki-fomag-evento" class="wiki-nav-item" onclick="showWikiSection('fomag-evento')">📋 FOMAG Evento</a>
-            <a href="#wiki-fomag-paquete" class="wiki-nav-item" onclick="showWikiSection('fomag-paquete')">📦 FOMAG Paquete</a>
-            <div class="wiki-nav-section">Validación por archivo</div>
-            <a href="#wiki-archivo2" class="wiki-nav-item" onclick="showWikiSection('archivo2')">📄 Archivo 2.pdf</a>
-            <a href="#wiki-archivo3" class="wiki-nav-item" onclick="showWikiSection('archivo3')">📄 Archivo 3.pdf</a>
-            <a href="#wiki-archivo4" class="wiki-nav-item" onclick="showWikiSection('archivo4')">📄 Archivo 4.pdf</a>
-            <a href="#wiki-archivo5" class="wiki-nav-item" onclick="showWikiSection('archivo5')">📄 Archivo 5.pdf</a>
-            <div class="wiki-nav-section">Referencia</div>
-            <a href="#wiki-errores" class="wiki-nav-item" onclick="showWikiSection('errores')">⚠️ Tipos de errores</a>
-        </nav>
-    </div>
-    <div class="wiki-content">
-        <!-- Inicio -->
-        <article id="wiki-inicio" class="wiki-article">
-            <h1>📚 Guía de validación de PDFs</h1>
-            <p class="wiki-intro">Bienvenido a la documentación del validador. Esta herramienta verifica que los PDFs cumplan con los requisitos según el convenio y tipo de validación.</p>
-            
-            <div class="wiki-quick-links">
-                <div class="wiki-card">
-                    <h3>🚀 Inicio rápido</h3>
-                    <ol>
-                        <li>Selecciona el tipo de validación (Evento o Paquete)</li>
-                        <li>Elige el convenio (Capital Salud o FOMAG)</li>
-                        <li>Carga la carpeta con los documentos</li>
-                        <li>Revisa los resultados en la tabla</li>
-                    </ol>
+    <!-- Wiki Section -->
+    <div id="wikiContainer" class="wiki-container oculto">
+        <div class="wiki-modal-wrapper">
+            <div class="wiki-sidebar">
+                <div class="wiki-sidebar-header">
+                    <h3>📚 Documentación</h3>
+                    <button class="wiki-close" onclick="toggleWiki()">&times;</button>
                 </div>
-                <div class="wiki-card">
-                    <h3>📖 Secciones principales</h3>
-                    <ul>
-                        <li><a href="#wiki-estructura" onclick="showWikiSection('estructura')">Estructura de carpetas</a></li>
-                        <li><a href="#wiki-capital" onclick="showWikiSection('capital')">Capital Salud</a></li>
-                        <li><a href="#wiki-fomag-evento" onclick="showWikiSection('fomag-evento')">FOMAG Evento</a></li>
-                        <li><a href="#wiki-fomag-paquete" onclick="showWikiSection('fomag-paquete')">FOMAG Paquete</a></li>
+                <nav class="wiki-nav">
+                    <a href="#wiki-inicio" class="wiki-nav-item active" onclick="showWikiSection('inicio')">🏠
+                        Inicio</a>
+                    <div class="wiki-nav-section">Conceptos básicos</div>
+                    <a href="#wiki-estructura" class="wiki-nav-item" onclick="showWikiSection('estructura')">📁
+                        Estructura de carpetas</a>
+                    <a href="#wiki-servicios" class="wiki-nav-item" onclick="showWikiSection('servicios')">🏥
+                        Servicios</a>
+                    <div class="wiki-nav-section">Por convenio</div>
+                    <a href="#wiki-capital" class="wiki-nav-item" onclick="showWikiSection('capital')">📑 Capital
+                        Salud</a>
+                    <a href="#wiki-fomag-evento" class="wiki-nav-item" onclick="showWikiSection('fomag-evento')">📋
+                        FOMAG Evento</a>
+                    <a href="#wiki-fomag-paquete" class="wiki-nav-item" onclick="showWikiSection('fomag-paquete')">📦
+                        FOMAG Paquete</a>
+                    <div class="wiki-nav-section">Validación por archivo</div>
+                    <a href="#wiki-archivo2" class="wiki-nav-item" onclick="showWikiSection('archivo2')">📄 Archivo
+                        2.pdf</a>
+                    <a href="#wiki-archivo3" class="wiki-nav-item" onclick="showWikiSection('archivo3')">📄 Archivo
+                        3.pdf</a>
+                    <a href="#wiki-archivo4" class="wiki-nav-item" onclick="showWikiSection('archivo4')">📄 Archivo
+                        4.pdf</a>
+                    <a href="#wiki-archivo5" class="wiki-nav-item" onclick="showWikiSection('archivo5')">📄 Archivo
+                        5.pdf</a>
+                    <div class="wiki-nav-section">Referencia</div>
+                    <a href="#wiki-errores" class="wiki-nav-item" onclick="showWikiSection('errores')">⚠️ Tipos de
+                        errores</a>
+                </nav>
+            </div>
+            <div class="wiki-content">
+                <!-- Inicio -->
+                <article id="wiki-inicio" class="wiki-article">
+                    <h1>📚 Guía de validación de PDFs</h1>
+                    <p class="wiki-intro">Bienvenido a la documentación del validador. Esta herramienta verifica que los
+                        PDFs cumplan con los requisitos según el convenio y tipo de validación.</p>
+
+                    <div class="wiki-quick-links">
+                        <div class="wiki-card">
+                            <h3>🚀 Inicio rápido</h3>
+                            <ol>
+                                <li>Selecciona el tipo de validación (Evento o Paquete)</li>
+                                <li>Elige el convenio (Capital Salud o FOMAG)</li>
+                                <li>Carga la carpeta con los documentos</li>
+                                <li>Revisa los resultados en la tabla</li>
+                            </ol>
+                        </div>
+                        <div class="wiki-card">
+                            <h3>📖 Secciones principales</h3>
+                            <ul>
+                                <li><a href="#wiki-estructura" onclick="showWikiSection('estructura')">Estructura de
+                                        carpetas</a></li>
+                                <li><a href="#wiki-capital" onclick="showWikiSection('capital')">Capital Salud</a></li>
+                                <li><a href="#wiki-fomag-evento" onclick="showWikiSection('fomag-evento')">FOMAG
+                                        Evento</a></li>
+                                <li><a href="#wiki-fomag-paquete" onclick="showWikiSection('fomag-paquete')">FOMAG
+                                        Paquete</a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </article>
+
+                <!-- Estructura -->
+                <article id="wiki-estructura" class="wiki-article oculto">
+                    <h1>📁 Estructura de carpetas</h1>
+                    <p>La organización de las carpetas es fundamental para que el validador funcione correctamente.</p>
+
+                    <h2>Reglas generales</h2>
+                    <ul class="wiki-list">
+                        <li>Cada carpeta representa un documento único</li>
+                        <li>El nombre de la carpeta debe contener el número de documento</li>
                     </ul>
-                </div>
-            </div>
-        </article>
 
-        <!-- Estructura -->
-        <article id="wiki-estructura" class="wiki-article oculto">
-            <h1>📁 Estructura de carpetas</h1>
-            <p>La organización de las carpetas es fundamental para que el validador funcione correctamente.</p>
-            
-            <h2>Reglas generales</h2>
-            <ul class="wiki-list">
-                <li>Cada carpeta representa un documento único</li>
-                <li>El nombre de la carpeta debe contener el número de documento</li>
-            </ul>
+                    <h2>Por Evento</h2>
+                    <div class="wiki-note info">
+                        <strong>Formato:</strong> <code>[número_documento] [TIPO]</code>
+                    </div>
+                    <div class="wiki-example">
+                        <strong>Ejemplo:</strong> <code>123456789 ENF</code>
+                    </div>
+                    <p>El tipo debe ser uno de: VM, ENF, TF, TR, SUCCION, PSI, TS, FON</p>
 
-            <h2>Por Evento</h2>
-            <div class="wiki-note info">
-                <strong>Formato:</strong> <code>[número_documento] [TIPO]</code>
-            </div>
-            <div class="wiki-example">
-                <strong>Ejemplo:</strong> <code>123456789 ENF</code>
-            </div>
-            <p>El tipo debe ser uno de: VM, ENF, TF, TR, SUCCION, PSI, TS, FON</p>
+                    <h2>Por Paquete</h2>
+                    <div class="wiki-note info">
+                        <strong>Formato:</strong> <code>[número_documento]</code>
+                    </div>
+                    <div class="wiki-example">
+                        <strong>Ejemplo:</strong> <code>123456789</code>
+                    </div>
+                    <p>Solo el número de documento, sin tipo de servicio.</p>
+                </article>
 
-            <h2>Por Paquete</h2>
-            <div class="wiki-note info">
-                <strong>Formato:</strong> <code>[número_documento]</code>
-            </div>
-            <div class="wiki-example">
-                <strong>Ejemplo:</strong> <code>123456789</code>
-            </div>
-            <p>Solo el número de documento, sin tipo de servicio.</p>
-        </article>
+                <!-- Servicios -->
+                <article id="wiki-servicios" class="wiki-article oculto">
+                    <h1>🏥 Servicios y textos</h1>
+                    <p>Cada servicio tiene textos específicos que deben aparecer en los PDFs.</p>
 
-        <!-- Servicios -->
-        <article id="wiki-servicios" class="wiki-article oculto">
-            <h1>🏥 Servicios y textos</h1>
-            <p>Cada servicio tiene textos específicos que deben aparecer en los PDFs.</p>
-
-            <h2>Lista de servicios</h2>
-            <div class="wiki-table">
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Código</th>
-                            <th>Descripción</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><code>VM</code></td><td>Valoración Médica</td></tr>
-                        <tr><td><code>ENF</code></td><td>Enfermería (Visita Domiciliaria)</td></tr>
-                        <tr><td><code>ENF12</code></td><td>Enfermería (Consulta Domiciliaria)</td></tr>
-                        <tr><td><code>TF</code></td><td>Terapia Física</td></tr>
-                        <tr><td><code>TR</code></td><td>Terapia Respiratoria</td></tr>
-                        <tr><td><code>SUCCION</code></td><td>Terapia Succión</td></tr>
-                        <tr><td><code>TO</code></td><td>Terapia Ocupacional</td></tr>
-                        <tr><td><code>TS</code></td><td>Trabajo Social</td></tr>
-                        <tr><td><code>PSI</code></td><td>Psicología</td></tr>
-                        <tr><td><code>FON</code></td><td>Fonoaudiología</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h2>Textos esperados</h2>
-            <h3>En 5.pdf (Evoluciones)</h3>
-            <p>Debe contener: <code>"Registro De [Servicio]"</code></p>
-            <div class="wiki-example">
-                Ejemplos: "Registro De Fonoaudiología", "Registro De Enfermería - Actividades"
-            </div>
-
-            <h3>En 2.pdf FOMAG (Autorizaciones)</h3>
-            <p>Debe contener: <code>"ATENCION (VISITA) DOMICILIARIA, POR ..."</code></p>
-            <div class="wiki-example">
-                Ejemplo: "... FONIATRIA Y FONOAUDIOLOGIA"
-            </div>
-        </article>
-
-        <!-- Capital Salud -->
-        <article id="wiki-capital" class="wiki-article oculto">
-            <h1>📑 Capital Salud (Evento)</h1>
-            
-            <h2>Archivos requeridos</h2>
-            <div class="wiki-chips">
-                <span class="wiki-chip">2.pdf</span>
-                <span class="wiki-chip">3.pdf</span>
-                <span class="wiki-chip">4.pdf</span>
-                <span class="wiki-chip">5.pdf</span>
-            </div>
-
-            <h2>Requisitos</h2>
-            <ul class="wiki-list">
-                <li>La carpeta <strong>debe incluir</strong> el tipo de servicio (VM, ENF, ENF12, TF, TR, SUCCION, PSI, TS, FON, TO)</li>
-                <li><strong>2.pdf</strong>, <strong>3.pdf</strong> y <strong>5.pdf</strong> deben contener el número de documento</li>
-                <li><strong>5.pdf</strong> debe incluir el texto del servicio (ej: "Registro De Enfermería")</li>
-            </ul>
-
-            <h2>Resumen de validación por archivo</h2>
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Archivo</th><th>Valida Nº Doc</th><th>Valida Texto</th><th>Extrae Cant</th><th>Compara</th></tr></thead>
-                    <tbody>
-                        <tr><td>2.pdf</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-                        <tr><td>3.pdf</td><td>✅</td><td>❌</td><td>❌</td><td>❌</td></tr>
-                        <tr><td>4.pdf</td><td>❌</td><td>❌</td><td>Páginas</td><td>❌</td></tr>
-                        <tr><td>5.pdf</td><td>✅</td><td>✅</td><td>Fechas</td><td>❌</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h2>Validaciones específicas</h2>
-            <div class="wiki-note warning">
-                <strong>4.pdf (Firmas):</strong> Se espera <strong>1 página</strong>. Si contiene "identificación" se muestra alerta.
-            </div>
-            <div class="wiki-note info">
-                <strong>Nota:</strong> No se compara autorizaciones vs evoluciones en Capital Salud.
-            </div>
-        </article>
-
-        <!-- FOMAG Evento -->
-        <article id="wiki-fomag-evento" class="wiki-article oculto">
-            <h1>📋 FOMAG (Evento)</h1>
-            
-            <h2>Archivos requeridos (por servicio)</h2>
-            <div class="wiki-chips">
-                <span class="wiki-chip">2 [srv].pdf</span>
-                <span class="wiki-chip">4 [srv].pdf</span>
-                <span class="wiki-chip">5 [srv].pdf</span>
-            </div>
-            <p><em>O usar <code>2 paq.pdf</code> para autorizaciones combinadas.</em></p>
-
-            <h2>Servicios soportados</h2>
-            <div class="wiki-chips">
-                <span class="wiki-chip">VM</span>
-                <span class="wiki-chip">ENF</span>
-                <span class="wiki-chip">ENF12</span>
-                <span class="wiki-chip">TF</span>
-                <span class="wiki-chip">TR</span>
-                <span class="wiki-chip">SUCCION</span>
-                <span class="wiki-chip">TO</span>
-                <span class="wiki-chip">TS</span>
-                <span class="wiki-chip">PSI</span>
-                <span class="wiki-chip">FON</span>
-            </div>
-
-            <h2>Resumen de validación por archivo</h2>
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Archivo</th><th>Valida Nº Doc</th><th>Valida Texto</th><th>Extrae Cant</th><th>Compara</th></tr></thead>
-                    <tbody>
-                        <tr><td>2 [srv].pdf</td><td>✅</td><td>✅</td><td>✅ Autorizaciones</td><td>✅ vs 5.pdf</td></tr>
-                        <tr><td>4 [srv].pdf</td><td>❌</td><td>❌</td><td>Páginas</td><td>❌</td></tr>
-                        <tr><td>5 [srv].pdf</td><td>✅</td><td>✅</td><td>✅ Evoluciones</td><td>✅ vs 2.pdf</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h2>Lógica de comparación</h2>
-            <div class="wiki-note success">
-                <strong>✅ Válido:</strong> Autorizaciones ≥ Evoluciones
-            </div>
-            <div class="wiki-note warning">
-                <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
-            </div>
-            <div class="wiki-note info" style="background: #ffebee; border-color: #c62828; color: #b71c1c;">
-                <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
-            </div>
-
-            <h2>Uso de 2 paq.pdf</h2>
-            <div class="wiki-note info">
-                <strong>Prioridad:</strong> Si existe "2 [servicio].pdf", se usa ese archivo. Si no existe, se busca en "2 paq.pdf".
-            </div>
-        </article>
-
-        <!-- FOMAG Paquete -->
-        <article id="wiki-fomag-paquete" class="wiki-article oculto">
-            <h1>📦 FOMAG (Paquete)</h1>
-            
-            <h2>Archivos por servicio</h2>
-            <div class="wiki-chips">
-                <span class="wiki-chip">2 vm.pdf</span>
-                <span class="wiki-chip">4 vm.pdf</span>
-                <span class="wiki-chip">5 vm.pdf</span>
-                <span class="wiki-chip">2 enf.pdf</span>
-                <span class="wiki-chip">4 enf.pdf</span>
-                <span class="wiki-chip">5 enf.pdf</span>
-                <span class="wiki-chip">+ TF/TR/SUCCION/TO/TS/PSI/FON/ENF12</span>
-            </div>
-
-            <h2>Archivo global de paquete</h2>
-            <p>Puede existir <code>2 paq.pdf</code> que declara autorizaciones de varios servicios en un solo archivo.</p>
-            
-            <h2>Resumen de validación por archivo</h2>
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Archivo</th><th>Valida Nº Doc</th><th>Valida Texto</th><th>Extrae Cant</th><th>Compara</th></tr></thead>
-                    <tbody>
-                        <tr><td>2 [srv].pdf / 2 paq.pdf</td><td>✅</td><td>✅</td><td>✅ Autorizaciones</td><td>✅ vs 5.pdf</td></tr>
-                        <tr><td>4 [srv].pdf</td><td>❌</td><td>❌</td><td>Páginas</td><td>❌</td></tr>
-                        <tr><td>5 [srv].pdf</td><td>✅</td><td>✅</td><td>✅ Evoluciones</td><td>✅ vs 2.pdf</td></tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <h2>Prioridad de archivos</h2>
-            <div class="wiki-note info">
-                Si existe <code>2 [servicio].pdf</code> individual, se usa ese. Si no, se busca en <code>2 paq.pdf</code>.
-            </div>
-
-            <h2>Requisitos de servicios obligatorios</h2>
-            <ul class="wiki-list">
-                <li>✅ Debe incluir <strong>VM</strong> (Valoración Médica)</li>
-                <li>✅ Debe incluir <strong>ENF</strong> (Enfermería)</li>
-                <li>✅ Debe incluir al menos un servicio de terapia (TF, TR, SUCCION, TO o FON)</li>
-            </ul>
-
-            <h2>Lógica de comparación</h2>
-            <div class="wiki-note success">
-                <strong>✅ Válido:</strong> Autorizaciones ≥ Evoluciones
-            </div>
-            <div class="wiki-note warning">
-                <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
-            </div>
-            <div class="wiki-note info" style="background: #ffebee; border-color: #c62828; color: #b71c1c;">
-                <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
-            </div>
-        </article>
-
-        <!-- ========== ARCHIVO 2.pdf ========== -->
-        <article id="wiki-archivo2" class="wiki-article oculto">
-            <h1>📄 Validación de Archivo 2.pdf (Autorizaciones)</h1>
-            <p class="wiki-intro">El archivo 2.pdf contiene las autorizaciones del servicio. La validación varía según convenio y modo.</p>
-
-            <h2>🔷 Capital Salud - Evento</h2>
-            <div class="wiki-note info">
-                <strong>Modo:</strong> Validación solo de texto, sin conteo de autorizaciones.
-            </div>
-            <h3>Reglas aplicadas:</h3>
-            <ul class="wiki-list">
-                <li><strong>Verificar número de documento:</strong> El texto del PDF debe contener el número de documento del paciente.</li>
-                <li><strong>Sin extracción de números:</strong> No se extrae cantidad de autorizaciones.</li>
-                <li><strong>Sin comparación:</strong> No se compara con las evoluciones del 5.pdf.</li>
-            </ul>
-            <div class="wiki-example">
-                <strong>Resultado:</strong> ✓ o ✗ dependiendo si contiene el número de documento.
-            </div>
-
-            <h2>🔶 FOMAG - Evento</h2>
-            <div class="wiki-note warning">
-                <strong>Modo:</strong> Validación de texto + extracción de autorizaciones + comparación con evoluciones.
-            </div>
-            <h3>Archivos aceptados:</h3>
-            <ul class="wiki-list">
-                <li><code>2 [servicio].pdf</code> - Archivo individual por servicio (ej: "2 TF.pdf", "2 ENF.pdf")</li>
-                <li><code>2 paq.pdf</code> - Archivo global con autorizaciones de múltiples servicios</li>
-            </ul>
-            <h3>Reglas aplicadas:</h3>
-            <ol class="wiki-list">
-                <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
-                <li><strong>Buscar texto del servicio:</strong>
+                    <h2>Lista de servicios</h2>
                     <div class="wiki-table">
                         <table>
-                            <thead><tr><th>Servicio</th><th>Texto buscado</th></tr></thead>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Descripción</th>
+                                </tr>
+                            </thead>
                             <tbody>
-                                <tr><td>TF</td><td>"ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPEUTA"</td></tr>
-                                <tr><td>TR</td><td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA RESPIRATORIO"</td></tr>
-                                <tr><td>SUCCION</td><td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA RESPIRATORIO"</td></tr>
-                                <tr><td>FON</td><td>"ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA"</td></tr>
-                                <tr><td>VM</td><td>"ATENCION (VISITA) DOMICILIARIA, POR MEDICO GENERAL"</td></tr>
-                                <tr><td>ENF</td><td>"ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA"</td></tr>
-                                <tr><td>ENF12</td><td>"ATENCION (CONSULTA) DOMICILIARIA, POR ENFERMERIA"</td></tr>
-                                <tr><td>PSI</td><td>"ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGO"</td></tr>
-                                <tr><td>TS</td><td>"ATENCION (VISITA) DOMICILIARIA, POR TRABAJADOR SOCIAL"</td></tr>
-                                <tr><td>TO</td><td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA OCUPACIONAL"</td></tr>
+                                <tr>
+                                    <td><code>VM</code></td>
+                                    <td>Valoración Médica</td>
+                                </tr>
+                                <tr>
+                                    <td><code>ENF</code></td>
+                                    <td>Enfermería (Visita Domiciliaria)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>ENF12</code></td>
+                                    <td>Enfermería (Consulta Domiciliaria)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>TF</code></td>
+                                    <td>Terapia Física</td>
+                                </tr>
+                                <tr>
+                                    <td><code>TR</code></td>
+                                    <td>Terapia Respiratoria</td>
+                                </tr>
+                                <tr>
+                                    <td><code>SUCCION</code></td>
+                                    <td>Terapia Succión</td>
+                                </tr>
+                                <tr>
+                                    <td><code>TO</code></td>
+                                    <td>Terapia Ocupacional</td>
+                                </tr>
+                                <tr>
+                                    <td><code>TS</code></td>
+                                    <td>Trabajo Social</td>
+                                </tr>
+                                <tr>
+                                    <td><code>PSI</code></td>
+                                    <td>Psicología</td>
+                                </tr>
+                                <tr>
+                                    <td><code>FON</code></td>
+                                    <td>Fonoaudiología</td>
+                                </tr>
+                                <tr>
+                                    <td><code>NUT</code></td>
+                                    <td>Nutrición y Dietética</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
-                </li>
-                <li><strong>Extraer número después del texto:</strong> El número que sigue al texto del servicio indica la cantidad de autorizaciones.</li>
-                <li><strong>Comparar con evoluciones:</strong>
-                    <ul>
-                        <li>✅ <strong>Autorizaciones ≥ Evoluciones:</strong> Válido</li>
-                        <li>❌ <strong>Autorizaciones &lt; Evoluciones:</strong> Error - "Cant auto [X] &lt; cant evol [Y]"</li>
-                        <li>⚠️ <strong>Autorizaciones &gt; Evoluciones:</strong> Alerta - Sobran autorizaciones</li>
+
+                    <h2>Textos esperados</h2>
+                    <h3>En 5.pdf (Evoluciones)</h3>
+                    <p>Debe contener: <code>"Registro De [Servicio]"</code></p>
+                    <div class="wiki-example">
+                        Ejemplos: "Registro De Fonoaudiología", "Registro De Enfermería - Actividades"
+                    </div>
+
+                    <h3>En 2.pdf FOMAG (Autorizaciones)</h3>
+                    <p>Debe contener: <code>"ATENCION (VISITA) DOMICILIARIA, POR ..."</code></p>
+                    <div class="wiki-example">
+                        Ejemplo: "... FONIATRIA Y FONOAUDIOLOGIA"
+                    </div>
+                </article>
+
+                <!-- Capital Salud -->
+                <article id="wiki-capital" class="wiki-article oculto">
+                    <h1>📑 Capital Salud (Evento)</h1>
+
+                    <h2>Archivos requeridos</h2>
+                    <div class="wiki-chips">
+                        <span class="wiki-chip">2.pdf</span>
+                        <span class="wiki-chip">3.pdf</span>
+                        <span class="wiki-chip">4.pdf</span>
+                        <span class="wiki-chip">5.pdf</span>
+                    </div>
+
+                    <h2>Requisitos</h2>
+                    <ul class="wiki-list">
+                        <li>La carpeta <strong>debe incluir</strong> el tipo de servicio (VM, ENF, ENF12, TF, TR,
+                            SUCCION, PSI, TS, FON, TO)</li>
+                        <li><strong>2.pdf</strong>, <strong>3.pdf</strong> y <strong>5.pdf</strong> deben contener el
+                            número de documento</li>
+                        <li><strong>5.pdf</strong> debe incluir el texto del servicio (ej: "Registro De Enfermería")
+                        </li>
                     </ul>
-                </li>
-            </ol>
-            <div class="wiki-note info">
-                <strong>Prioridad:</strong> Si existe "2 [servicio].pdf" individual, se usa ese. Si no, se toma del "2 paq.pdf".
-            </div>
 
-            <h2>🔶 FOMAG - Paquete</h2>
-            <div class="wiki-note warning">
-                <strong>Modo:</strong> Igual que Evento pero con archivos nombrados "2 [servicio].pdf".
-            </div>
-            <h3>Reglas:</h3>
-            <p>Aplican las mismas reglas que FOMAG Evento. La diferencia está en la estructura de carpetas (múltiples servicios por carpeta).</p>
-        </article>
+                    <h2>Resumen de validación por archivo</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Valida Nº Doc</th>
+                                    <th>Valida Texto</th>
+                                    <th>Extrae Cant</th>
+                                    <th>Compara</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2.pdf</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                </tr>
+                                <tr>
+                                    <td>3.pdf</td>
+                                    <td>✅</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                </tr>
+                                <tr>
+                                    <td>4.pdf</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>Páginas</td>
+                                    <td>❌</td>
+                                </tr>
+                                <tr>
+                                    <td>5.pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>Fechas</td>
+                                    <td>❌</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-        <!-- ========== ARCHIVO 3.pdf ========== -->
-        <article id="wiki-archivo3" class="wiki-article oculto">
-            <h1>📄 Validación de Archivo 3.pdf (Epicrisis)</h1>
-            <p class="wiki-intro">El archivo 3.pdf contiene la epicrisis o resumen clínico.</p>
+                    <h2>Validaciones específicas</h2>
+                    <div class="wiki-note warning">
+                        <strong>4.pdf (Firmas):</strong> Se espera <strong>1 página</strong>. Si contiene
+                        "identificación" se muestra alerta.
+                    </div>
+                    <div class="wiki-note info">
+                        <strong>Nota:</strong> No se compara autorizaciones vs evoluciones en Capital Salud.
+                    </div>
+                </article>
 
-            <h2>🔷 Capital Salud - Evento</h2>
-            <div class="wiki-note info">
-                <strong>Archivo requerido:</strong> SÍ
-            </div>
-            <h3>Reglas aplicadas:</h3>
-            <ul class="wiki-list">
-                <li><strong>Verificar número de documento:</strong> El texto del PDF debe contener el número de documento del paciente.</li>
-            </ul>
-            <div class="wiki-example">
-                <strong>Resultado:</strong> ✓ si contiene el número, ✗ si no lo contiene.
-            </div>
+                <!-- FOMAG Evento -->
+                <article id="wiki-fomag-evento" class="wiki-article oculto">
+                    <h1>📋 FOMAG (Evento)</h1>
 
-            <h2>🔶 FOMAG - Evento</h2>
-            <div class="wiki-note success">
-                <strong>Archivo requerido:</strong> NO
-            </div>
-            <p>En FOMAG modo Evento, el archivo 3.pdf <strong>no es requerido</strong> ni validado.</p>
+                    <h2>Archivos requeridos (por servicio)</h2>
+                    <div class="wiki-chips">
+                        <span class="wiki-chip">2 [srv].pdf</span>
+                        <span class="wiki-chip">4 [srv].pdf</span>
+                        <span class="wiki-chip">5 [srv].pdf</span>
+                    </div>
+                    <p><em>O usar <code>2 paq.pdf</code> para autorizaciones combinadas.</em></p>
 
-            <h2>🔶 FOMAG - Paquete</h2>
-            <div class="wiki-note success">
-                <strong>Archivo requerido:</strong> NO
-            </div>
-            <p>En FOMAG modo Paquete, el archivo 3.pdf <strong>no es requerido</strong> ni validado.</p>
+                    <h2>Servicios soportados</h2>
+                    <div class="wiki-chips">
+                        <span class="wiki-chip">VM</span>
+                        <span class="wiki-chip">ENF</span>
+                        <span class="wiki-chip">ENF12</span>
+                        <span class="wiki-chip">TF</span>
+                        <span class="wiki-chip">TR</span>
+                        <span class="wiki-chip">SUCCION</span>
+                        <span class="wiki-chip">TO</span>
+                        <span class="wiki-chip">TS</span>
+                        <span class="wiki-chip">PSI</span>
+                        <span class="wiki-chip">FON</span>
+                        <span class="wiki-chip">NUT</span>
+                    </div>
 
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Convenio</th><th>Modo</th><th>¿Requerido?</th><th>Validación</th></tr></thead>
-                    <tbody>
-                        <tr><td>Capital Salud</td><td>Evento</td><td>✅ SÍ</td><td>Número de documento</td></tr>
-                        <tr><td>FOMAG</td><td>Evento</td><td>❌ NO</td><td>-</td></tr>
-                        <tr><td>FOMAG</td><td>Paquete</td><td>❌ NO</td><td>-</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </article>
+                    <h2>Resumen de validación por archivo</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Valida Nº Doc</th>
+                                    <th>Valida Texto</th>
+                                    <th>Extrae Cant</th>
+                                    <th>Compara</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2 [srv].pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>✅ Autorizaciones</td>
+                                    <td>✅ vs 5.pdf</td>
+                                </tr>
+                                <tr>
+                                    <td>4 [srv].pdf</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>Páginas</td>
+                                    <td>❌</td>
+                                </tr>
+                                <tr>
+                                    <td>5 [srv].pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>✅ Evoluciones</td>
+                                    <td>✅ vs 2.pdf</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
-        <!-- ========== ARCHIVO 4.pdf ========== -->
-        <article id="wiki-archivo4" class="wiki-article oculto">
-            <h1>📄 Validación de Archivo 4.pdf (Firmas)</h1>
-            <p class="wiki-intro">El archivo 4.pdf contiene los formatos de firma del paciente o acudiente.</p>
+                    <h2>Lógica de comparación</h2>
+                    <div class="wiki-note success">
+                        <strong>✅ Válido:</strong> Autorizaciones ≥ Evoluciones
+                    </div>
+                    <div class="wiki-note warning">
+                        <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
+                    </div>
+                    <div class="wiki-note info" style="background: #ffebee; border-color: #c62828; color: #b71c1c;">
+                        <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
+                    </div>
 
-            <h2>Validación común (todos los convenios)</h2>
-            <div class="wiki-note warning">
-                <strong>Regla principal:</strong> El archivo 4.pdf debe tener <strong>1 sola página</strong>.
-            </div>
-            <h3>Reglas aplicadas:</h3>
-            <ol class="wiki-list">
-                <li><strong>Conteo de páginas:</strong>
-                    <ul>
-                        <li>✅ <strong>1 página:</strong> Válido</li>
-                        <li>⚠️ <strong>Más de 1 página:</strong> Alerta - "4.pdf contiene [N] páginas, se espera 1"</li>
+                    <h2>Uso de 2 paq.pdf</h2>
+                    <div class="wiki-note info">
+                        <strong>Prioridad:</strong> Si existe "2 [servicio].pdf", se usa ese archivo. Si no existe, se
+                        busca en "2 paq.pdf".
+                    </div>
+                </article>
+
+                <!-- FOMAG Paquete -->
+                <article id="wiki-fomag-paquete" class="wiki-article oculto">
+                    <h1>📦 FOMAG (Paquete)</h1>
+
+                    <h2>Archivos por servicio</h2>
+                    <div class="wiki-chips">
+                        <span class="wiki-chip">2 vm.pdf</span>
+                        <span class="wiki-chip">4 vm.pdf</span>
+                        <span class="wiki-chip">5 vm.pdf</span>
+                        <span class="wiki-chip">2 enf.pdf</span>
+                        <span class="wiki-chip">4 enf.pdf</span>
+                        <span class="wiki-chip">5 enf.pdf</span>
+                        <span class="wiki-chip">+ TF/TR/SUCCION/TO/TS/PSI/FON/ENF12</span>
+                    </div>
+
+                    <h2>Archivo global de paquete</h2>
+                    <p>Puede existir <code>2 paq.pdf</code> que declara autorizaciones de varios servicios en un solo
+                        archivo.</p>
+
+                    <h2>Resumen de validación por archivo</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Valida Nº Doc</th>
+                                    <th>Valida Texto</th>
+                                    <th>Extrae Cant</th>
+                                    <th>Compara</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>2 [srv].pdf / 2 paq.pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>✅ Autorizaciones</td>
+                                    <td>✅ vs 5.pdf</td>
+                                </tr>
+                                <tr>
+                                    <td>4 [srv].pdf</td>
+                                    <td>❌</td>
+                                    <td>❌</td>
+                                    <td>Páginas</td>
+                                    <td>❌</td>
+                                </tr>
+                                <tr>
+                                    <td>5 [srv].pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>✅ Evoluciones</td>
+                                    <td>✅ vs 2.pdf</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>Prioridad de archivos</h2>
+                    <div class="wiki-note info">
+                        Si existe <code>2 [servicio].pdf</code> individual, se usa ese. Si no, se busca en
+                        <code>2 paq.pdf</code>.
+                    </div>
+
+                    <h2>Requisitos de servicios obligatorios</h2>
+                    <ul class="wiki-list">
+                        <li>✅ Debe incluir <strong>VM</strong> (Valoración Médica)</li>
+                        <li>✅ Debe incluir <strong>ENF</strong> (Enfermería)</li>
+                        <li>✅ Debe incluir al menos un servicio de terapia (TF, TR, SUCCION, TO o FON)</li>
                     </ul>
-                </li>
-                <li><strong>Detección de "identificación":</strong>
-                    <ul>
-                        <li>⚠️ Si el texto contiene la palabra "identificación", se genera alerta (posible documento erróneo)</li>
+
+                    <h2>Lógica de comparación</h2>
+                    <div class="wiki-note success">
+                        <strong>✅ Válido:</strong> Autorizaciones ≥ Evoluciones
+                    </div>
+                    <div class="wiki-note warning">
+                        <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
+                    </div>
+                    <div class="wiki-note info" style="background: #ffebee; border-color: #c62828; color: #b71c1c;">
+                        <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
+                    </div>
+                </article>
+
+                <!-- ========== ARCHIVO 2.pdf ========== -->
+                <article id="wiki-archivo2" class="wiki-article oculto">
+                    <h1>📄 Validación de Archivo 2.pdf (Autorizaciones)</h1>
+                    <p class="wiki-intro">El archivo 2.pdf contiene las autorizaciones del servicio. La validación varía
+                        según convenio y modo.</p>
+
+                    <h2>🔷 Capital Salud - Evento</h2>
+                    <div class="wiki-note info">
+                        <strong>Modo:</strong> Validación solo de texto, sin conteo de autorizaciones.
+                    </div>
+                    <h3>Reglas aplicadas:</h3>
+                    <ul class="wiki-list">
+                        <li><strong>Verificar número de documento:</strong> El texto del PDF debe contener el número de
+                            documento del paciente.</li>
+                        <li><strong>Sin extracción de números:</strong> No se extrae cantidad de autorizaciones.</li>
+                        <li><strong>Sin comparación:</strong> No se compara con las evoluciones del 5.pdf.</li>
                     </ul>
-                </li>
-            </ol>
+                    <div class="wiki-example">
+                        <strong>Resultado:</strong> ✓ o ✗ dependiendo si contiene el número de documento.
+                    </div>
 
-            <h2>🔷 Capital Salud - Evento</h2>
-            <div class="wiki-note info">
-                <strong>Archivo:</strong> <code>4.pdf</code>
-            </div>
-            <p>Aplica validación de páginas y detección de "identificación".</p>
-
-            <h2>🔶 FOMAG - Evento</h2>
-            <div class="wiki-note info">
-                <strong>Archivo:</strong> <code>4 [servicio].pdf</code> (ej: "4 TF.pdf", "4 ENF.pdf")
-            </div>
-            <p>Mismo archivo por cada servicio. Aplica las mismas validaciones.</p>
-
-            <h2>🔶 FOMAG - Paquete</h2>
-            <div class="wiki-note info">
-                <strong>Archivo:</strong> <code>4 [servicio].pdf</code>
-            </div>
-            <p>Cada servicio tiene su propio archivo de firmas.</p>
-
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Convenio</th><th>Modo</th><th>Archivo</th><th>Páginas esperadas</th></tr></thead>
-                    <tbody>
-                        <tr><td>Capital Salud</td><td>Evento</td><td>4.pdf</td><td>1</td></tr>
-                        <tr><td>FOMAG</td><td>Evento</td><td>4 [servicio].pdf</td><td>1</td></tr>
-                        <tr><td>FOMAG</td><td>Paquete</td><td>4 [servicio].pdf</td><td>1</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </article>
-
-        <!-- ========== ARCHIVO 5.pdf ========== -->
-        <article id="wiki-archivo5" class="wiki-article oculto">
-            <h1>📄 Validación de Archivo 5.pdf (Evoluciones)</h1>
-            <p class="wiki-intro">El archivo 5.pdf contiene las evoluciones o registros del servicio prestado.</p>
-
-            <h2>Validación común</h2>
-            <div class="wiki-note info">
-                <strong>Funciones principales:</strong>
-                <ul>
-                    <li>Verificar número de documento</li>
-                    <li>Validar texto del servicio</li>
-                    <li>Contar evoluciones (fechas)</li>
-                </ul>
-            </div>
-
-            <h2>Textos esperados por servicio</h2>
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Servicio</th><th>Texto(s) buscado(s)</th></tr></thead>
-                    <tbody>
-                        <tr><td>TF</td><td>"Registro De Terapia Física"</td></tr>
-                        <tr><td>TR</td><td>"Registro De Terapia Respiratoria"</td></tr>
-                        <tr><td>SUCCION</td><td>"Registro De Terapia Respiratoria" o "Terapia de succión"</td></tr>
-                        <tr><td>FON</td><td>"Registro De Fonoaudiología"</td></tr>
-                        <tr><td>VM</td><td>"Registro de Valoración Médica"</td></tr>
-                        <tr><td>ENF</td><td>"Registro De Enfermería - Actividades" o "Registro De Enfermería"</td></tr>
-                        <tr><td>ENF12</td><td>"Registro De Enfermería - Actividades" o "Registro De Enfermería"</td></tr>
-                        <tr><td>PSI</td><td>"Registro De Psicología"</td></tr>
-                        <tr><td>TS</td><td>"Registro De Trabajo Social"</td></tr>
-                        <tr><td>TO</td><td>"Registro De Terapia Ocupacional"</td></tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <h2>🔷 Capital Salud - Evento</h2>
-            <div class="wiki-note info">
-                <strong>Archivo:</strong> <code>5.pdf</code>
-            </div>
-            <h3>Reglas aplicadas:</h3>
-            <ol class="wiki-list">
-                <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
-                <li><strong>Validar texto del servicio:</strong> Debe contener el texto correspondiente al tipo de servicio de la carpeta.</li>
-                <li><strong>Contar evoluciones:</strong> Extrae las fechas del documento (formato DD/MM/AAAA o DD-MM-AAAA).</li>
-            </ol>
-            <div class="wiki-note success">
-                <strong>Nota:</strong> En Capital Salud no se compara la cantidad de evoluciones con autorizaciones.
-            </div>
-
-            <h2>🔶 FOMAG - Evento</h2>
-            <div class="wiki-note warning">
-                <strong>Archivo:</strong> <code>5 [servicio].pdf</code> (ej: "5 TF.pdf", "5 ENF.pdf")
-            </div>
-            <h3>Reglas aplicadas:</h3>
-            <ol class="wiki-list">
-                <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
-                <li><strong>Validar texto del servicio:</strong> Debe contener el texto correspondiente al servicio.</li>
-                <li><strong>Contar evoluciones:</strong> Extrae las fechas del documento.</li>
-                <li><strong>Comparar con autorizaciones:</strong> 
-                    <ul>
-                        <li>✅ Evoluciones ≤ Autorizaciones → Válido</li>
-                        <li>❌ Evoluciones &gt; Autorizaciones → Error</li>
+                    <h2>🔶 FOMAG - Evento</h2>
+                    <div class="wiki-note warning">
+                        <strong>Modo:</strong> Validación de texto + extracción de autorizaciones + comparación con
+                        evoluciones.
+                    </div>
+                    <h3>Archivos aceptados:</h3>
+                    <ul class="wiki-list">
+                        <li><code>2 [servicio].pdf</code> - Archivo individual por servicio (ej: "2 TF.pdf", "2
+                            ENF.pdf")</li>
+                        <li><code>2 paq.pdf</code> - Archivo global con autorizaciones de múltiples servicios</li>
                     </ul>
-                </li>
-            </ol>
+                    <h3>Reglas aplicadas:</h3>
+                    <ol class="wiki-list">
+                        <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
+                        <li><strong>Buscar texto del servicio:</strong>
+                            <div class="wiki-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Servicio</th>
+                                            <th>Texto buscado</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>TF</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPEUTA"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>TR</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA RESPIRATORIO"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>SUCCION</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA RESPIRATORIO"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>FON</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>VM</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR MEDICO GENERAL"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ENF</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>ENF12</td>
+                                            <td>"ATENCION (CONSULTA) DOMICILIARIA, POR ENFERMERIA"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>PSI</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGO"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>TS</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TRABAJADOR SOCIAL"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>TO</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA OCUPACIONAL"</td>
+                                        </tr>
+                                        <tr>
+                                            <td>NUT</td>
+                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA"</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </li>
+                        <li><strong>Extraer número después del texto:</strong> El número que sigue al texto del servicio
+                            indica la cantidad de autorizaciones.</li>
+                        <li><strong>Comparar con evoluciones:</strong>
+                            <ul>
+                                <li>✅ <strong>Autorizaciones ≥ Evoluciones:</strong> Válido</li>
+                                <li>❌ <strong>Autorizaciones &lt; Evoluciones:</strong> Error - "Cant auto [X] &lt; cant
+                                    evol [Y]"</li>
+                                <li>⚠️ <strong>Autorizaciones &gt; Evoluciones:</strong> Alerta - Sobran autorizaciones
+                                </li>
+                            </ul>
+                        </li>
+                    </ol>
+                    <div class="wiki-note info">
+                        <strong>Prioridad:</strong> Si existe "2 [servicio].pdf" individual, se usa ese. Si no, se toma
+                        del "2 paq.pdf".
+                    </div>
 
-            <h2>🔶 FOMAG - Paquete</h2>
-            <div class="wiki-note warning">
-                <strong>Archivo:</strong> <code>5 [servicio].pdf</code>
-            </div>
-            <p>Aplican las mismas reglas que FOMAG Evento.</p>
+                    <h2>🔶 FOMAG - Paquete</h2>
+                    <div class="wiki-note warning">
+                        <strong>Modo:</strong> Igual que Evento pero con archivos nombrados "2 [servicio].pdf".
+                    </div>
+                    <h3>Reglas:</h3>
+                    <p>Aplican las mismas reglas que FOMAG Evento. La diferencia está en la estructura de carpetas
+                        (múltiples servicios por carpeta).</p>
+                </article>
 
-            <h2>Extracción de fechas</h2>
-            <div class="wiki-note info">
-                <strong>Patrón de fecha:</strong> Se buscan fechas en formato <code>DD/MM/AAAA</code> o <code>DD-MM-AAAA</code>.
-            </div>
-            <p>Las fechas encontradas se muestran en la columna "Evoluciones" y se cuentan para comparar con las autorizaciones.</p>
-            <div class="wiki-example">
-                <strong>Ejemplo de salida:</strong> "3 evoluciones: 01/03/2024, 08/03/2024, 15/03/2024"
-            </div>
+                <!-- ========== ARCHIVO 3.pdf ========== -->
+                <article id="wiki-archivo3" class="wiki-article oculto">
+                    <h1>📄 Validación de Archivo 3.pdf (Epicrisis)</h1>
+                    <p class="wiki-intro">El archivo 3.pdf contiene la epicrisis o resumen clínico.</p>
 
-            <h2>Resumen comparativo</h2>
-            <div class="wiki-table">
-                <table>
-                    <thead><tr><th>Convenio</th><th>Modo</th><th>Archivo</th><th>Texto</th><th>Fechas</th><th>Comparación</th></tr></thead>
-                    <tbody>
-                        <tr><td>Capital Salud</td><td>Evento</td><td>5.pdf</td><td>✅</td><td>✅</td><td>❌ No</td></tr>
-                        <tr><td>FOMAG</td><td>Evento</td><td>5 [srv].pdf</td><td>✅</td><td>✅</td><td>✅ Sí</td></tr>
-                        <tr><td>FOMAG</td><td>Paquete</td><td>5 [srv].pdf</td><td>✅</td><td>✅</td><td>✅ Sí</td></tr>
-                    </tbody>
-                </table>
-            </div>
-        </article>
+                    <h2>🔷 Capital Salud - Evento</h2>
+                    <div class="wiki-note info">
+                        <strong>Archivo requerido:</strong> SÍ
+                    </div>
+                    <h3>Reglas aplicadas:</h3>
+                    <ul class="wiki-list">
+                        <li><strong>Verificar número de documento:</strong> El texto del PDF debe contener el número de
+                            documento del paciente.</li>
+                    </ul>
+                    <div class="wiki-example">
+                        <strong>Resultado:</strong> ✓ si contiene el número, ✗ si no lo contiene.
+                    </div>
 
-        <!-- Errores -->
-        <article id="wiki-errores" class="wiki-article oculto">
-            <h1>⚠️ Tipos de errores comunes</h1>
-            
-            <h2>Errores de archivos</h2>
-            <div class="wiki-error-item">
-                <strong>Falta [X].pdf</strong>
-                <p>El archivo correspondiente no se encontró en la carpeta.</p>
-            </div>
-            <div class="wiki-error-item">
-                <strong>[X].pdf: error leyendo PDF</strong>
-                <p>El archivo puede estar corrupto o no se pudo leer.</p>
-            </div>
-            <div class="wiki-error-item">
-                <strong>Archivo no permitido: [nombre]</strong>
-                <p>Hay archivos que no siguen el patrón esperado (ej: "2 vm.pdf", "4 enf.pdf", "5 tf.pdf" en validación por evento).</p>
-            </div>
+                    <h2>🔶 FOMAG - Evento</h2>
+                    <div class="wiki-note success">
+                        <strong>Archivo requerido:</strong> NO
+                    </div>
+                    <p>En FOMAG modo Evento, el archivo 3.pdf <strong>no es requerido</strong> ni validado.</p>
 
-            <h2>Errores de contenido</h2>
-            <div class="wiki-error-item">
-                <strong>[X].pdf: no contiene número [documento]</strong>
-                <p>El número de documento no aparece en el PDF (FOMAG archivos 2 y 5).</p>
-            </div>
-            <div class="wiki-error-item">
-                <strong>[X].pdf: falta alguno de: [textos]</strong>
-                <p>No se encontró el texto requerido del servicio en el archivo.</p>
-            </div>
-            <div class="wiki-error-item">
-                <strong>[X].pdf: no se pudo extraer el número después del texto</strong>
-                <p>En archivo 2.pdf de FOMAG, no se encontró un número después del texto del servicio.</p>
-            </div>
+                    <h2>🔶 FOMAG - Paquete</h2>
+                    <div class="wiki-note success">
+                        <strong>Archivo requerido:</strong> NO
+                    </div>
+                    <p>En FOMAG modo Paquete, el archivo 3.pdf <strong>no es requerido</strong> ni validado.</p>
 
-            <h2>Errores de validación</h2>
-            <div class="wiki-error-item">
-                <strong>Cant autorizaciones [X] ≠ cant evoluciones [Y]</strong>
-                <p>El número de autorizaciones declaradas en el 2.pdf no coincide con las evoluciones en el 5.pdf (solo FOMAG).</p>
-            </div>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Convenio</th>
+                                    <th>Modo</th>
+                                    <th>¿Requerido?</th>
+                                    <th>Validación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Capital Salud</td>
+                                    <td>Evento</td>
+                                    <td>✅ SÍ</td>
+                                    <td>Número de documento</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG</td>
+                                    <td>Evento</td>
+                                    <td>❌ NO</td>
+                                    <td>-</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG</td>
+                                    <td>Paquete</td>
+                                    <td>❌ NO</td>
+                                    <td>-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
 
-            <h2>Errores de paquete</h2>
-            <div class="wiki-error-item">
-                <strong>Paquete debe incluir servicio VM/ENF</strong>
-                <p>En paquetes, se requiere siempre Valoración Médica y Enfermería.</p>
+                <!-- ========== ARCHIVO 4.pdf ========== -->
+                <article id="wiki-archivo4" class="wiki-article oculto">
+                    <h1>📄 Validación de Archivo 4.pdf (Firmas)</h1>
+                    <p class="wiki-intro">El archivo 4.pdf contiene los formatos de firma del paciente o acudiente.</p>
+
+                    <h2>Validación común (todos los convenios)</h2>
+                    <div class="wiki-note warning">
+                        <strong>Regla principal:</strong> El archivo 4.pdf debe tener <strong>1 sola página</strong>.
+                    </div>
+                    <h3>Reglas aplicadas:</h3>
+                    <ol class="wiki-list">
+                        <li><strong>Conteo de páginas:</strong>
+                            <ul>
+                                <li>✅ <strong>1 página:</strong> Válido</li>
+                                <li>⚠️ <strong>Más de 1 página:</strong> Alerta - "4.pdf contiene [N] páginas, se espera
+                                    1"</li>
+                            </ul>
+                        </li>
+                        <li><strong>Detección de "identificación":</strong>
+                            <ul>
+                                <li>⚠️ Si el texto contiene la palabra "identificación", se genera alerta (posible
+                                    documento erróneo)</li>
+                            </ul>
+                        </li>
+                    </ol>
+
+                    <h2>🔷 Capital Salud - Evento</h2>
+                    <div class="wiki-note info">
+                        <strong>Archivo:</strong> <code>4.pdf</code>
+                    </div>
+                    <p>Aplica validación de páginas y detección de "identificación".</p>
+
+                    <h2>🔶 FOMAG - Evento</h2>
+                    <div class="wiki-note info">
+                        <strong>Archivo:</strong> <code>4 [servicio].pdf</code> (ej: "4 TF.pdf", "4 ENF.pdf")
+                    </div>
+                    <p>Mismo archivo por cada servicio. Aplica las mismas validaciones.</p>
+
+                    <h2>🔶 FOMAG - Paquete</h2>
+                    <div class="wiki-note info">
+                        <strong>Archivo:</strong> <code>4 [servicio].pdf</code>
+                    </div>
+                    <p>Cada servicio tiene su propio archivo de firmas.</p>
+
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Convenio</th>
+                                    <th>Modo</th>
+                                    <th>Archivo</th>
+                                    <th>Páginas esperadas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Capital Salud</td>
+                                    <td>Evento</td>
+                                    <td>4.pdf</td>
+                                    <td>1</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG</td>
+                                    <td>Evento</td>
+                                    <td>4 [servicio].pdf</td>
+                                    <td>1</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG</td>
+                                    <td>Paquete</td>
+                                    <td>4 [servicio].pdf</td>
+                                    <td>1</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <!-- ========== ARCHIVO 5.pdf ========== -->
+                <article id="wiki-archivo5" class="wiki-article oculto">
+                    <h1>📄 Validación de Archivo 5.pdf (Evoluciones)</h1>
+                    <p class="wiki-intro">El archivo 5.pdf contiene las evoluciones o registros del servicio prestado.
+                    </p>
+
+                    <h2>Validación común</h2>
+                    <div class="wiki-note info">
+                        <strong>Funciones principales:</strong>
+                        <ul>
+                            <li>Verificar número de documento</li>
+                            <li>Validar texto del servicio</li>
+                            <li>Contar evoluciones (fechas)</li>
+                        </ul>
+                    </div>
+
+                    <h2>Textos esperados por servicio</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Servicio</th>
+                                    <th>Texto(s) buscado(s)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>TF</td>
+                                    <td>"Registro De Terapia Física"</td>
+                                </tr>
+                                <tr>
+                                    <td>TR</td>
+                                    <td>"Registro De Terapia Respiratoria"</td>
+                                </tr>
+                                <tr>
+                                    <td>SUCCION</td>
+                                    <td>"Registro De Terapia Respiratoria" o "Terapia de succión"</td>
+                                </tr>
+                                <tr>
+                                    <td>FON</td>
+                                    <td>"Registro De Fonoaudiología"</td>
+                                </tr>
+                                <tr>
+                                    <td>VM</td>
+                                    <td>"Registro de Valoración Médica"</td>
+                                </tr>
+                                <tr>
+                                    <td>ENF</td>
+                                    <td>"Registro De Enfermería - Actividades" o "Registro De Enfermería"</td>
+                                </tr>
+                                <tr>
+                                    <td>ENF12</td>
+                                    <td>"Registro De Enfermería - Actividades" o "Registro De Enfermería"</td>
+                                </tr>
+                                <tr>
+                                    <td>PSI</td>
+                                    <td>"Registro De Psicología"</td>
+                                </tr>
+                                <tr>
+                                    <td>TS</td>
+                                    <td>"Registro De Trabajo Social"</td>
+                                </tr>
+                                <tr>
+                                    <td>TO</td>
+                                    <td>"Registro De Terapia Ocupacional"</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>🔷 Capital Salud - Evento</h2>
+                    <div class="wiki-note info">
+                        <strong>Archivo:</strong> <code>5.pdf</code>
+                    </div>
+                    <h3>Reglas aplicadas:</h3>
+                    <ol class="wiki-list">
+                        <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
+                        <li><strong>Validar texto del servicio:</strong> Debe contener el texto correspondiente al tipo
+                            de servicio de la carpeta.</li>
+                        <li><strong>Contar evoluciones:</strong> Extrae las fechas del documento (formato DD/MM/AAAA o
+                            DD-MM-AAAA).</li>
+                    </ol>
+                    <div class="wiki-note success">
+                        <strong>Nota:</strong> En Capital Salud no se compara la cantidad de evoluciones con
+                        autorizaciones.
+                    </div>
+
+                    <h2>🔶 FOMAG - Evento</h2>
+                    <div class="wiki-note warning">
+                        <strong>Archivo:</strong> <code>5 [servicio].pdf</code> (ej: "5 TF.pdf", "5 ENF.pdf")
+                    </div>
+                    <h3>Reglas aplicadas:</h3>
+                    <ol class="wiki-list">
+                        <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
+                        <li><strong>Validar texto del servicio:</strong> Debe contener el texto correspondiente al
+                            servicio.</li>
+                        <li><strong>Contar evoluciones:</strong> Extrae las fechas del documento.</li>
+                        <li><strong>Comparar con autorizaciones:</strong>
+                            <ul>
+                                <li>✅ Evoluciones ≤ Autorizaciones → Válido</li>
+                                <li>❌ Evoluciones &gt; Autorizaciones → Error</li>
+                            </ul>
+                        </li>
+                    </ol>
+
+                    <h2>🔶 FOMAG - Paquete</h2>
+                    <div class="wiki-note warning">
+                        <strong>Archivo:</strong> <code>5 [servicio].pdf</code>
+                    </div>
+                    <p>Aplican las mismas reglas que FOMAG Evento.</p>
+
+                    <h2>Extracción de fechas</h2>
+                    <div class="wiki-note info">
+                        <strong>Patrón de fecha:</strong> Se buscan fechas en formato <code>DD/MM/AAAA</code> o
+                        <code>DD-MM-AAAA</code>.
+                    </div>
+                    <p>Las fechas encontradas se muestran en la columna "Evoluciones" y se cuentan para comparar con las
+                        autorizaciones.</p>
+                    <div class="wiki-example">
+                        <strong>Ejemplo de salida:</strong> "3 evoluciones: 01/03/2024, 08/03/2024, 15/03/2024"
+                    </div>
+
+                    <h2>Resumen comparativo</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Convenio</th>
+                                    <th>Modo</th>
+                                    <th>Archivo</th>
+                                    <th>Texto</th>
+                                    <th>Fechas</th>
+                                    <th>Comparación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Capital Salud</td>
+                                    <td>Evento</td>
+                                    <td>5.pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>❌ No</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG</td>
+                                    <td>Evento</td>
+                                    <td>5 [srv].pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>✅ Sí</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG</td>
+                                    <td>Paquete</td>
+                                    <td>5 [srv].pdf</td>
+                                    <td>✅</td>
+                                    <td>✅</td>
+                                    <td>✅ Sí</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <!-- Errores -->
+                <article id="wiki-errores" class="wiki-article oculto">
+                    <h1>⚠️ Tipos de errores comunes</h1>
+
+                    <h2>Errores de archivos</h2>
+                    <div class="wiki-error-item">
+                        <strong>Falta [X].pdf</strong>
+                        <p>El archivo correspondiente no se encontró en la carpeta.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>[X].pdf: error leyendo PDF</strong>
+                        <p>El archivo puede estar corrupto o no se pudo leer.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>Archivo no permitido: [nombre]</strong>
+                        <p>Hay archivos que no siguen el patrón esperado (ej: "2 vm.pdf", "4 enf.pdf", "5 tf.pdf" en
+                            validación por evento).</p>
+                    </div>
+
+                    <h2>Errores de contenido</h2>
+                    <div class="wiki-error-item">
+                        <strong>[X].pdf: no contiene número [documento]</strong>
+                        <p>El número de documento no aparece en el PDF (FOMAG archivos 2 y 5).</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>[X].pdf: falta alguno de: [textos]</strong>
+                        <p>No se encontró el texto requerido del servicio en el archivo.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>[X].pdf: no se pudo extraer el número después del texto</strong>
+                        <p>En archivo 2.pdf de FOMAG, no se encontró un número después del texto del servicio.</p>
+                    </div>
+
+                    <h2>Errores de validación</h2>
+                    <div class="wiki-error-item">
+                        <strong>Cant autorizaciones [X] ≠ cant evoluciones [Y]</strong>
+                        <p>El número de autorizaciones declaradas en el 2.pdf no coincide con las evoluciones en el
+                            5.pdf (solo FOMAG).</p>
+                    </div>
+
+                    <h2>Errores de paquete</h2>
+                    <div class="wiki-error-item">
+                        <strong>Paquete debe incluir servicio VM/ENF</strong>
+                        <p>En paquetes, se requiere siempre Valoración Médica y Enfermería.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>Paquete debe incluir al menos un servicio de terapia</strong>
+                        <p>Debe haber al menos TF, TR, SUCCION, TO o FON.</p>
+                    </div>
+                </article>
             </div>
-            <div class="wiki-error-item">
-                <strong>Paquete debe incluir al menos un servicio de terapia</strong>
-                <p>Debe haber al menos TF, TR, SUCCION, TO o FON.</p>
-            </div>
-        </article>
+        </div>
     </div>
-    </div>
-</div>
 
-<script>
-function toggleWiki() {
-    const wiki = document.getElementById('wikiContainer');
-    wiki.classList.toggle('oculto');
-}
+    <script>
+        function toggleWiki() {
+            const wiki = document.getElementById('wikiContainer');
+            wiki.classList.toggle('oculto');
+        }
 
-function closeWikiOnBackdrop(event) {
-    if (event.target === event.currentTarget) {
-        toggleWiki();
-    }
-}
-
-// Cerrar wiki al hacer clic fuera
-document.addEventListener('DOMContentLoaded', function() {
-    const wikiContainer = document.getElementById('wikiContainer');
-    if (wikiContainer) {
-        wikiContainer.addEventListener('click', function(event) {
-            if (event.target === wikiContainer) {
+        function closeWikiOnBackdrop(event) {
+            if (event.target === event.currentTarget) {
                 toggleWiki();
             }
+        }
+
+        // Cerrar wiki al hacer clic fuera
+        document.addEventListener('DOMContentLoaded', function () {
+            const wikiContainer = document.getElementById('wikiContainer');
+            if (wikiContainer) {
+                wikiContainer.addEventListener('click', function (event) {
+                    if (event.target === wikiContainer) {
+                        toggleWiki();
+                    }
+                });
+            }
         });
-    }
-});
 
-function showWikiSection(section) {
-    // Ocultar todos los artículos
-    document.querySelectorAll('.wiki-article').forEach(art => {
-        art.classList.add('oculto');
-    });
-    
-    // Mostrar el artículo seleccionado
-    document.getElementById('wiki-' + section).classList.remove('oculto');
-    
-    // Actualizar navegación activa
-    document.querySelectorAll('.wiki-nav-item').forEach(item => {
-        item.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    // Scroll al inicio del contenido
-    document.querySelector('.wiki-content').scrollTop = 0;
-}
-</script>
+        function showWikiSection(section) {
+            // Ocultar todos los artículos
+            document.querySelectorAll('.wiki-article').forEach(art => {
+                art.classList.add('oculto');
+            });
 
-<!-- Footer -->
-<footer class="footer">
-    <div class="footer-content">
-        <div class="footer-section">
-            <h4>📄 Validador de PDFs</h4>
-            <p>Sistema de validación de documentos PDF para eventos y paquetes médicos.</p>
-            <p class="version">Versión 1.0.0</p>
-        </div>
-        
-        <div class="footer-section">
-            <h4>ℹ️ Información</h4>
-            <p>Soporta validación por evento y por paquete.</p>
-            <p>Compatible con Capital Salud y FOMAG.</p>
-        </div>
-        
-        <div class="footer-section">
-            <h4>👨‍💻 Desarrollador</h4>
-            <p class="developer">Hecho por <strong>Bonnickson</strong>, Ing. de software, con <span class="heart">♥</span></p>
-            <p class="date">© 2025 - Todos los derechos reservados</p>
-        </div>
+            // Mostrar el artículo seleccionado
+            document.getElementById('wiki-' + section).classList.remove('oculto');
 
-        <div class="footer-section">
-            <h4>📞 Contacto</h4>
-            <p>Correo: <a href="mailto:bonnickstewar@gmail.com">bonnickstewar@gmail.com</a></p>
-            <p>Teléfono / WhatsApp: <a href="tel:+573022529980">302 252 9980</a></p>
-        </div>
-    </div>
-</footer>
+            // Actualizar navegación activa
+            document.querySelectorAll('.wiki-nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-<script type="module" src="src/app.js"></script>
+            // Scroll al inicio del contenido
+            document.querySelector('.wiki-content').scrollTop = 0;
+        }
+    </script>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <div class="footer-section">
+                <h4>📄 Validador de PDFs</h4>
+                <p>Sistema de validación de documentos PDF para eventos y paquetes médicos.</p>
+                <p class="version">Versión 1.0.0</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>ℹ️ Información</h4>
+                <p>Soporta validación por evento y por paquete.</p>
+                <p>Compatible con Capital Salud y FOMAG.</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>👨‍💻 Desarrollador</h4>
+                <p class="developer">Hecho por <strong>Bonnickson</strong>, Ing. de software, con <span
+                        class="heart">♥</span></p>
+                <p class="date">© 2025 - Todos los derechos reservados</p>
+            </div>
+
+            <div class="footer-section">
+                <h4>📞 Contacto</h4>
+                <p>Correo: <a href="mailto:bonnickstewar@gmail.com">bonnickstewar@gmail.com</a></p>
+                <p>Teléfono / WhatsApp: <a href="tel:+573022529980">302 252 9980</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+    <script type="module" src="src/app.js"></script>
 </body>
+
 </html>
