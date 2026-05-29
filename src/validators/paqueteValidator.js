@@ -6,7 +6,11 @@ import {
     escapeRegExp,
     extraerNumeroDelTexto,
 } from "../utils/textUtils.js";
-import { extraerTextoPDF, extraerFechas } from "../utils/pdfUtils.js";
+import {
+    extraerTextoPDF,
+    extraerFechas,
+    validarOrdenFechas,
+} from "../utils/pdfUtils.js";
 
 // Variable para controlar debug solo en primer servicio
 let primerServicioDebug = null;
@@ -36,6 +40,9 @@ export function validarArchivosPermitidosPaquete(
         "psi",
         "to",
         "fon",
+        "nut",
+        "venf",
+        "trs"
     ];
 
     for (const archivo of archivos) {
@@ -43,7 +50,7 @@ export function validarArchivosPermitidosPaquete(
 
         // Patrón válido: "2 vm.pdf", "4 enf.pdf", etc.
         const patronServicio =
-            /^[2-5]\s+(vm|enf|tf|tr|succion|suc|ts|psi|to|fon)\.pdf$/;
+            /^[2-5]\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/;
 
         // Patrón válido solo para FOMAG: "2 paq.pdf"
         const patron2Paq = /^2\s+paq\.pdf$/;
@@ -78,11 +85,11 @@ export function validarArchivosPermitidosPaquete(
             );
         });
 
-        console.log(
-            `❌ ${carpeta} - Archivos no permitidos encontrados: ${archivosNoPermitidos.join(
-                ", "
-            )}`
-        );
+        // console.log(
+        //     `❌ ${carpeta} - Archivos no permitidos encontrados: ${archivosNoPermitidos.join(
+        //         ", "
+        //     )}`
+        // );
     }
 }
 
@@ -122,6 +129,15 @@ export async function validarPorPaquete(
         resultados[carpeta].exitosPorServicio[s] ||= [];
         resultados[carpeta].alertasPorServicio[s] ||= [];
     }
+    
+    // Asegurar también la clave "General" en caso de que sea necesario antes de los procesos finales
+    if (!resultados[carpeta].servicios.has("General")) {
+        resultados[carpeta].servicios.add("General");
+    }
+    resultados[carpeta].fechasPorServicio["General"] ||= [];
+    resultados[carpeta].erroresPorServicio["General"] ||= [];
+    resultados[carpeta].exitosPorServicio["General"] ||= [];
+    resultados[carpeta].alertasPorServicio["General"] ||= [];
 
     // Crear URLs para archivos PDF
     for (const f of archivos) {
@@ -130,22 +146,15 @@ export async function validarPorPaquete(
         }
     }
 
-    if (tipoPaquete === "cronico") {
-        validarPaqueteCronico(
+    // Solo validar paquetes con sus reglas (ignorar "cronico" y "cronico-terapias" antiguos)
+    if (tipoPaquete.startsWith("CPF")) {
+        validarNuevoPaquete(
             carpeta,
             nombres,
             serviciosEncontrados,
             resultados,
             archivos,
-            convenio
-        );
-    } else if (tipoPaquete === "cronico-terapias") {
-        validarPaqueteCronicoConTerapias(
-            carpeta,
-            nombres,
-            serviciosEncontrados,
-            resultados,
-            archivos,
+            tipoPaquete,
             convenio
         );
     }
@@ -157,11 +166,11 @@ export async function validarPorPaquete(
 
         const servicioLower = servicio.toLowerCase();
 
-        // IMPORTANTE: Procesar primero el 2.pdf para extraer número, luego 5 para comparar, luego 4
-        for (const numArchivo of ["2", "5", "4"]) {
+        // IMPORTANTE: Procesar 5 para comparar, luego 4
+        for (const numArchivo of ["5", "4"]) {
             let archivoParaProcesar = null;
 
-            // 1. SIEMPRE buscar primero el archivo específico del servicio (ej: "2 vm.pdf")
+            // 1. Buscar el archivo específico del servicio (ej: "5 vm.pdf")
             const nombreEspecifico = `${numArchivo} ${servicioLower}.pdf`;
             archivoParaProcesar = archivos.find(
                 (f) =>
@@ -169,40 +178,13 @@ export async function validarPorPaquete(
                     f.type === "application/pdf"
             );
 
-            // 2. SOLO si no existe el individual, para archivo 2 en FOMAG, buscar en "2 paq.pdf"
-            // Si existe individual, ignorar paq.pdf completamente
-            if (
-                !archivoParaProcesar &&
-                numArchivo === "2" &&
-                convenio === "fomag"
-            ) {
-                const archivoPaquete = archivos.find(
-                    (f) =>
-                        f.name.toLowerCase() === "2 paq.pdf" &&
-                        f.type === "application/pdf"
-                );
-                if (archivoPaquete) {
-                    archivoParaProcesar = archivoPaquete;
-                    // Guardar URL para permitir abrir desde el click en "2 servicio.pdf"
-                    const nombreEspecificoParaUrl = `2 ${servicioLower}.pdf`;
-                    // Copiar la URL del 2 paq.pdf para este servicio específico
-                    const urlPaq =
-                        resultados[carpeta].fileUrls["2 paq.pdf"] ||
-                        resultados[carpeta].fileUrls["2 PAQ.pdf"];
-                    if (urlPaq) {
-                        resultados[carpeta].fileUrls[nombreEspecificoParaUrl] =
-                            urlPaq;
-                    }
-                }
-            }
-
             // 3. Procesar el archivo si se encontró
             if (archivoParaProcesar) {
                 // Solo procesar si no está marcado como faltante
                 if (
                     resultados[carpeta].pdfsPorServicio[servicio] &&
                     resultados[carpeta].pdfsPorServicio[servicio][
-                        numArchivo
+                    numArchivo
                     ] !== "—"
                 ) {
                     estado.textContent = `Procesando: ${carpeta} / ${archivoParaProcesar.name} (${servicio})`;
@@ -218,7 +200,8 @@ export async function validarPorPaquete(
                         nroDocumento,
                         servicio,
                         resultados,
-                        convenio
+                        convenio,
+                        tipoPaquete
                     );
                 }
             }
@@ -226,6 +209,132 @@ export async function validarPorPaquete(
 
         updateRow(carpeta, resultados[carpeta]);
     }
+
+    // Procesar "2 paq.pdf" de forma general si existe
+    const archivo2Paq = archivos.find(
+        (f) => f.name.toLowerCase() === "2 paq.pdf" && f.type === "application/pdf"
+    );
+    if (archivo2Paq) {
+        estado.textContent = `Procesando: ${carpeta} / ${archivo2Paq.name} (General)`;
+        if (onProgresoArchivo) onProgresoArchivo(archivo2Paq.name);
+        await validarPDFPaquete(
+            archivo2Paq,
+            carpeta,
+            nroDocumento,
+            "General",
+            resultados,
+            convenio,
+            tipoPaquete
+        );
+    }
+
+    // Validaciones finales por tipo de paquete (post-procesamiento)
+    // Asegurar que existe "General" en servicios y erroresPorServicio
+    if (!resultados[carpeta].servicios.has("General")) {
+        resultados[carpeta].servicios.add("General");
+    }
+    resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
+    resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+    
+    if (tipoPaquete.startsWith("CPF")) {
+        // En paquete nuevo: exactamente 1 VM, 1 ENF y 1 VENF
+        const cantVM =
+            resultados[carpeta].fechasPorServicio?.["VM"]?.length || 0;
+        const cantENF =
+            resultados[carpeta].fechasPorServicio?.["ENF"]?.length || 0;
+        const cantVENF =
+            resultados[carpeta].fechasPorServicio?.["VENF"]?.length || 0;
+
+        if (cantVM !== 1) {
+            resultados[carpeta].erroresPorServicio["General"].push(
+                `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de VM (tiene ${cantVM})`
+            );
+        } else {
+            resultados[carpeta].exitosPorServicio["General"].push(
+                `VM: 1 evolución ✓`
+            );
+        }
+
+        if (cantENF !== 1) {
+            resultados[carpeta].erroresPorServicio["General"].push(
+                `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ENF (tiene ${cantENF})`
+            );
+        } else {
+            resultados[carpeta].exitosPorServicio["General"].push(
+                `ENF: 1 evolución ✓`
+            );
+        }
+
+        if (cantVENF !== 1) {
+            resultados[carpeta].erroresPorServicio["General"].push(
+                `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de VENF (tiene ${cantVENF})`
+            );
+        } else {
+            resultados[carpeta].exitosPorServicio["General"].push(
+                `VENF: 1 evolución ✓`
+            );
+        }
+
+        // Validar que el opcional seleccionado tenga exactamente 1 evolución
+        const opcionales = ["PSI", "NUT", "TS"];
+        const opcionalEncontrado = opcionales.find(s => resultados[carpeta].servicios?.has(s));
+        
+        if (opcionalEncontrado) {
+            const cantOpcional = resultados[carpeta].fechasPorServicio?.[opcionalEncontrado]?.length || 0;
+            if (cantOpcional !== 1) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ${opcionalEncontrado} (tiene ${cantOpcional})`
+                );
+            } else {
+                resultados[carpeta].exitosPorServicio["General"].push(
+                    `${opcionalEncontrado}: 1 evolución ✓`
+                );
+            }
+        }
+
+        // Sumar evoluciones de las 5 terapias
+        const TERAPIAS_CONTABLES = new Set(["TF", "TR", "FON", "TO", "TRS"]);
+        let totalTerapias = 0;
+        for (const s of TERAPIAS_CONTABLES) {
+            totalTerapias +=
+                resultados[carpeta].fechasPorServicio?.[s]?.length || 0;
+        }
+
+        let minTerapias = 0;
+        let maxTerapias = 0;
+
+        switch (tipoPaquete) {
+            case "CPF1109":
+                minTerapias = 6; maxTerapias = 12;
+                break;
+            case "CPF1110":
+                minTerapias = 12; maxTerapias = 20;
+                break;
+            case "CPF1105":
+            case "CPF1106":
+                minTerapias = 12; maxTerapias = 30;
+                break;
+        }
+
+        if (minTerapias > 0) {
+            if (totalTerapias < minTerapias) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} debe tener mínimo ${minTerapias} terapias (tiene ${totalTerapias})`
+                );
+            } else if (totalTerapias > maxTerapias) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} debe tener máximo ${maxTerapias} terapias (tiene ${totalTerapias})`
+                );
+            } else {
+                resultados[carpeta].exitosPorServicio["General"].push(
+                    `Terapias sumadas: ${totalTerapias} (${minTerapias}-${maxTerapias}) ✓`
+                );
+            }
+        }
+    }
+
+    // Refrescar fila después de validaciones finales
+    updateRow(carpeta, resultados[carpeta]);
 }
 
 /**
@@ -236,7 +345,7 @@ function detectarServicios(nombres) {
     for (const nombre of nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
-            /\d+ (VM|ENF|TF|TR|SUCCION|SUC|TS|PSI|FON|TO)/
+            /\d+\s+(VM|ENF|TF|TR|SUCCION|SUC|TS|PSI|FON|TO|NUT|VENF|TRS)/
         );
         if (match) {
             let servicio = match[1];
@@ -248,192 +357,77 @@ function detectarServicios(nombres) {
 }
 
 /**
- * Valida paquete crónico (solo VM y ENF)
+ * Valida un paquete nuevo
  */
-function validarPaqueteCronico(
+function validarNuevoPaquete(
     carpeta,
     nombres,
     serviciosEncontrados,
     resultados,
     archivos,
+    tipoPaquete,
     convenio
 ) {
-    // Filtrar "General" para las validaciones de servicios
     const serviciosReales = new Set(
-        [...serviciosEncontrados].filter((s) => s !== "General")
+        [...serviciosEncontrados].filter((s) => s !== "General" && s !== "PAQ")
     );
 
-    const serviciosPermitidos = new Set(["VM", "ENF"]);
-    const serviciosNoPermitidos = [...serviciosReales].filter(
-        (s) => !serviciosPermitidos.has(s)
-    );
-
-    if (serviciosNoPermitidos.length > 0) {
-        resultados[carpeta].errores.push(
-            `Paquete Crónico solo debe contener VM y ENF. Se encontró: ${serviciosNoPermitidos.join(
-                ", "
-            )}`
-        );
-    }
-
-    if (!serviciosReales.has("VM")) {
-        resultados[carpeta].errores.push(
-            "Paquete Crónico debe incluir servicio VM"
-        );
-    }
-    if (!serviciosReales.has("ENF")) {
-        resultados[carpeta].errores.push(
-            "Paquete Crónico debe incluir servicio ENF"
-        );
-    }
-
-    // Verificar archivos 2, 4, 5 para VM y ENF
-    for (const servicio of ["VM", "ENF"]) {
-        resultados[carpeta].pdfsPorServicio[servicio] = {};
-        resultados[carpeta].erroresPorServicio[servicio] ||= [];
-        resultados[carpeta].exitosPorServicio[servicio] ||= [];
-
-        for (const num of ["2", "4", "5"]) {
-            // Para FOMAG archivo 2: buscar primero archivo individual, luego en paq.pdf
-            let existe = false;
-            const nombreIndividual = `${num} ${servicio.toLowerCase()}.pdf`;
-
-            // Siempre buscar primero el archivo individual
-            existe = nombres.some((n) => n.toLowerCase() === nombreIndividual);
-
-            // Solo para FOMAG y solo para archivo 2: si no existe individual, buscar en paq.pdf
-            if (!existe && convenio === "fomag" && num === "2") {
-                const tiene2Paq = nombres.some(
-                    (n) => n.toLowerCase() === "2 paq.pdf"
-                );
-                if (tiene2Paq) {
-                    existe = true; // Se buscará en el procesamiento del PDF
-                    resultados[carpeta].buscarEn2Paq =
-                        resultados[carpeta].buscarEn2Paq || new Set();
-                    resultados[carpeta].buscarEn2Paq.add(servicio);
-                }
-            }
-
-            resultados[carpeta].pdfsPorServicio[servicio][num] = existe
-                ? "✔"
-                : "—";
-
-            if (!existe) {
-                resultados[carpeta].erroresPorServicio[servicio].push(
-                    `Falta ${num}.pdf`
-                );
-            } else {
-                resultados[carpeta].exitosPorServicio[servicio].push(
-                    `${num}.pdf encontrado`
-                );
-            }
+    // 1. Validar Obligatorios (VM, ENF, VENF)
+    const obligatorios = ["VM", "ENF", "VENF"];
+    for (const req of obligatorios) {
+        if (!serviciosReales.has(req)) {
+            resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio obligatorio ${req}`);
         }
     }
-}
 
-/**
- * Valida paquete crónico con terapias
- */
-function validarPaqueteCronicoConTerapias(
-    carpeta,
-    nombres,
-    serviciosEncontrados,
-    resultados,
-    archivos,
-    convenio
-) {
-    // Filtrar "General" para las validaciones de servicios
-    const serviciosReales = new Set(
-        [...serviciosEncontrados].filter((s) => s !== "General")
-    );
-
-    if (!serviciosReales.has("VM")) {
-        resultados[carpeta].errores.push("Paquete debe incluir servicio VM");
-    }
-    if (!serviciosReales.has("ENF")) {
-        resultados[carpeta].errores.push("Paquete debe incluir servicio ENF");
-    }
-
-    // Verificar al menos una terapia
-    const terapiasEncontradas = [...serviciosReales].filter((s) =>
-        SERVICIOS_TERAPIA.includes(s)
-    );
-
-    if (terapiasEncontradas.length === 0) {
+    // 2. Validar "Uno de los siguientes" (PSI, NUT, TS)
+    const opcionales = ["PSI", "NUT", "TS"];
+    const opcionalesEncontrados = opcionales.filter(s => serviciosReales.has(s));
+    
+    if (opcionalesEncontrados.length !== 1) {
         resultados[carpeta].errores.push(
-            "Paquete debe incluir al menos un servicio de terapia (TF, TR, SUCCION, TO o FON)"
+            `Paquete ${tipoPaquete} debe incluir exactamente 1 servicio de (PSI, NUT, TS). Se encontraron: ${opcionalesEncontrados.length}`
         );
+    } else {
+        // Exigir 1 sola evolución para el opcional
+        const opcionalSelec = opcionalesEncontrados[0];
+        resultados[carpeta].alertasPorServicio[opcionalSelec] = resultados[carpeta].alertasPorServicio[opcionalSelec] || [];
+        // La validación de evoluciones se hace al procesar las fechas, pero podemos marcar un hint si queremos
     }
 
-    // Verificar archivos 2, 4, 5 para cada servicio (excluyendo "General")
+    // Archivos requeridos por servicio para PAQUETE
+    // Ya no se requiere "2 [servicio].pdf", se saca del "2 paq.pdf" o "2 PAQ.pdf"
+    
+    // Validar que NO haya "2 [servicio].pdf"
     for (const servicio of serviciosReales) {
         const servicioLower = servicio.toLowerCase();
+        const num2Individual = `2 ${servicioLower}.pdf`;
+        if (nombres.some(n => n.toLowerCase() === num2Individual)) {
+            resultados[carpeta].errores.push(`Archivo no permitido: ${num2Individual} (Todo se valida desde el 2 PAQ)`);
+        }
+    }
+
+    // Exigir que exista "2 PAQ.pdf"
+    const tienePaq = nombres.some(n => n.toLowerCase() === "2 paq.pdf");
+    if (!tienePaq) {
+        resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir archivo '2 PAQ.pdf'`);
+    }
+
+    // Preparar UI
+    for (const servicio of serviciosReales) {
         resultados[carpeta].pdfsPorServicio[servicio] = {};
         resultados[carpeta].erroresPorServicio[servicio] ||= [];
         resultados[carpeta].exitosPorServicio[servicio] ||= [];
 
-        for (const num of ["2", "4", "5"]) {
-            let existe = false;
-            const nombreIndividual = `${num} ${servicioLower}.pdf`;
-
-            // Siempre buscar primero el archivo individual
-            existe = nombres.some((n) => n.toLowerCase() === nombreIndividual);
-
-            // Solo para FOMAG y solo para archivo 2: si no existe individual, buscar en paq.pdf
-            if (!existe && convenio === "fomag" && num === "2") {
-                const tiene2Paq = nombres.some(
-                    (n) => n.toLowerCase() === "2 paq.pdf"
-                );
-                if (tiene2Paq) {
-                    existe = true; // Se buscará en el procesamiento del PDF
-                    resultados[carpeta].buscarEn2Paq =
-                        resultados[carpeta].buscarEn2Paq || new Set();
-                    resultados[carpeta].buscarEn2Paq.add(servicio);
-                }
+        for (const num of ["4", "5"]) {
+            let existe = nombres.some(n => n.toLowerCase() === `${num} ${servicio.toLowerCase()}.pdf`);
+            resultados[carpeta].pdfsPorServicio[servicio][num] = existe ? "✔" : "—";
+            
+            if (!existe) {
+                resultados[carpeta].erroresPorServicio[servicio].push(`Falta ${num}.pdf`);
+            } else {
+                resultados[carpeta].exitosPorServicio[servicio].push(`${num}.pdf encontrado`);
             }
-
-            resultados[carpeta].pdfsPorServicio[servicio][num] = existe
-                ? "✔"
-                : "—";
-        }
-
-        // Verificar si está incompleto
-        const faltantes = ["2", "4", "5"].filter((num) => {
-            const tieneIndividual = nombres.some(
-                (n) => n.toLowerCase() === `${num} ${servicioLower}.pdf`
-            );
-            const tienePaq =
-                convenio === "fomag" &&
-                num === "2" &&
-                nombres.some((n) => n.toLowerCase() === "2 paq.pdf");
-            return !tieneIndividual && !tienePaq;
-        });
-
-        const encontrados = ["2", "4", "5"].filter((num) => {
-            const tieneIndividual = nombres.some(
-                (n) => n.toLowerCase() === `${num} ${servicioLower}.pdf`
-            );
-            const tienePaq =
-                convenio === "fomag" &&
-                num === "2" &&
-                nombres.some((n) => n.toLowerCase() === "2 paq.pdf");
-            return tieneIndividual || tienePaq;
-        });
-
-        if (faltantes.length > 0) {
-            faltantes.forEach((num) => {
-                resultados[carpeta].erroresPorServicio[servicio].push(
-                    `Falta ${num}.pdf`
-                );
-            });
-        }
-
-        if (encontrados.length > 0) {
-            encontrados.forEach((num) => {
-                resultados[carpeta].exitosPorServicio[servicio].push(
-                    `${num}.pdf encontrado`
-                );
-            });
         }
     }
 }
@@ -447,7 +441,8 @@ async function validarPDFPaquete(
     nroDocumento,
     servicio,
     resultados,
-    convenio = "capital-salud"
+    convenio = "capital-salud",
+    tipoPaquete = ""
 ) {
     try {
         const pdf = await pdfjsLib.getDocument({
@@ -460,8 +455,8 @@ async function validarPDFPaquete(
         // Extraer fechas
         const fechas = extraerFechas(texto);
 
-        // Determinar si es archivo "2 paq.pdf"
-        const esPaquete = file.name.toLowerCase().includes("paq.pdf");
+        // Determinar si es archivo "2 paq.pdf" (solo para fomag, o los nuevos)
+        const esPaquete = file.name.toLowerCase().includes("paq.pdf") || file.name.toLowerCase().includes("paq");
         const numArchivo = file.name.match(/^(\d+) /)?.[1];
 
         // Validar número de documento en archivos 2 y 5 para FOMAG
@@ -486,8 +481,23 @@ async function validarPDFPaquete(
             }
         }
 
-        // Si es "2 paq.pdf" de FOMAG, procesar múltiples servicios
-        if (esPaquete && numArchivo === "2" && convenio === "fomag") {
+        // Si es paquete CPF nuevo y es el archivo "2 PAQ.pdf"
+        if (esPaquete && numArchivo === "2" && tipoPaquete.startsWith("CPF")) {
+            // Validar que el código del paquete exista en el PDF
+            if (!textoPlanoNorm.includes(tipoPaquete.toUpperCase())) {
+                resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `2 PAQ.pdf: no contiene el código del paquete ${tipoPaquete}`
+                );
+            } else {
+                resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+                resultados[carpeta].exitosPorServicio["General"].push(
+                    `2 PAQ.pdf: contiene el código ${tipoPaquete}`
+                );
+            }
+        } 
+        // Si es "2 paq.pdf" de FOMAG (antiguo), procesar múltiples servicios
+        else if (esPaquete && numArchivo === "2" && convenio === "fomag" && !tipoPaquete.startsWith("CPF")) {
             await procesarArchivoPaqueteFomag(
                 file,
                 carpeta,
@@ -503,6 +513,46 @@ async function validarPDFPaquete(
             // Guardar fechas por servicio para archivo 5
             if (numArchivo === "5" && servicio !== "PAQ") {
                 resultados[carpeta].fechasPorServicio[servicio] = fechas;
+
+                // Validar fechas duplicadas y orden
+                if (fechas.length > 0) {
+                    const { duplicadas, desordenadas } =
+                        validarOrdenFechas(fechas);
+
+                    if (duplicadas.length > 0) {
+                        resultados[carpeta].alertasPorServicio[servicio] =
+                            resultados[carpeta].alertasPorServicio[servicio] ||
+                            [];
+                        resultados[carpeta].alertasPorServicio[servicio].push(
+                            `5.pdf: Fechas duplicadas: ${duplicadas.join(", ")}`
+                        );
+                    } else {
+                        // Agregar validación exitosa cuando no hay duplicadas
+                        resultados[carpeta].exitosPorServicio[servicio] =
+                            resultados[carpeta].exitosPorServicio[servicio] ||
+                            [];
+                        resultados[carpeta].exitosPorServicio[servicio].push(
+                            `5.pdf: Sin fechas duplicadas`
+                        );
+                    }
+
+                    if (desordenadas) {
+                        resultados[carpeta].alertasPorServicio[servicio] =
+                            resultados[carpeta].alertasPorServicio[servicio] ||
+                            [];
+                        resultados[carpeta].alertasPorServicio[servicio].push(
+                            `5.pdf: Fechas no están en orden cronológico`
+                        );
+                    } else {
+                        // Agregar validación exitosa cuando están en orden
+                        resultados[carpeta].exitosPorServicio[servicio] =
+                            resultados[carpeta].exitosPorServicio[servicio] ||
+                            [];
+                        resultados[carpeta].exitosPorServicio[servicio].push(
+                            `5.pdf: Fechas en orden cronológico correcto`
+                        );
+                    }
+                }
             }
 
             // Extraer número del texto para archivo 2 (paquetes)
@@ -516,30 +566,30 @@ async function validarPDFPaquete(
                 );
 
                 // Log limpio con información relevante del 2.pdf - SIEMPRE mostrar
-                console.log(
-                    `\n📄 VALIDACIÓN ARCHIVO 2.pdf\n` +
-                        `   Carpeta: ${carpeta}\n` +
-                        `   Servicio: ${servicio}\n` +
-                        `   Archivo: ${file.name}\n` +
-                        `   Convenio: ${convenio}\n` +
-                        `   Reglas obtenidas: ${JSON.stringify(
-                            REGLAS_PAQUETE[servicio],
-                            null,
-                            2
-                        )}\n` +
-                        `   Texto buscado: "${textoBuscar || "N/A"}"\n` +
-                        `   Cant. Auto encontrada: ${
-                            numeroExtraido !== null
-                                ? numeroExtraido
-                                : "NO ENCONTRADO"
-                        }\n` +
-                        `   Documento (${nroDocumento}): ${
-                            textoPlanoNorm.includes(nroDocumento)
-                                ? "✓ Encontrado"
-                                : "✗ NO encontrado"
-                        }\n` +
-                        `\n--- TEXTO COMPLETO DEL PDF ---\n${texto}\n--- FIN TEXTO ---\n`
-                );
+                // console.log(
+                //     `\n📄 VALIDACIÓN ARCHIVO 2.pdf\n` +
+                //         `   Carpeta: ${carpeta}\n` +
+                //         `   Servicio: ${servicio}\n` +
+                //         `   Archivo: ${file.name}\n` +
+                //         `   Convenio: ${convenio}\n` +
+                //         `   Reglas obtenidas: ${JSON.stringify(
+                //             REGLAS_PAQUETE[servicio],
+                //             null,
+                //             2
+                //         )}\n` +
+                //         `   Texto buscado: "${textoBuscar || "N/A"}"\n` +
+                //         `   Cant. Auto encontrada: ${
+                //             numeroExtraido !== null
+                //                 ? numeroExtraido
+                //                 : "NO ENCONTRADO"
+                //         }\n` +
+                //         `   Documento (${nroDocumento}): ${
+                //             textoPlanoNorm.includes(nroDocumento)
+                //                 ? "✓ Encontrado"
+                //                 : "✗ NO encontrado"
+                //         }\n` +
+                //         `\n--- TEXTO COMPLETO DEL PDF ---\n${texto}\n--- FIN TEXTO ---\n`
+                // );
 
                 if (numeroExtraido !== null) {
                     resultados[carpeta].numerosPorServicio =
@@ -575,11 +625,12 @@ async function validarPDFPaquete(
                 }
             }
 
-            // Validar archivo 2 individual de FOMAG
+            // Validar archivo 2 individual de FOMAG (solo para los paquetes antiguos o crónicos)
             if (
                 numArchivo === "2" &&
                 servicio !== "PAQ" &&
-                convenio === "fomag"
+                convenio === "fomag" &&
+                !tipoPaquete.startsWith("CPF")
             ) {
                 await validarArchivo2Fomag(
                     file,
@@ -599,10 +650,10 @@ async function validarPDFPaquete(
             const claveArchivo = numArchivo ? `${numArchivo}.pdf` : null;
 
             // Aplicar reglas:
-            // - Para archivo 2: solo si NO es "2 paq.pdf" de FOMAG
+            // - Para archivo 2: solo si NO es "2 paq.pdf" de FOMAG (antiguo) y NO es un paquete nuevo
             // - Para archivos 4 y 5: siempre
             const es2Paquete = esPaquete && numArchivo === "2";
-            const debeAplicarRegla = claveArchivo && !es2Paquete;
+            const debeAplicarRegla = claveArchivo && !es2Paquete && !(numArchivo === "2" && tipoPaquete.startsWith("CPF"));
 
             if (debeAplicarRegla && REGLAS_PAQUETE[servicio][claveArchivo]) {
                 const regla = REGLAS_PAQUETE[servicio][claveArchivo];
@@ -646,8 +697,8 @@ async function validarPDFPaquete(
                     );
                 }
 
-                // COMPARACIÓN: Solo para archivo 5.pdf
-                if (regla.igualarConFechas && numArchivo === "5") {
+                // COMPARACIÓN: Solo para archivo 5.pdf y solo si NO es un nuevo paquete
+                if (regla.igualarConFechas && numArchivo === "5" && !tipoPaquete.startsWith("CPF")) {
                     // Obtener Cant Auto (del 2.pdf ya procesado)
                     const cantAuto =
                         resultados[carpeta].numerosPorServicio?.[servicio] || 0;
@@ -656,18 +707,38 @@ async function validarPDFPaquete(
                     const cantHC = fechas.length;
 
                     if (cantAuto !== cantHC) {
-                        resultados[carpeta].erroresPorServicio[servicio] =
-                            resultados[carpeta].erroresPorServicio[servicio] ||
-                            [];
-                        resultados[carpeta].erroresPorServicio[servicio].push(
-                            `5.pdf: Cant autorizaciones ${cantAuto} ≠ cant evoluciones ${cantHC}`
-                        );
-                        // Marcar el archivo con error
-                        if (resultados[carpeta].pdfsPorServicio[servicio]) {
-                            resultados[carpeta].pdfsPorServicio[servicio]["5"] =
-                                "✗";
+                        // Si autorizaciones < evoluciones: ERROR
+                        if (cantAuto < cantHC) {
+                            resultados[carpeta].erroresPorServicio[servicio] =
+                                resultados[carpeta].erroresPorServicio[
+                                servicio
+                                ] || [];
+                            resultados[carpeta].erroresPorServicio[
+                                servicio
+                            ].push(
+                                `5.pdf: Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
+                            );
+                            // Marcar el archivo con error
+                            if (resultados[carpeta].pdfsPorServicio[servicio]) {
+                                resultados[carpeta].pdfsPorServicio[servicio][
+                                    "5"
+                                ] = "✗";
+                            }
+                        }
+                        // Si autorizaciones > evoluciones: ALERTA
+                        else {
+                            resultados[carpeta].alertasPorServicio[servicio] =
+                                resultados[carpeta].alertasPorServicio[
+                                servicio
+                                ] || [];
+                            resultados[carpeta].alertasPorServicio[
+                                servicio
+                            ].push(
+                                `5.pdf: Cant autorizaciones ${cantAuto} > cant evoluciones ${cantHC}`
+                            );
                         }
                     } else {
+                        // Cuando coinciden, agregar validación exitosa
                         resultados[carpeta].exitosPorServicio[servicio] =
                             resultados[carpeta].exitosPorServicio[servicio] ||
                             [];
@@ -722,23 +793,23 @@ async function procesarArchivoPaqueteFomag(
             : null;
 
         // Log limpio con información relevante del 2.pdf - SIEMPRE mostrar
-        console.log(
-            `\n📄 VALIDACIÓN ARCHIVO 2.pdf (PAQ)\n` +
-                `   Carpeta: ${carpeta}\n` +
-                `   Servicio: ${servicio}\n` +
-                `   Archivo: ${file.name}\n` +
-                `   Convenio: fomag\n` +
-                `   Texto buscado: "${textoABuscar}"\n` +
-                `   Cant. Auto encontrada: ${
-                    numero !== null ? numero : "NO ENCONTRADO"
-                }\n` +
-                `   Documento (${nroDocumento}): ${
-                    textoPlanoNorm.includes(nroDocumento)
-                        ? "✓ Encontrado"
-                        : "✗ NO encontrado"
-                }\n` +
-                `\n--- TEXTO COMPLETO DEL PDF ---\n${texto}\n--- FIN TEXTO ---\n`
-        );
+        // console.log(
+        //     `\n📄 VALIDACIÓN ARCHIVO 2.pdf (PAQ)\n` +
+        //         `   Carpeta: ${carpeta}\n` +
+        //         `   Servicio: ${servicio}\n` +
+        //         `   Archivo: ${file.name}\n` +
+        //         `   Convenio: fomag\n` +
+        //         `   Texto buscado: "${textoABuscar}"\n` +
+        //         `   Cant. Auto encontrada: ${
+        //             numero !== null ? numero : "NO ENCONTRADO"
+        //         }\n` +
+        //         `   Documento (${nroDocumento}): ${
+        //             textoPlanoNorm.includes(nroDocumento)
+        //                 ? "✓ Encontrado"
+        //                 : "✗ NO encontrado"
+        //         }\n` +
+        //         `\n--- TEXTO COMPLETO DEL PDF ---\n${texto}\n--- FIN TEXTO ---\n`
+        // );
 
         if (encontrado) {
             if (numero !== null) {
@@ -791,15 +862,12 @@ async function validarArchivo2Fomag(
             resultados[carpeta].numerosPorServicio || {};
         resultados[carpeta].numerosPorServicio[servicio] = numero;
 
-        // Validar contra fechas del archivo 5 correspondiente
-        const fechas5 = resultados[carpeta].fechasPorServicio[servicio] || [];
-        if (numero !== fechas5.length) {
-            resultados[carpeta].errores.push(
-                `${file.name}: Cant autorizaciones ${numero} ≠ cant evoluciones archivo 5: ${fechas5.length}`
-            );
-        }
+        // NO comparar aquí con fechas del archivo 5
+        // La comparación se hace cuando se procesa el archivo 5.pdf (después de extraer sus fechas)
     } else {
-        resultados[carpeta].errores.push(
+        resultados[carpeta].erroresPorServicio[servicio] =
+            resultados[carpeta].erroresPorServicio[servicio] || [];
+        resultados[carpeta].erroresPorServicio[servicio].push(
             `${file.name}: no se pudo extraer el número después del texto`
         );
     }
@@ -818,6 +886,9 @@ function obtenerTextoServicioFomag(servicio) {
         ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
         PSI: "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
         TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
+        TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
+        VENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
+        TRS: "TERAPIA SUCCION"
     };
     return textos[servicio] || null;
 }

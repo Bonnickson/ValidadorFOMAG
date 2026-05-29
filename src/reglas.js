@@ -40,6 +40,10 @@ const REGLAS_ARCHIVO_5 = {
         debeContener: ["Registro De Enfermería - Actividades"],
         igualarConFechas: true,
     },
+    VENF: {
+        debeContener: ["Registro De Enfermería"],
+        igualarConFechas: true,
+    },
     PSI: {
         debeContener: ["Registro De Psicología"],
         igualarConFechas: true,
@@ -50,6 +54,14 @@ const REGLAS_ARCHIVO_5 = {
     },
     TO: {
         debeContener: ["Registro De Terapia Ocupacional"],
+        igualarConFechas: true,
+    },
+    ENF12: {
+        debeContener: ["ENFERMERIA 12 HORAS"],
+        igualarConFechas: true,
+    },
+    NUT: {
+        debeContener: ["Registro De Nutrición"],
         igualarConFechas: true,
     },
 };
@@ -69,6 +81,7 @@ const REGLAS_ARCHIVO_2_CAPITAL = {
     },
     TR: { debeContener: "TERAPIA RESPIRATORIA", igualarConFechas: false },
     SUCCION: { debeContener: "TERAPIA SUCCION", igualarConFechas: false },
+    TRS: { debeContener: "TERAPIA SUCCION", igualarConFechas: false },
     FON: {
         debeContener:
             "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
@@ -79,6 +92,14 @@ const REGLAS_ARCHIVO_2_CAPITAL = {
     PSI: { debeContener: "PSICOLOGIA", igualarConFechas: false },
     TS: { debeContener: "TRABAJO SOCIAL", igualarConFechas: false },
     TO: { debeContener: "TERAPIA OCUPACIONAL", igualarConFechas: false },
+    ENF12: {
+        debeContener: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
+        igualarConFechas: false,
+    },
+    NUT: {
+        debeContener: "ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA",
+        igualarConFechas: false,
+    },
 };
 
 // --- FOMAG ---
@@ -96,6 +117,11 @@ const REGLAS_ARCHIVO_2_FOMAG = {
         extraerNumero: true,
     },
     SUCCION: {
+        debeContener: "TERAPIA SUCCION",
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    TRS: {
         debeContener: "TERAPIA SUCCION",
         igualarConFechas: true,
         extraerNumero: true,
@@ -131,6 +157,16 @@ const REGLAS_ARCHIVO_2_FOMAG = {
         igualarConFechas: true,
         extraerNumero: true,
     },
+    ENF12: {
+        debeContener: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    NUT: {
+        debeContener: "ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA",
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
 };
 
 // ========================================
@@ -157,12 +193,19 @@ export function obtenerReglasEvento(convenio) {
             "2.pdf": reglas2.SUCCION,
             "5.pdf": REGLAS_ARCHIVO_5.SUCCION,
         },
+        TRS: {
+            "2.pdf": reglas2.TRS,
+            "5.pdf": REGLAS_ARCHIVO_5.SUCCION,
+        },
         FON: { "2.pdf": reglas2.FON, "5.pdf": REGLAS_ARCHIVO_5.FON },
         VM: { "2.pdf": reglas2.VM, "5.pdf": REGLAS_ARCHIVO_5.VM },
         ENF: { "2.pdf": reglas2.ENF, "5.pdf": REGLAS_ARCHIVO_5.ENF },
         PSI: { "2.pdf": reglas2.PSI, "5.pdf": REGLAS_ARCHIVO_5.PSI },
         TS: { "2.pdf": reglas2.TS, "5.pdf": REGLAS_ARCHIVO_5.TS },
         TO: { "2.pdf": reglas2.TO, "5.pdf": REGLAS_ARCHIVO_5.TO },
+        ENF12: { "2.pdf": reglas2.ENF12, "5.pdf": REGLAS_ARCHIVO_5.ENF12 },
+        NUT: { "2.pdf": reglas2.NUT, "5.pdf": REGLAS_ARCHIVO_5.NUT },
+        VENF: { "2.pdf": reglas2.ENF, "5.pdf": REGLAS_ARCHIVO_5.VENF },
     };
 }
 
@@ -205,12 +248,19 @@ export function obtenerReglasPaquete(convenio) {
             "2.pdf": reglas2Paquete.SUCCION,
             "5.pdf": reglas5Paquete.SUCCION,
         },
+        TRS: {
+            "2.pdf": reglas2Paquete.TRS,
+            "5.pdf": reglas5Paquete.SUCCION,
+        },
         FON: { "2.pdf": reglas2Paquete.FON, "5.pdf": reglas5Paquete.FON },
         VM: { "2.pdf": reglas2Paquete.VM, "5.pdf": reglas5Paquete.VM },
         ENF: { "2.pdf": reglas2Paquete.ENF, "5.pdf": reglas5Paquete.ENF },
         PSI: { "2.pdf": reglas2Paquete.PSI, "5.pdf": reglas5Paquete.PSI },
         TS: { "2.pdf": reglas2Paquete.TS, "5.pdf": reglas5Paquete.TS },
         TO: { "2.pdf": reglas2Paquete.TO, "5.pdf": reglas5Paquete.TO },
+        ENF12: { "2.pdf": reglas2Paquete.ENF12, "5.pdf": reglas5Paquete.ENF12 },
+        NUT: { "2.pdf": reglas2Paquete.NUT, "5.pdf": reglas5Paquete.NUT },
+        VENF: { "2.pdf": reglas2Paquete.ENF, "5.pdf": reglas5Paquete.VENF },
     };
 }
 
