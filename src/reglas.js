@@ -21,8 +21,8 @@ const REGLAS_ARCHIVO_5 = {
         debeContener: ["Registro De: Terapia Respiratoria"],
         igualarConFechas: true,
     },
-    SUCCION: {
-        debeContener: ["REGISTRO DE TERAPIA SUCCION"],
+    TRS: {
+        debeContener: ["Respiratoria En Casa Con Succión"],
         igualarConFechas: true,
     },
     FON: {
@@ -81,7 +81,7 @@ const REGLAS_ARCHIVO_2_CAPITAL = {
     },
     TR: { debeContener: "TERAPIA RESPIRATORIA", igualarConFechas: false },
     SUCCION: { debeContener: "TERAPIA SUCCION", igualarConFechas: false },
-    TRS: { debeContener: "TERAPIA SUCCION", igualarConFechas: false },
+    TRS: { debeContener: "Terapia respiratoria Succion", igualarConFechas: false },
     FON: {
         debeContener:
             "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
@@ -122,7 +122,7 @@ const REGLAS_ARCHIVO_2_FOMAG = {
         extraerNumero: true,
     },
     TRS: {
-        debeContener: "TERAPIA SUCCION",
+        debeContener: "Terapia respiratoria Succion",
         igualarConFechas: true,
         extraerNumero: true,
     },
@@ -191,11 +191,11 @@ export function obtenerReglasEvento(convenio) {
         TR: { "2.pdf": reglas2.TR, "5.pdf": REGLAS_ARCHIVO_5.TR },
         SUCCION: {
             "2.pdf": reglas2.SUCCION,
-            "5.pdf": REGLAS_ARCHIVO_5.SUCCION,
+            "5.pdf": REGLAS_ARCHIVO_5.TRS,
         },
         TRS: {
             "2.pdf": reglas2.TRS,
-            "5.pdf": REGLAS_ARCHIVO_5.SUCCION,
+            "5.pdf": REGLAS_ARCHIVO_5.TRS,
         },
         FON: { "2.pdf": reglas2.FON, "5.pdf": REGLAS_ARCHIVO_5.FON },
         VM: { "2.pdf": reglas2.VM, "5.pdf": REGLAS_ARCHIVO_5.VM },
@@ -246,11 +246,11 @@ export function obtenerReglasPaquete(convenio) {
         TR: { "2.pdf": reglas2Paquete.TR, "5.pdf": reglas5Paquete.TR },
         SUCCION: {
             "2.pdf": reglas2Paquete.SUCCION,
-            "5.pdf": reglas5Paquete.SUCCION,
+            "5.pdf": reglas5Paquete.TRS,
         },
         TRS: {
             "2.pdf": reglas2Paquete.TRS,
-            "5.pdf": reglas5Paquete.SUCCION,
+            "5.pdf": reglas5Paquete.TRS,
         },
         FON: { "2.pdf": reglas2Paquete.FON, "5.pdf": reglas5Paquete.FON },
         VM: { "2.pdf": reglas2Paquete.VM, "5.pdf": reglas5Paquete.VM },

@@ -1,134 +1,98 @@
-# Validador de PDFs
+# Validador de PDFs - FOMAG & Capital Salud
 
-Aplicación web para validar documentos PDF en carpetas, con dos modos de validación: por evento y por paquete.
+Aplicación web modular y de alto rendimiento para la validación automática de historias clínicas y soportes de atención domiciliaria en formato PDF. Permite validar expedientes organizados en carpetas, soportando dos modalidades de operación (**Por evento** y **Por paquete**), validaciones de convenios (**Capital Salud** y **FOMAG**), y exportación de resultados a reportes en Excel (.xlsx) y Matriz de facturación.
+
+---
 
 ## 📁 Estructura del Proyecto
 
-```
-prueba validador/
-├── index.html              # Página principal
-├── styles.css             # Estilos de la aplicación
-├── README.md              # Este archivo
-└── src/                   # Código fuente organizado
-    ├── app.js             # Punto de entrada y orquestación
-    ├── reglas.js          # Reglas de validación de PDFs
+```text
+Validador FOMAG/
+├── index.html                  # Interfaz de usuario principal y visor de ayuda/wiki
+├── styles.css                  # Estilos de la aplicación y componentes visuales
+├── README.md                   # Documentación del proyecto
+└── src/                        # Código fuente modular
+    ├── app.js                  # Orquestación de eventos, DOM, exportación y filtros
+    ├── reglas.js               # Definición de reglas de validación por servicio y convenio
     ├── config/
-    │   └── constants.js   # Constantes y configuración
+    │   └── constants.js        # Constantes, configuraciones y CDN de PDF.js
     ├── utils/
-    │   ├── pdfUtils.js    # Utilidades para PDFs
-    │   └── textUtils.js   # Utilidades para texto
+    │   ├── pdfUtils.js         # Extracción de texto y análisis de fechas en PDFs
+    │   └── textUtils.js        # Normalización de texto y extracción numérica
     ├── validators/
-    │   ├── eventoValidator.js    # Validación por evento
-    │   └── paqueteValidator.js   # Validación por paquete
+    │   ├── eventoValidator.js  # Lógica de validación para modalidad Por Evento
+    │   └── paqueteValidator.js # Lógica de validación para modalidad Por Paquete (Familia CPF)
     └── ui/
-        └── tableRenderer.js      # Renderizado de la tabla
+        └── tableRenderer.js    # Renderizado y actualización de filas/estados en la tabla
 ```
 
-## 🔧 Módulos
+---
+
+## 🔧 Módulos y Arquitectura
 
 ### `src/config/constants.js`
-
-Contiene todas las constantes de configuración:
-
--   `DEBUG`: Modo debug
--   `ALLOWED_TYPES`: Tipos de carpetas permitidos
--   `SERVICIOS_TERAPIA`: Servicios de terapia válidos
--   URLs de PDF.js
+Centraliza la configuración global:
+- `DEBUG`: Bandera de depuración en consola.
+- `ALLOWED_TYPES`: Tipos de servicios clínicos permitidos.
+- `SERVICIOS_TERAPIA`: Lista de terapias (`TF`, `TR`, `TO`, `FON`, `TRS`, etc.).
+- URLs de workers y librerías externas (PDF.js).
 
 ### `src/utils/`
-
-**textUtils.js**: Funciones de procesamiento de texto
-
--   `escapeRegExp()`: Escapa caracteres especiales
--   `normalizeForSearch()`: Normaliza texto para búsquedas
--   `formatearFecha()`: Formatea fechas
--   `formatearFechaCompacta()`: Formato compacto de fechas
-
-**pdfUtils.js**: Funciones de manejo de PDFs
-
--   `extraerTextoPDF()`: Extrae texto completo de un PDF
--   `extraerFechas()`: Extrae fechas usando regex
--   `leerArchivoComoBuffer()`: Convierte archivo a ArrayBuffer
+- **`textUtils.js`**: Normalización de texto para búsquedas sin acentos/espacios, extracción de números de autorización con regex y formateo de fechas.
+- **`pdfUtils.js`**: Integración con PDF.js para extracción asíncrona de texto, parseo de patrones de fecha y validación cronológica y de duplicados.
 
 ### `src/validators/`
-
-**eventoValidator.js**: Validación por evento
-
--   `validarPDF()`: Valida un PDF individual en modo evento
-
-**paqueteValidator.js**: Validación por paquete
-
--   `validarPorPaquete()`: Valida carpeta completa en modo paquete.
--   `validarNuevoPaquete()`: Aplica la lógica de los nuevos paquetes CPF (Validación estricta desde `2 PAQ.pdf`, validación de requerimientos, rangos de suma de terapias).
--   Funciones internas para paquetes antiguos o manejo especial FOMAG.
+- **`eventoValidator.js`**: Validación independiente de cada servicio con sus pares de archivos (soportes `2.pdf` y registros `5.pdf`).
+- **`paqueteValidator.js`**: Motor de reglas para paquetes mensuales integrales. Valida estructura de archivos, existencia de servicios obligatorios, selección de servicio opcional único y rangos de sumatoria de terapias.
 
 ### `src/ui/tableRenderer.js`
-
-Manejo completo de la interfaz de tabla:
-
--   `actualizarHeadersTabla()`: Actualiza encabezados según modo
--   `createPlaceholderRow()`: Crea fila con spinner
--   `updateRow()`: Actualiza fila existente
--   `pintarFila()`: Renderiza nueva fila
--   Helpers de renderizado para cada modo
+- Actualización dinámica de columnas y encabezados de la tabla según el tipo de validación.
+- Renderizado de filas con estados en tiempo real (exitos, alertas, errores, links para previsualizar PDFs).
 
 ### `src/app.js`
+- Manejo del ciclo de vida de la aplicación.
+- Carga de carpetas (estándar o mediante la API rápida del File System).
+- Filtros por estado, servicio, error o número de documento.
+- Generación y descarga de reportes XLSX detallados y matriz consolidada.
 
-Punto de entrada principal:
+---
 
--   Inicializa PDF.js
--   Maneja eventos del DOM
--   Orquesta el flujo de validación
--   Coordina todos los módulos
+## 🚀 Modos de Validación
 
-## 🚀 Uso
+### 1. Validación Por Evento (Individual)
+Valida cada servicio de manera individual mediante pares de archivos (`2 [servicio].pdf` y `5 [servicio].pdf` o `2 paq.pdf`):
+- Verifica que el número de identificación del paciente coincida en los documentos.
+- Comprueba que los textos requeridos según el servicio y convenio estén presentes.
+- En FOMAG, valida que la cantidad autorizada coincida con la cantidad de evoluciones registradas en el archivo 5.
 
-1. Abrir `index.html` en un navegador moderno
-2. Seleccionar tipo de validación (evento o paquete)
-3. Elegir carpeta con archivos PDF
-4. Ver resultados en la tabla
+### 2. Validación Por Paquete (Familia CPF)
+Diseñado para la validación de paquetes integrales con documento maestro `2 PAQ.pdf`:
+- **Documento Maestro**: `2 PAQ.pdf` es la fuente única de autorizaciones. No se permiten archivos `2 [servicio].pdf` individuales.
+- **Servicios Obligatorios**: Exige exactamente 1 evolución en `VM` (Valoración Médica), `ENF` (Enfermería) y `VENF` (Auxiliar de Enfermería).
+- **Servicio Opcional Único**: Debe contener **exactamente 1** de los siguientes servicios: `PSI` (Psicología), `NUT` (Nutrición) o `TS` (Trabajo Social), con 1 sola evolución.
+- **Archivos de Firma**: Valida que los archivos `4 [servicio].pdf` tengan 1 sola página y correspondan a formatos de firmas.
+- **Regla de Sumatoria de Terapias**: Suma el total de evoluciones de las 5 terapias (`TF`, `TO`, `TR`, `FON`, `TRS`) y valida contra los rangos del paquete:
+  - **CPF1108** (Atención Domiciliaria Crónico): No requiere terapias.
+  - **CPF1109** (Crónico con Terapias): **6 a 12** terapias en total.
+  - **CPF1110** (Paquete Intermedio): **12 a 20** terapias en total.
+  - **CPF1105** (Rehabilitación Neurológico Agudo) & **CPF1106** (Traqueostomía): **12 a 30** terapias en total.
 
-## ✨ Ventajas de la Nueva Estructura
+---
 
--   **Modularidad**: Código separado por responsabilidades
--   **Mantenibilidad**: Fácil localizar y modificar funcionalidad
--   **Reutilización**: Funciones compartidas en utils
--   **Escalabilidad**: Fácil agregar nuevos validadores o utilidades
--   **Legibilidad**: Archivos más pequeños y enfocados
+## 🏛️ Reglas por Convenio
 
-## 📝 Reglas de Validación
+| Convenio | Validación Archivo 2.pdf | Validación Archivo 5.pdf | Documento Paciente |
+| :--- | :--- | :--- | :--- |
+| **🏢 Capital Salud** | Valida presencia del texto del servicio. | Valida texto y verifica duplicados/orden de fechas. | Validación estándar |
+| **🏛️ FOMAG** | Valida texto específico y extrae cantidad autorizada. | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2 y 5 |
 
-Las reglas se definen en `src/reglas.js` y `src/validators/paqueteValidator.js`:
+---
 
--   `obtenerReglasEvento(convenio)`: Genera reglas según el convenio seleccionado.
--   `obtenerReglasPaquete(convenio)`: Genera reglas para la antigua modalidad de paquetes (modo retro-compatibilidad).
--   `REGEX_FECHA`: Expresión regular para detectar fechas.
+## 📊 Características y Reportes
 
-### Nuevos Paquetes Basados en Reglas (Familia CPF)
-
-Para los nuevos códigos de paquete (CPF1109, CPF1108, CPF1110, CPF1105, CPF1106) el sistema cambia a un **modelo basado en reglas estrictas**, donde se abandona la comparación "Cant Auto vs Cant Evoluciones" del archivo 2 individual para centralizar el flujo en el documento maestro **`2 PAQ.pdf`**:
-
--   **Fuente única**: La existencia del código y número de autorizaciones se extrae únicamente de `2 PAQ.pdf` (no se admiten archivos `2 [servicio].pdf` individuales para estos paquetes).
--   **Servicios Obligatorios**: Todos estos paquetes exigen 1 evolución de `VM`, `ENF` y `VENF` (Auxiliar de Enfermería).
--   **Opción de Selección Única ("Uno de los siguientes")**: Obligan a la existencia de un (1) solo servicio opcional entre `PSI`, `NUT` y `TS`, que a su vez debe contar con exactamente 1 evolución.
--   **Regla de Sumatoria de Terapias**: Suma todas las evoluciones de las terapias (`TF`, `TO`, `TR`, `FON`, `TRS` - Terapia de Succión) y verifica que el total se encuentre en un rango de requerimiento específico para cada paquete:
-    -   **CPF1109**: 6 - 12 terapias
-    -   **CPF1108**: (no requiere sumatoria de terapias)
-    -   **CPF1110**: 12 - 20 terapias
-    -   **CPF1105 y CPF1106**: 12 - 30 terapias
-
-### Convenios
-
-El validador soporta dos tipos de convenios para el archivo **2.pdf**:
-
-#### 🏢 Capital Salud (Por defecto)
-
--   **Validación**: Solo verifica que el archivo contenga el texto específico
--   **No valida**: Cantidad de registros vs fechas en el archivo 2.pdf
-
-#### 🏛️ FOMAG
-
--   **Validación**: Verifica el texto Y valida cantidad
--   **Valida**: Que el número de veces que aparece el texto coincida con el número de fechas encontradas en el 2.pdf
-
-**Nota**: El archivo **5.pdf** siempre valida texto + cantidad en ambos convenios.
+- ⚡ **Lectura Rápida de Carpetas**: Integración con *File System Access API* (`btnAbrirFS`) para procesar directorios masivos a alta velocidad.
+- 🔍 **Filtros Avanzados**: Filtrado en vivo por término de búsqueda (documento o carpeta), servicio, estado (Correcto/Error) y chips de resumen de errores agrupados.
+- 📥 **Exportación a Excel**:
+  - **Descargar XLSX**: Reporte detallado carpeta por carpeta con desglose de servicios, archivos, autorizaciones y observaciones.
+  - **Descarga reporte Matriz**: Generación consolidada optimizada para control de facturación y auditoría médica.
+- ❓ **Wiki / Ayuda Integrada**: Panel interactivo con glosario de servicios, convenciones de nomenclatura y condiciones de paquetes.

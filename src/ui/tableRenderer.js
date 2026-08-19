@@ -334,6 +334,7 @@ function renderPaqueteFilas(
         "TR",
         "TF",
         "SUCCION",
+        "TRS",
         "FON",
         "PSI",
         "TS",
@@ -534,7 +535,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const match = archivo
             .toLowerCase()
             .match(
-                /^([2-5])\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon|nut)\.pdf$/
+                /^([2-5])\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
             );
         if (match) {
             let serv = match[2];
@@ -589,6 +590,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         "TR",
         "TF",
         "SUCCION",
+        "TRS",
         "FON",
         "PSI",
         "TS",

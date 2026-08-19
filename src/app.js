@@ -864,8 +864,8 @@ function exportarFomagEvento(resultados) {
                 { header: "Eve. Terapia Física 6 ", service: "TF" },
                 { header: "Eve. Terapia Respiratoria 7 ", service: "TR" },
                 {
-                    header: "Eve. Terapia Respiratoria Con Succión 8 ",
-                    service: "SUCCION",
+                    header: "Eve. Terapia Respiratoria Succión 8 ",
+                    service: "TRS",
                 },
                 { header: "Eve. Terapia Ocupacional 9 ", service: "TO" },
                 { header: "Eve. Trabajo Social 10 ", service: "TS" },

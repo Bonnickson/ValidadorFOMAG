@@ -16,6 +16,7 @@ function obtenerTextoServicioFomag(servicio) {
         TF: "ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPIA",
         TR: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA RESPIRATORIA",
         SUCCION: "TERAPIA SUCCION",
+        TRS: "Terapia respiratoria Succion",
         FON: "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
         VM: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
         ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
@@ -53,7 +54,7 @@ export function validarArchivosPermitidosEvento(
     // En FOMAG por evento, también se aceptan archivos por servicio:
     // Ej: "2 tf.pdf", "4 tr.pdf", "5 enf.pdf", "2 paq.pdf" (insensible a mayúsculas)
     const patronServicio =
-        /^[2-5]\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon|nut)\.pdf$/i;
+        /^[2-5]\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
     const es2Paq = (nombre) => nombre.toLowerCase() === "2 paq.pdf";
 
     for (const archivo of archivos) {
@@ -134,7 +135,7 @@ export async function validarPDF(
         // Detectar si el archivo es por servicio (FOMAG) ej: "2 tf.pdf"
         const nombreLower = file.name.toLowerCase();
         const matchServicio = nombreLower.match(
-            /^([2-5])\s+(vm|enf12|enf|tf|tr|succion|suc|ts|psi|to|fon|nut)\.pdf$/
+            /^([2-5])\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
         );
         let servicioUpper = null;
         let numeroArchivo = null;
@@ -154,8 +155,9 @@ export async function validarPDF(
 
             // Para FOMAG evento: guardar fechas por servicio (del archivo 5 que tiene las evoluciones)
             if (convenio === "fomag" && numeroArchivo === "5") {
+                const fechasServicio = servicioUpper === "PSI" ? fechas.slice(0, 1) : fechas;
                 resultados[carpeta].fechasPorServicio[servicioUpper].push(
-                    ...fechas
+                    ...fechasServicio
                 );
             }
         }
@@ -353,7 +355,8 @@ export async function validarPDF(
                     resultados[carpeta].numerosPorServicio?.[servicioUpper] ||
                     0;
                 // Obtener cantidad de evoluciones (fechas del 5.pdf actual)
-                const cantHC = fechas.length;
+                const fechasComparar = servicioUpper === "PSI" ? fechas.slice(0, 1) : fechas;
+                const cantHC = fechasComparar.length;
 
                 if (cantAuto !== cantHC) {
                     if (cantAuto < cantHC) {

@@ -345,7 +345,7 @@ function detectarServicios(nombres) {
     for (const nombre of nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
-            /\d+\s+(VM|ENF|TF|TR|SUCCION|SUC|TS|PSI|FON|TO|NUT|VENF|TRS)/
+            /\d+\s+(VM|VENF|ENF12|ENF|TF|TRS|TR|TS|PSI|FON|TO|NUT)/
         );
         if (match) {
             let servicio = match[1];
@@ -512,12 +512,13 @@ async function validarPDFPaquete(
 
             // Guardar fechas por servicio para archivo 5
             if (numArchivo === "5" && servicio !== "PAQ") {
-                resultados[carpeta].fechasPorServicio[servicio] = fechas;
+                const fechasServicio = servicio === "PSI" ? fechas.slice(0, 1) : fechas;
+                resultados[carpeta].fechasPorServicio[servicio] = fechasServicio;
 
                 // Validar fechas duplicadas y orden
-                if (fechas.length > 0) {
+                if (fechasServicio.length > 0) {
                     const { duplicadas, desordenadas } =
-                        validarOrdenFechas(fechas);
+                        validarOrdenFechas(fechasServicio);
 
                     if (duplicadas.length > 0) {
                         resultados[carpeta].alertasPorServicio[servicio] =
@@ -704,7 +705,8 @@ async function validarPDFPaquete(
                         resultados[carpeta].numerosPorServicio?.[servicio] || 0;
 
                     // Obtener Cant HC (fechas del 5.pdf actual)
-                    const cantHC = fechas.length;
+                    const fechasComparar = servicio === "PSI" ? fechas.slice(0, 1) : fechas;
+                    const cantHC = fechasComparar.length;
 
                     if (cantAuto !== cantHC) {
                         // Si autorizaciones < evoluciones: ERROR
@@ -888,7 +890,7 @@ function obtenerTextoServicioFomag(servicio) {
         TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
         TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
         VENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
-        TRS: "TERAPIA SUCCION"
+        TRS: "Terapia respiratoria Succion"
     };
     return textos[servicio] || null;
 }
