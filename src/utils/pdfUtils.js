@@ -7,8 +7,14 @@ export async function extraerTextoPDF(pdf) {
     let texto = "";
     for (let i = 1; i <= pdf.numPages; i++) {
         const page = await pdf.getPage(i);
-        const content = await page.getTextContent();
-        texto += content.items.map((t) => t.str).join(" ") + " ";
+        try {
+            const content = await page.getTextContent();
+            texto += content.items.map((t) => t.str).join(" ") + " ";
+        } finally {
+            if (page && page.cleanup) {
+                page.cleanup();
+            }
+        }
     }
     return texto;
 }

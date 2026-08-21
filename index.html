@@ -19,196 +19,279 @@
 
 <body>
 
-    <div class="card">
-        <div class="header-row">
-            <h1>Validador</h1>
-            <button id="btnAyuda" class="btn-ayuda" onclick="toggleWiki()">❓ Ayuda</button>
-        </div>
-
-        <div class="config-section">
-            <div class="select-wrapper">
-                <label for="tipoValidacion">Tipo de validación</label>
-                <select id="tipoValidacion">
-                    <option value="evento">📋 Por evento</option>
-                    <option value="paquete" selected>📦 Por paquete</option>
-                </select>
-            </div>
-
-            <div id="paqueteOptions" class="paquete-options">
-                <div class="select-wrapper">
-                    <label for="tipoPaquete" style="display: flex; align-items: center; gap: 8px;">
-                        Tipo de paquete
-                        <div class="tooltip-container" id="paqueteCondicionesIcon" style="display: none;">
-                            <span class="info-icon">❓</span>
-                            <div class="tooltip-content" id="paqueteCondicionesContent"></div>
-                        </div>
-                    </label>
-                    <select id="tipoPaquete">
-                        <option value="CPF1105">CPF1105 - PAQUETE DE REHABILITACIÓN MENSUAL DOMICILIARIO (PACIENTE
-                            NEUROLOGICO AGUDO)</option>
-                        <option value="CPF1106">CPF1106 - PAQUETE DE TRAQUEOSTOMIA MENSUAL DOMICILIARIO</option>
-                        <option value="CPF1108" selected>CPF1108 - PAQUETE DE ATENCIÓN DOMICILIARIA CRÓNICO</option>
-                        <option value="CPF1109">CPF1109 - PAQUETE DE ATENCIÓN DOMICILIARIA PACIENTE CRONICO CON TERAPIAS
-                            (MENSUAL)</option>
-                        <option value="CPF1110">CPF1110 - PAQUETE DE ATENCIÓN DOMICILIARIO PAQUETE INTERMEDIO (MENSUAL)
-                        </option>
-                    </select>
+    <div class="app-studio-layout">
+        <!-- LEFT CONTROL SIDEBAR -->
+        <aside class="sidebar-panel">
+            <div class="sidebar-header">
+                <div class="studio-brand">
+                    <div class="studio-brand-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                            <polyline points="14 2 14 8 20 8"></polyline>
+                            <line x1="16" y1="13" x2="8" y2="13"></line>
+                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                        </svg>
+                    </div>
+                    <div>
+                        <div class="studio-brand-title">FOMAG Studio</div>
+                    </div>
+                </div>
+                <div class="header-right-tools">
+                    <button id="btnThemeToggle" class="btn-theme-toggle" onclick="toggleTheme()" title="Cambiar tema claro/oscuro" aria-label="Cambiar tema">
+                        <svg id="themeIconSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: none;"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                        <svg id="themeIconMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px;"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+                    </button>
                 </div>
             </div>
 
-            <div class="select-wrapper">
-                <label for="convenio">Convenio</label>
-                <select id="convenio">
-                    <option value="capital-salud">🏢 Capital Salud</option>
-                    <option value="fomag" selected>🏛️ FOMAG</option>
-                </select>
-            </div>
-        </div>
+            <div class="sidebar-content">
+                <!-- Validation Engine Mode -->
+                <div>
+                    <div class="sidebar-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+                        Parámetros
+                    </div>
 
-        <label class="file">
-            📁 Seleccionar carpeta
-            <input type="file" id="inputFolder" webkitdirectory directory multiple />
-        </label>
-        <button id="btnAbrirFS" class="btn-limpiar">⚡ Abrir carpeta (rápido)</button>
+                    <div class="control-field">
+                        <label for="tipoValidacion">Modo de validación</label>
+                        <select id="tipoValidacion" class="studio-select">
+                            <option value="evento">Por Evento (Individual)</option>
+                            <option value="paquete" selected>Por Paquete (Integral)</option>
+                        </select>
+                    </div>
 
-        <button id="btnDescargar" class="btn-descargar oculto">⬇️ Descargar XLSX</button>
-        <button id="btnDescargarMatriz" class="btn-descargar oculto"
-            style="background-color: #059669; margin-left: 10px;">⬇️ Descarga reporte Matriz</button>
-
-        <button id="btnLimpiar" class="btn-limpiar-todo oculto">🗑️ Limpiar todo</button>
-
-        <!-- Modal de progreso de descarga -->
-        <div id="modalProgresoBajada" class="modal-progreso-bajada oculto">
-            <div class="modal-progreso-bajada-contenido">
-                <h3>📥 Preparando archivo XLSX...</h3>
-                <div class="progreso-barra-bajada">
-                    <div id="progresoFillBajada" class="progreso-fill-bajada"></div>
-                </div>
-                <div class="progreso-info-bajada">
-                    <span id="progresoPorcentajeBajada">0%</span>
-                    <span id="progresoTextoBajada">Iniciando...</span>
-                </div>
-            </div>
-        </div>
-
-        <div id="estado" class="estado oculto"></div>
-
-        <!-- Barra de progreso -->
-        <div id="barraProgreso" class="barra-progreso oculto">
-            <div class="progreso-header">
-                <div class="progreso-info">
-                    <span id="progresoTexto">Procesando...</span>
-                    <span id="progresoDetalle" class="progreso-detalle"></span>
-                </div>
-                <span id="progresoPorcentaje" class="progreso-porcentaje">0%</span>
-            </div>
-            <div class="progreso-barra">
-                <div id="progresoFill" class="progreso-fill"></div>
-            </div>
-        </div>
-
-        <!-- Resumen de validación -->
-        <div id="resumen" class="resumen oculto">
-            <h3>📊 Resumen de Validación</h3>
-            <div class="resumen-container">
-                <!-- Columna izquierda: Estadísticas generales -->
-                <div class="resumen-general">
-                    <div class="resumen-stats">
-                        <div class="stat-item">
-                            <span class="stat-label">Total carpetas:</span>
-                            <span class="stat-value" id="statTotal">0</span>
+                    <div id="paqueteOptions" class="control-field">
+                        <div class="field-label-row">
+                            <label for="tipoPaquete">Tipo de Paquete</label>
+                            <button type="button" id="btnToggleCondiciones" class="btn-popover-badge" onclick="toggleRequisitosPaquete()" title="Ver condiciones y reglas de este paquete">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                <span>Reglas</span>
+                            </button>
                         </div>
-                        <div class="stat-item success">
-                            <span class="stat-label">✔ Sin errores:</span>
-                            <span class="stat-value" id="statExito">0</span>
-                        </div>
-                        <div class="stat-item warning">
-                            <span class="stat-label">⚠ Con alertas:</span>
-                            <span class="stat-value" id="statAlertas">0</span>
-                        </div>
-                        <div class="stat-item error">
-                            <span class="stat-label">✖ Con errores:</span>
-                            <span class="stat-value" id="statErrores">0</span>
-                        </div>
+                        <select id="tipoPaquete" class="studio-select">
+                            <option value="auto" selected>Automático</option>
+                            <option value="CPF1108">CPF1108 - Crónico Estándar</option>
+                            <option value="CPF1109">CPF1109 - Crónico con Terapias</option>
+                            <option value="CPF1110">CPF1110 - Paquete Intermedio</option>
+                            <option value="CPF1105">CPF1105 - Neurológico Agudo</option>
+                            <option value="CPF1106">CPF1106 - Traqueostomía Domiciliaria</option>
+                        </select>
+
+                        <!-- Popover / Panel flotante sutil de reglas -->
+                        <div id="paqueteCondicionesContent" class="paquete-popover-panel oculto"></div>
+                    </div>
+
+                    <div class="control-field">
+                        <label for="convenio">Entidad / Convenio</label>
+                        <select id="convenio" class="studio-select">
+                            <option value="capital-salud">Capital Salud EPS</option>
+                            <option value="fomag" selected>FOMAG Magisterio</option>
+                        </select>
                     </div>
                 </div>
 
-                <!-- Columna derecha: Errores por tipo -->
-                <div id="resumenErrores" class="resumen-errores oculto">
-                    <h4>📄 Errores por tipo</h4>
-                    <div id="listaErrores" class="lista-errores"></div>
+                <!-- Input Dropzone -->
+                <div>
+                    <div class="sidebar-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        Carga de Soportes
+                    </div>
+
+                    <label class="studio-dropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        </div>
+                        <span class="dropzone-title">Cargar Soportes</span>
+                        <span class="dropzone-subtitle">Click o arrastra la carpeta aquí</span>
+                        <input type="file" id="inputFolder" webkitdirectory directory multiple />
+                    </label>
+                </div>
+
+                <!-- Sidebar Actions / Exports -->
+                <div class="sidebar-actions">
+                    <button id="btnDescargar" class="btn-studio btn-studio-primary oculto">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                        Exportar XLSX
+                    </button>
+
+                    <button id="btnDescargarMatriz" class="btn-studio btn-studio-success oculto">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        Reporte Matriz
+                    </button>
+
+                    <button id="btnAyuda" class="btn-studio btn-studio-ghost" onclick="toggleWiki()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        Guía de Auditoría
+                    </button>
+
+                    <button id="btnLimpiar" class="btn-studio btn-studio-danger oculto">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        Limpiar Auditoría
+                    </button>
                 </div>
             </div>
-        </div>
+        </aside>
 
-        <!-- Barra de búsqueda y filtros -->
-        <div id="filtros" class="filtros oculto">
-            <div class="filtro-item">
-                <label for="buscarDocumento">🔍 Buscar por documento:</label>
-                <input type="text" id="buscarDocumento" placeholder="Ingrese número de documento..." />
-            </div>
-            <div class="filtro-item">
-                <label for="filtroEstado">📊 Filtrar por estado:</label>
-                <select id="filtroEstado">
-                    <option value="">📋 Todos los estados</option>
-                    <option value="sin-errores">✅ Sin errores</option>
-                    <option value="con-alertas">⚠️ Con alertas</option>
-                    <option value="con-errores">❌ Con errores</option>
-                </select>
-            </div>
-            <div class="filtro-item">
-                <label for="filtroServicio">🏥 Filtrar por servicio:</label>
-                <select id="filtroServicio">
-                    <option value="">🎯 Todos los servicios</option>
-                    <option value="VM">🩺 VM - Visita Médica</option>
-                    <option value="ENF">💉 ENF - Enfermería</option>
-                    <option value="TF">🏃 TF - Terapia Física</option>
-                    <option value="TR">🫁 TR - Terapia Respiratoria</option>
-                    <option value="SUCCION">🌬️ SUCCION - Terapia Succión</option>
-                    <option value="PSI">🧠 PSI - Psicología</option>
-                    <option value="TS">👥 TS - Trabajo Social</option>
-                    <option value="FON">🗣️ FON - Fonoaudiología</option>
-                    <option value="NUT">🥗 NUT - Nutrición</option>
-                </select>
-            </div>
-            <div class="filtro-item checkbox-item destacado">
-                <label>
-                    <input type="checkbox" id="mostrarExitos" checked />
-                    ✓ Mostrar validaciones exitosas
-                </label>
-            </div>
-            <button id="limpiarFiltros" class="btn-limpiar">🔄 Limpiar filtros</button>
-        </div>
+        <!-- RIGHT MAIN WORKSPACE -->
+        <main class="workspace-panel">
+            <!-- Ribbon Stats & Live Toolbar -->
+            <header class="workspace-ribbon">
+                <div class="stats-cluster">
+                    <div class="stat-pill">
+                        <span class="stat-pill-label">Total</span>
+                        <span class="stat-pill-value" id="statTotal">0</span>
+                    </div>
+                    <div class="stat-pill success">
+                        <span class="stat-pill-label">Conformes</span>
+                        <span class="stat-pill-value" id="statExito">0</span>
+                    </div>
+                    <div class="stat-pill warning">
+                        <span class="stat-pill-label">Alertas</span>
+                        <span class="stat-pill-value" id="statAlertas">0</span>
+                    </div>
+                    <div class="stat-pill error">
+                        <span class="stat-pill-label">Errores</span>
+                        <span class="stat-pill-value" id="statErrores">0</span>
+                    </div>
+                </div>
 
-        <div class="table-wrapper">
-            <table id="tabla">
-                <thead id="tablaHeader">
-                    <tr>
-                        <th>Tipo</th>
-                        <th>Carpeta</th>
-                        <th>2.pdf</th>
-                        <th>3.pdf</th>
-                        <th>4.pdf</th>
-                        <th>5.pdf</th>
-                        <th>Cant.</th>
-                        <th>Evoluciones (cantidad y detalle)</th>
-                        <th>Errores</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaBody"></tbody>
-            </table>
+                <!-- Filter Toolbar -->
+                <div id="filtros" class="ribbon-toolbar">
+                    <input type="text" id="buscarDocumento" class="studio-search-input" placeholder="Buscar cédula..." />
+
+                    <!-- Control Segmentado de Estado -->
+                    <div class="studio-segmented-control" id="grupoFiltroEstado" role="group" aria-label="Filtro de estado">
+                        <button type="button" class="btn-segmented" data-estado="">Todos</button>
+                        <button type="button" class="btn-segmented active" data-estado="con-novedades">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                            Con novedades
+                        </button>
+                    </div>
+
+                    <!-- Selector de Servicio con Icono -->
+                    <div class="studio-filter-select-wrapper">
+                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+                        </svg>
+                        <select id="filtroServicio" class="studio-filter-select">
+                            <option value="">Servicio: Todos</option>
+                            <option value="VM">🩺 VM - Visita Médica</option>
+                            <option value="ENF">💉 ENF - Enfermería</option>
+                            <option value="TF">🏃 TF - Terapia Física</option>
+                            <option value="TR">🫁 TR - Terapia Respiratoria</option>
+                            <option value="TRS">💨 TRS - Terapia Resp. Succión</option>
+                            <option value="PSI">🧠 PSI - Psicología</option>
+                            <option value="TS">🤝 TS - Trabajo Social</option>
+                            <option value="FON">🗣️ FON - Fonoaudiología</option>
+                            <option value="NUT">🥗 NUT - Nutrición</option>
+                        </select>
+                    </div>
+
+                    <label class="studio-checkbox-pill">
+                        <input type="checkbox" id="mostrarExitos" />
+                        Exitosas
+                    </label>
+
+                    <button id="limpiarFiltros" class="btn-studio btn-studio-ghost" style="padding: 7px 10px; width: auto;" title="Restablecer filtros">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path><path d="M3 3v5h5"></path></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Workspace Scrollable Body -->
+            <div class="workspace-body">
+                <div id="estado" class="estado oculto"></div>
+
+                <!-- Progress Bar -->
+                <div id="barraProgreso" class="barra-progreso oculto">
+                    <div class="progreso-header">
+                        <div>
+                            <span id="progresoTexto">Procesando lote de auditoría...</span>
+                            <span id="progresoDetalle" class="progreso-detalle"></span>
+                        </div>
+                        <span id="progresoPorcentaje">0%</span>
+                    </div>
+                    <div class="progreso-barra">
+                        <div id="progresoFill" class="progreso-fill"></div>
+                    </div>
+                </div>
+
+                <!-- Breakdown of Errors -->
+                <div id="resumen" class="oculto">
+                    <div id="resumenErrores" class="resumen-errores oculto">
+                        <h4>Desglose de Hallazgos y Errores</h4>
+                        <div id="listaErrores" class="lista-errores"></div>
+                    </div>
+                </div>
+
+                <!-- Main Data Grid -->
+                <div class="table-wrapper">
+                    <table id="tabla">
+                        <thead id="tablaHeader">
+                            <tr>
+                                <th></th>
+                                <th>Servicio</th>
+                                <th>Archivos</th>
+                                <th>Evoluciones</th>
+                                <th>Fechas</th>
+                                <th>Errores / Hallazgos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Download Progress Modal -->
+    <div id="modalProgresoBajada" class="modal-progreso-bajada oculto">
+        <div class="modal-progreso-bajada-contenido">
+            <h3>Generando archivo Excel XLSX...</h3>
+            <div class="progreso-barra-bajada">
+                <div id="progresoFillBajada" class="progreso-fill-bajada"></div>
+            </div>
+            <div class="progreso-info-bajada">
+                <span id="progresoPorcentajeBajada">0%</span>
+                <span id="progresoTextoBajada">Procesando...</span>
+            </div>
         </div>
     </div>
 
-    <!-- Modal para mostrar PDFs -->
+    <!-- Modal para mostrar PDFs con visor centrado y responsivo -->
     <div id="pdfModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="pdfModalTitle">PDF</h2>
+        <div class="modal-content pdf-viewer-modal-content">
+            <div class="modal-header pdf-viewer-header">
+                <div class="pdf-header-left">
+                    <h2 id="pdfModalTitle">PDF</h2>
+                    <span id="pdfPageInfo" class="pdf-page-badge">Página 1 de 1</span>
+                </div>
+                <div class="pdf-header-controls">
+                    <button type="button" class="btn-pdf-tool" id="btnPdfPrev" title="Página anterior">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                    </button>
+                    <button type="button" class="btn-pdf-tool" id="btnPdfNext" title="Página siguiente">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </button>
+                    <div class="pdf-tool-divider"></div>
+                    <button type="button" class="btn-pdf-tool" id="btnPdfZoomOut" title="Reducir zoom">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </button>
+                    <span id="pdfZoomLevel" class="pdf-zoom-label">100%</span>
+                    <button type="button" class="btn-pdf-tool" id="btnPdfZoomIn" title="Aumentar zoom">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+                    </button>
+                    <button type="button" class="btn-pdf-tool" id="btnPdfFit" title="Ajustar al centro">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    </button>
+                    <button type="button" class="btn-pdf-tool" id="btnPdfRotate" title="Rotar documento">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+                    </button>
+                </div>
                 <span class="modal-close" onclick="cerrarModal()">&times;</span>
             </div>
-            <div class="modal-body">
-                <iframe id="pdfFrame" src="" frameborder="0"></iframe>
+            <div class="modal-body pdf-canvas-viewport" id="pdfCanvasContainer">
+                <div id="pdfPagesContainer" class="pdf-pages-container"></div>
             </div>
         </div>
     </div>
@@ -538,7 +621,7 @@
                     <div class="wiki-note warning">
                         <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
                     </div>
-                    <div class="wiki-note info" style="background: #ffebee; border-color: #c62828; color: #b71c1c;">
+                    <div class="wiki-note danger">
                         <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
                     </div>
 
@@ -626,7 +709,7 @@
                     <div class="wiki-note warning">
                         <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
                     </div>
-                    <div class="wiki-note info" style="background: #ffebee; border-color: #c62828; color: #b71c1c;">
+                    <div class="wiki-note danger">
                         <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
                     </div>
                 </article>
@@ -1112,9 +1195,38 @@
     </div>
 
     <script>
+        function toggleTheme() {
+            const isDark = document.body.classList.toggle('theme-dark');
+            const sun = document.getElementById('themeIconSun');
+            const moon = document.getElementById('themeIconMoon');
+            if (sun && moon) {
+                sun.style.display = isDark ? 'inline-block' : 'none';
+                moon.style.display = isDark ? 'none' : 'inline-block';
+            }
+            localStorage.setItem('fomag_theme', isDark ? 'dark' : 'light');
+        }
+
+        // Cargar tema guardado
+        if (localStorage.getItem('fomag_theme') === 'dark') {
+            document.body.classList.add('theme-dark');
+            const sun = document.getElementById('themeIconSun');
+            const moon = document.getElementById('themeIconMoon');
+            if (sun && moon) {
+                sun.style.display = 'inline-block';
+                moon.style.display = 'none';
+            }
+        }
+
+        function toggleRequisitosPaquete() {
+            const content = document.getElementById('paqueteCondicionesContent');
+            if (content) {
+                content.classList.toggle('oculto');
+            }
+        }
+
         function toggleWiki() {
             const wiki = document.getElementById('wikiContainer');
-            wiki.classList.toggle('oculto');
+            if (wiki) wiki.classList.toggle('oculto');
         }
 
         function closeWikiOnBackdrop(event) {
@@ -1142,48 +1254,26 @@
             });
 
             // Mostrar el artículo seleccionado
-            document.getElementById('wiki-' + section).classList.remove('oculto');
+            const targetArticle = document.getElementById('wiki-' + section);
+            if (targetArticle) {
+                targetArticle.classList.remove('oculto');
+            }
 
-            // Actualizar navegación activa
+            // Actualizar navegación activa en el sidebar
             document.querySelectorAll('.wiki-nav-item').forEach(item => {
-                item.classList.remove('active');
+                const href = item.getAttribute('href');
+                if (href === '#wiki-' + section) {
+                    item.classList.add('active');
+                } else {
+                    item.classList.remove('active');
+                }
             });
-            event.target.classList.add('active');
 
             // Scroll al inicio del contenido
-            document.querySelector('.wiki-content').scrollTop = 0;
+            const content = document.querySelector('.wiki-content');
+            if (content) content.scrollTop = 0;
         }
     </script>
-
-    <!-- Footer -->
-    <footer class="footer">
-        <div class="footer-content">
-            <div class="footer-section">
-                <h4>📄 Validador de PDFs</h4>
-                <p>Sistema de validación de documentos PDF para eventos y paquetes médicos.</p>
-                <p class="version">Versión 1.0.1</p>
-            </div>
-
-            <div class="footer-section">
-                <h4>ℹ️ Información</h4>
-                <p>Soporta validación por evento y por paquete.</p>
-                <p>Compatible con Capital Salud y FOMAG.</p>
-            </div>
-
-            <div class="footer-section">
-                <h4>👨‍💻 Desarrollador</h4>
-                <p class="developer">Hecho por <strong>Bonnickson</strong>, Ing. de software, con <span
-                        class="heart">♥</span></p>
-                <p class="date">© 2025 - Todos los derechos reservados</p>
-            </div>
-
-            <div class="footer-section">
-                <h4>📞 Contacto</h4>
-                <p>Correo: <a href="mailto:bonnickstewar@gmail.com">bonnickstewar@gmail.com</a></p>
-                <p>Teléfono / WhatsApp: <a href="tel:+573022529980">302 252 9980</a></p>
-            </div>
-        </div>
-    </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
     <script type="module" src="src/app.js"></script>

@@ -1,6 +1,10 @@
 import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs";
 import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
-import { ALLOWED_TYPES, PDF_WORKER_URL } from "./config/constants.js";
+import {
+    ALLOWED_TYPES,
+    PAQUETES_SOPORTADOS,
+    PDF_WORKER_URL,
+} from "./config/constants.js";
 import {
     validarPDF,
     validarArchivosPermitidosEvento,
@@ -34,7 +38,8 @@ const filtrosDiv = document.getElementById("filtros");
 const buscarDocumentoInput = document.getElementById("buscarDocumento");
 const mostrarExitosCheckbox = document.getElementById("mostrarExitos");
 const filtroServicioSelect = document.getElementById("filtroServicio");
-const filtroEstadoSelect = document.getElementById("filtroEstado");
+const grupoFiltroEstado = document.getElementById("grupoFiltroEstado");
+let estadoFiltroActivo = "con-novedades";
 const limpiarFiltrosBtn = document.getElementById("limpiarFiltros");
 const btnLimpiarTodo = document.getElementById("btnLimpiar");
 const barraProgresoDiv = document.getElementById("barraProgreso");
@@ -63,7 +68,112 @@ if (!input || !tabla || !tablaBody || !estado) {
 }
 
 // Archivos que deben ignorarse por completo
-const IGNORAR_ARCHIVOS = new Set(["desktop.ini"]);
+const IGNORAR_ARCHIVOS = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
+
+/**
+ * Extrae el código de paquete soportado si existe al inicio del nombre de una carpeta
+ * @param {string} nombreCarpeta
+ * @returns {string|null}
+ */
+export function extraerCodigoPaquete(nombreCarpeta) {
+    if (!nombreCarpeta) return null;
+    const match = nombreCarpeta.trim().match(/^([A-Za-z0-9]+)/);
+    if (!match) return null;
+    const code = match[1].toUpperCase();
+    return PAQUETES_SOPORTADOS.includes(code) ? code : null;
+}
+
+/**
+ * Agrupa archivos de manera inteligente detectando jerarquía de carpetas:
+ * - 3+ niveles: [Raíz] / [Paquete] / [Paciente] / archivos.pdf
+ * - 2 niveles: [Paquete] / [Paciente] / archivos.pdf
+ * - 1 nivel: [Paciente] / archivos.pdf
+ */
+export function agruparArchivosInteligente(
+    archivosLista,
+    fallbackTipoPaquete,
+    tipoValidacion,
+) {
+    const carpetas = {};
+    const fallbackSeguro =
+        !fallbackTipoPaquete || fallbackTipoPaquete === "auto"
+            ? "CPF1108"
+            : fallbackTipoPaquete;
+
+    for (const f of archivosLista) {
+        if (IGNORAR_ARCHIVOS.has(f.name.toLowerCase())) {
+            continue;
+        }
+
+        const pathNormalizado = (f.webkitRelativePath || f.name).replace(
+            /\\/g,
+            "/",
+        );
+        const p = pathNormalizado.split("/").filter(Boolean);
+        if (p.length < 2) {
+            continue; // Archivo suelto en raíz sin carpeta de paciente
+        }
+
+        const carpetaPaciente = p[p.length - 2];
+        let paqueteDetectado = fallbackSeguro;
+        let errorPaquete = null;
+
+        if (tipoValidacion === "paquete") {
+            if (p.length >= 4) {
+                // 3+ niveles: [Raíz] / [Paquete] / [Paciente] / [PDFs]
+                const carpetaPaquete = p[p.length - 3];
+                const codigo = extraerCodigoPaquete(carpetaPaquete);
+                if (codigo) {
+                    paqueteDetectado = codigo;
+                } else {
+                    paqueteDetectado = fallbackSeguro;
+                    errorPaquete = `Carpeta de paquete no reconocida: "${carpetaPaquete}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
+                }
+            } else if (p.length === 3) {
+                // 2 niveles: [Paquete] / [Paciente] / [PDFs]
+                const carpetaPaquete = p[0];
+                const codigo = extraerCodigoPaquete(carpetaPaquete);
+                if (codigo) {
+                    paqueteDetectado = codigo;
+                } else {
+                    const matchIntento = carpetaPaquete
+                        .trim()
+                        .match(/^([A-Za-z0-9]+)/);
+                    const codigoIntento = matchIntento
+                        ? matchIntento[1].toUpperCase()
+                        : "";
+                    if (codigoIntento.startsWith("CPF")) {
+                        errorPaquete = `Código de paquete no válido: "${carpetaPaquete}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
+                    }
+                    paqueteDetectado = fallbackSeguro;
+                }
+            } else {
+                // 1 nivel: [Paciente] / [PDFs]
+                paqueteDetectado = fallbackSeguro;
+            }
+        }
+
+        let key = carpetaPaciente;
+        if (carpetas[key] && carpetas[key].tipoPaquete !== paqueteDetectado) {
+            key = `${carpetaPaciente} (${paqueteDetectado})`;
+        }
+
+        if (!carpetas[key]) {
+            carpetas[key] = {
+                carpetaNombre: carpetaPaciente,
+                tipoPaquete: paqueteDetectado,
+                errorPaquete: errorPaquete,
+                archivos: [],
+            };
+        }
+        if (errorPaquete && !carpetas[key].errorPaquete) {
+            carpetas[key].errorPaquete = errorPaquete;
+        }
+        carpetas[key].archivos.push(f);
+    }
+
+    return carpetas;
+}
 
 // Agrupa errores similares (ej: distintas cantidades de autorizaciones/evoluciones) bajo un tipo general
 function clasificarErrorResumen(error) {
@@ -93,6 +203,17 @@ const normalizarTipoError = (txt) => (txt || "").trim().toLowerCase();
  * Limpia los resultados y resetea la tabla
  */
 function limpiarResultados(limpiarInput = false) {
+    if (todosLosResultados) {
+        Object.values(todosLosResultados).forEach((r) => {
+            if (r && r.fileUrls) {
+                Object.values(r.fileUrls).forEach((url) => {
+                    if (url && typeof url === "string" && url.startsWith("blob:")) {
+                        URL.revokeObjectURL(url);
+                    }
+                });
+            }
+        });
+    }
     tablaBody.innerHTML = "";
     estado.classList.add("oculto");
     resumenDiv.classList.add("oculto");
@@ -105,12 +226,9 @@ function limpiarResultados(limpiarInput = false) {
     if (limpiarInput) {
         input.value = "";
     }
-    buscarDocumentoInput.value = "";
-    filtroServicioSelect.value = "";
-    filtroEstadoSelect.value = "";
+    reiniciarFiltros(false);
     todosLosResultados = {};
     todasLasCarpetas = [];
-    erroresSeleccionados.clear();
     listaErroresDiv.innerHTML = "";
     progresoFill.style.width = "0%";
 }
@@ -193,15 +311,15 @@ convenioSelect.addEventListener("change", () => {
 
 // Función para mostrar condiciones del paquete
 function mostrarCondicionesPaquete() {
-    if (tipoValidacionSelect.value !== "paquete") {
-        paqueteCondicionesIcon.style.display = "none";
-        return;
-    }
+    if (!paqueteCondicionesContent) return;
 
     const paquete = tipoPaqueteSelect.value;
     let terapias = "";
 
     switch (paquete) {
+        case "auto":
+            terapias = "Detección automática por carpeta para cada paciente.";
+            break;
         case "CPF1109":
             terapias = "Entre 6 y 12 evoluciones sumadas en total.";
             break;
@@ -220,27 +338,35 @@ function mostrarCondicionesPaquete() {
     }
 
     const html = `
-        <h4 style="margin: 0 0 10px 0; font-size: 0.95em; color: #059669; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Requisitos del paquete ${paquete}</h4>
-        <ul style="margin: 0; padding-left: 15px; font-size: 0.85em; line-height: 1.5; color: #475569;">
-            <li style="margin-bottom: 6px;"><strong>Validación General:</strong> El código del paquete debe estar dentro del archivo <code>2 PAQ.pdf</code>.</li>
-            <li style="margin-bottom: 6px;"><strong>Servicios Fijos Obligatorios:</strong> Se requiere exactamente <strong>1 evolución</strong> de cada uno de los siguientes servicios:
-                <ul style="padding-left: 15px; margin-top: 4px;">
-                    <li><code>VM</code> (Visita Médica)</li>
-                    <li><code>ENF</code> (Enfermería)</li>
-                    <li><code>VENF</code> (Registro de Enfermería)</li>
-                </ul>
-            </li>
-            <li style="margin-bottom: 6px;"><strong>Servicio a Elección Obligatorio:</strong> Se requiere exactamente <strong>1 evolución</strong> de <u>uno solo</u> de los siguientes servicios:
-                <ul style="padding-left: 15px; margin-top: 4px;">
-                    <li><code>PSI</code> (Psicología) o <code>NUT</code> (Nutrición) o <code>TS</code> (Trabajo Social).</li>
-                </ul>
-            </li>
-            <li><strong>Terapias (TF, TR, FON, TO, TRS):</strong> ${terapias}</li>
-        </ul>
+        <div class="paquete-rules-card">
+            <div class="rule-group">
+                <span class="rule-label">Archivo Base:</span>
+                <span class="rule-value">Código en <code>2 PAQ.pdf</code></span>
+            </div>
+            <div class="rule-group">
+                <span class="rule-label">Fijos Obligatorios:</span>
+                <div class="rule-chips">
+                    <span class="rule-chip required">VM: 1</span>
+                    <span class="rule-chip required">ENF: 1</span>
+                    <span class="rule-chip required">VENF: 1</span>
+                </div>
+            </div>
+            <div class="rule-group">
+                <span class="rule-label">A Elección (1 solo):</span>
+                <div class="rule-chips">
+                    <span class="rule-chip choice">PSI (1)</span>
+                    <span class="rule-chip choice">NUT (1)</span>
+                    <span class="rule-chip choice">TS (1)</span>
+                </div>
+            </div>
+            <div class="rule-group">
+                <span class="rule-label">Terapias:</span>
+                <span class="rule-value highlight">${terapias}</span>
+            </div>
+        </div>
     `;
 
     paqueteCondicionesContent.innerHTML = html;
-    paqueteCondicionesIcon.style.display = "inline-flex";
 }
 
 // Inicializar condiciones al cargar
@@ -257,26 +383,51 @@ document.addEventListener("DOMContentLoaded", () => {
     mostrarCondicionesPaquete();
 });
 
+// Función para reiniciar todos los filtros a su estado por defecto
+function reiniciarFiltros(ejecutarAplicar = true) {
+    buscarDocumentoInput.value = "";
+    filtroServicioSelect.value = "";
+    estadoFiltroActivo = "con-novedades";
+    if (grupoFiltroEstado) {
+        grupoFiltroEstado.querySelectorAll(".btn-segmented").forEach((btn) => {
+            btn.classList.toggle("active", btn.getAttribute("data-estado") === "con-novedades");
+        });
+    }
+    mostrarExitosCheckbox.checked = false;
+    erroresSeleccionados.clear();
+    listaErroresDiv
+        .querySelectorAll(".error-tipo-item.selected, .error-card-pill.selected")
+        .forEach((el) => el.classList.remove("selected"));
+    if (ejecutarAplicar) {
+        aplicarFiltros();
+    }
+}
+
 // Event listeners para filtros
 buscarDocumentoInput.addEventListener("input", aplicarFiltros);
 mostrarExitosCheckbox.addEventListener("change", aplicarFiltros);
 filtroServicioSelect.addEventListener("change", aplicarFiltros);
-filtroEstadoSelect.addEventListener("change", aplicarFiltros);
+
+if (grupoFiltroEstado) {
+    grupoFiltroEstado.addEventListener("click", (e) => {
+        const btn = e.target.closest(".btn-segmented");
+        if (!btn) return;
+        grupoFiltroEstado
+            .querySelectorAll(".btn-segmented")
+            .forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        estadoFiltroActivo = btn.getAttribute("data-estado") || "";
+        aplicarFiltros();
+    });
+}
+
 limpiarFiltrosBtn.addEventListener("click", () => {
-    buscarDocumentoInput.value = "";
-    filtroServicioSelect.value = "";
-    filtroEstadoSelect.value = "";
-    mostrarExitosCheckbox.checked = true;
-    erroresSeleccionados.clear();
-    listaErroresDiv
-        .querySelectorAll(".error-tipo-item.selected")
-        .forEach((el) => el.classList.remove("selected"));
-    aplicarFiltros();
+    reiniciarFiltros(true);
 });
 
 // Selección de tipos de error desde el resumen
 listaErroresDiv.addEventListener("click", (e) => {
-    const item = e.target.closest(".error-tipo-item");
+    const item = e.target.closest(".error-card-pill, .error-tipo-item");
     if (!item) return;
     const tipo = item.getAttribute("data-tipo");
     if (!tipo) return;
@@ -297,7 +448,7 @@ listaErroresDiv.addEventListener("click", (e) => {
 function aplicarFiltros() {
     const buscarDoc = buscarDocumentoInput.value.trim().toLowerCase();
     const filtroServ = filtroServicioSelect.value;
-    const filtroEst = filtroEstadoSelect.value;
+    const filtroEst = estadoFiltroActivo;
     const mostrarExitos = mostrarExitosCheckbox.checked;
     const tiposErroresActivos = new Set(erroresSeleccionados);
 
@@ -324,6 +475,7 @@ function aplicarFiltros() {
         }
 
         // Aplicar visibilidad a cada fila
+        const filasVisibles = [];
         filasCarpeta.forEach((fila) => {
             let mostrarFila = mostrarCarpeta;
 
@@ -331,15 +483,26 @@ function aplicarFiltros() {
             if (filtroServ && mostrarFila) {
                 const servicioFila = fila.getAttribute("data-servicio");
                 // Si la fila NO tiene data-servicio (es modo evento), no aplicar filtro de servicio
-                if (servicioFila && servicioFila !== filtroServ) {
-                    mostrarFila = false;
+                if (servicioFila) {
+                    const coincide =
+                        servicioFila === filtroServ ||
+                        ((filtroServ === "TRS" || filtroServ === "SUCCION") &&
+                            (servicioFila === "TRS" || servicioFila === "SUCCION"));
+                    if (!coincide) {
+                        mostrarFila = false;
+                    }
                 }
             }
 
-            // Filtro por estado (solo si la fila será mostrada)
+            // Filtro por estado
             if (filtroEst && mostrarFila) {
                 const estadoFila = fila.getAttribute("data-estado");
-                if (estadoFila !== filtroEst) {
+                if (filtroEst === "con-novedades") {
+                    // Mostrar solo filas que tengan errores o alertas (no conformes)
+                    if (estadoFila === "sin-errores") {
+                        mostrarFila = false;
+                    }
+                } else if (estadoFila !== filtroEst) {
                     mostrarFila = false;
                 }
             }
@@ -362,8 +525,40 @@ function aplicarFiltros() {
                 }
             }
 
-            fila.style.display = mostrarFila ? "" : "none";
+            if (mostrarFila) {
+                fila.style.display = "";
+                filasVisibles.push(fila);
+            } else {
+                fila.style.display = "none";
+            }
         });
+
+        // Recalcular rowspan para la celda agrupada de la carpeta
+        let cellCarpeta = null;
+        for (const fila of filasCarpeta) {
+            const cell = fila.querySelector("td.carpeta-cell.doc-header-grouped");
+            if (cell) {
+                cellCarpeta = cell;
+                break;
+            }
+        }
+
+        if (cellCarpeta) {
+            if (filasVisibles.length > 0) {
+                const primeraVisible = filasVisibles[0];
+                if (!primeraVisible.contains(cellCarpeta)) {
+                    primeraVisible.insertAdjacentElement("afterbegin", cellCarpeta);
+                }
+                cellCarpeta.setAttribute("rowspan", filasVisibles.length);
+                cellCarpeta.style.display = "";
+            } else {
+                const headerRow = filasCarpeta[0];
+                if (headerRow && !headerRow.contains(cellCarpeta)) {
+                    headerRow.insertAdjacentElement("afterbegin", cellCarpeta);
+                }
+                cellCarpeta.setAttribute("rowspan", filasCarpeta.length);
+            }
+        }
     });
 
     // Mostrar/ocultar validaciones exitosas (items individuales dentro de las celdas)
@@ -396,24 +591,26 @@ function actualizarResumen(resultados, incremental = false) {
             todosLosErrores.push(...arr);
         });
 
-        // Contar errores por tipo y guardar carpetas
-        const tiposProcesadosEnEstaCarpeta = new Set();
+        // Contar errores por tipo solo si es resumen final (no incremental) para máxima fluidez
+        if (!incremental) {
+            const tiposProcesadosEnEstaCarpeta = new Set();
 
-        todosLosErrores.forEach((error) => {
-            const { tipo, detalle } = clasificarErrorResumen(error);
-            const tipoNorm = normalizarTipoError(tipo);
+            todosLosErrores.forEach((error) => {
+                const { tipo, detalle } = clasificarErrorResumen(error);
+                const tipoNorm = normalizarTipoError(tipo);
 
-            erroresPorTipo[tipo] = (erroresPorTipo[tipo] || 0) + 1;
-            if (!detallePorTipo[tipo] && detalle) {
-                detallePorTipo[tipo] = detalle;
-            }
+                erroresPorTipo[tipo] = (erroresPorTipo[tipo] || 0) + 1;
+                if (!detallePorTipo[tipo] && detalle) {
+                    detallePorTipo[tipo] = detalle;
+                }
 
-            if (!carpetasPorTipo[tipo]) {
-                carpetasPorTipo[tipo] = new Set();
-            }
-            carpetasPorTipo[tipo].add(carpeta);
-            tiposProcesadosEnEstaCarpeta.add(tipoNorm);
-        });
+                if (!carpetasPorTipo[tipo]) {
+                    carpetasPorTipo[tipo] = new Set();
+                }
+                carpetasPorTipo[tipo].add(carpeta);
+                tiposProcesadosEnEstaCarpeta.add(tipoNorm);
+            });
+        }
 
         const tieneErrores = todosLosErrores.length > 0;
         const tieneAlertas = Object.values(r.alertasPorServicio || {}).some(
@@ -433,6 +630,12 @@ function actualizarResumen(resultados, incremental = false) {
     document.getElementById("statExito").textContent = sinErrores;
     document.getElementById("statAlertas").textContent = conAlertas;
     document.getElementById("statErrores").textContent = conErrores;
+
+    resumenDiv.classList.remove("oculto");
+
+    if (incremental) {
+        return; // Durante el procesamiento incremental no manipulamos la lista detallada de errores
+    }
 
     // Mostrar resumen de errores por tipo
     if (Object.keys(erroresPorTipo).length > 0) {
@@ -454,36 +657,36 @@ function actualizarResumen(resultados, incremental = false) {
                     : "";
 
                 const listaCarpetas = Array.from(carpetasPorTipo[tipo] || [])
-                    .slice(0, 10)
+                    .slice(0, 8)
                     .join(", ");
                 const totalCarpetasConEsteError = (carpetasPorTipo[tipo] || [])
                     .size;
                 const foldersExtra =
-                    totalCarpetasConEsteError > 10
-                        ? ` y ${totalCarpetasConEsteError - 10} más...`
+                    totalCarpetasConEsteError > 8
+                        ? ` (+${totalCarpetasConEsteError - 8})`
                         : "";
 
-                return `<div class="error-tipo-item${seleccionado}" data-tipo="${tipo}" data-tipo-normalized="${tipoNorm}">
-                    <div class="error-tipo-content">
-                        <span class="error-tipo-texto">
-                            <strong>${tipo}</strong>${detallePorTipo[tipo] ? " — " + detallePorTipo[tipo] : ""}
-                        </span>
-                        <span class="error-tipo-folders">Carpetas: ${listaCarpetas}${foldersExtra}</span>
+                return `<div class="error-card-pill${seleccionado}" data-tipo="${tipo}" data-tipo-normalized="${tipoNorm}">
+                    <div class="error-card-body">
+                        <div class="error-card-title">${tipo}${detallePorTipo[tipo] ? `<span class="error-card-subtitle">${detallePorTipo[tipo]}</span>` : ""}</div>
+                        <div class="error-card-meta">Docs: <code>${listaCarpetas}${foldersExtra}</code></div>
                     </div>
-                    <span class="error-tipo-count" title="Total incidencias">${count}</span>
+                    <div class="error-card-badge">${count}</div>
                 </div>`;
             })
             .join("");
 
         const exportBtnHtml = `
-            <div style="margin-bottom: 12px; display: flex; justify-content: flex-end;">
-                <button id="btnExportarErrores" class="btn-descargar" style="font-size: 12px; padding: 6px 12px; background-color: #7c3aed; border-color: #6d28d9;">
-                    📊 Exportar errores agrupados
+            <div class="resumen-toolbar">
+                <span class="resumen-counter">${Object.keys(erroresPorTipo).length} tipos de incidencias detectadas</span>
+                <button id="btnExportarErrores" class="btn-studio btn-studio-ghost" style="padding: 5px 10px; width: auto; font-size: 11.5px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    Exportar Excel
                 </button>
             </div>
         `;
 
-        listaErroresDiv.innerHTML = exportBtnHtml + errorItems;
+        listaErroresDiv.innerHTML = exportBtnHtml + `<div class="error-cards-grid">${errorItems}</div>`;
         resumenErroresDiv.classList.remove("oculto");
 
         // Agregar event listener al botón de exportación
@@ -502,11 +705,12 @@ function actualizarResumen(resultados, incremental = false) {
         resumenErroresDiv.classList.add("oculto");
     }
 
-    resumenDiv.classList.remove("oculto");
-    if (!incremental) {
-        filtrosDiv.classList.remove("oculto");
-    }
+    filtrosDiv.classList.remove("oculto");
+    aplicarFiltros();
 }
+
+// Ceder ejecución al hilo principal del navegador para mantener la UI responsiva y evitar bloqueos
+const cederHiloPrincipal = () => new Promise((resolve) => setTimeout(resolve, 0));
 
 /**
  * Actualiza la barra de progreso
@@ -592,7 +796,7 @@ function exportarXLSX(resultados) {
                         );
                         filas.push([
                             carpeta,
-                            r.tipo || "Paquete",
+                            r.tipoPaquete || r.tipo || "Paquete",
                             s,
                             estado,
                             numAuto,
@@ -1059,6 +1263,7 @@ input.addEventListener("change", async () => {
     try {
         console.log("Evento change disparado en input");
         console.log("Archivos seleccionados:", input.files.length);
+        reiniciarFiltros(false);
         tablaBody.innerHTML = "";
         estado.classList.remove("oculto");
         barraProgresoDiv.classList.remove("oculto");
@@ -1066,54 +1271,39 @@ input.addEventListener("change", async () => {
         resumenDiv.classList.add("oculto");
         filtrosDiv.classList.add("oculto");
 
-        const carpetas = {};
         const resultados = {};
         const tipoValidacion = tipoValidacionSelect.value;
-        const tipoPaquete = tipoPaqueteSelect.value;
+        const tipoPaqueteFallback = tipoPaqueteSelect.value;
         const convenio = convenioSelect.value;
 
         console.log("Configuración:", {
             tipoValidacion,
-            tipoPaquete,
+            tipoPaqueteFallback,
             convenio,
         });
-        // console.log("Archivos seleccionados:", input.files.length);
 
         // Actualizar headers de la tabla
         actualizarHeadersTabla(
             tabla,
             tablaHeader,
             tipoValidacion,
-            tipoPaquete,
+            tipoPaqueteFallback,
             convenio,
         );
 
-        // Agrupar archivos por carpeta
-        console.log("=== INICIO AGRUPACIÓN DE ARCHIVOS ===");
-        for (const f of input.files) {
-            console.log(`Archivo: ${f.name}, Path: ${f.webkitRelativePath}`);
-            if (IGNORAR_ARCHIVOS.has(f.name.toLowerCase())) {
-                console.log(`  → Ignorado por IGNORAR_ARCHIVOS`);
-                continue;
-            }
-            const p = f.webkitRelativePath.split("/");
-            console.log(
-                `  → Partes: ${JSON.stringify(p)}, Length: ${p.length}`,
-            );
-            if (p.length < 2) {
-                console.log(`  → Saltado: length < 2`);
-                continue;
-            }
-            const carpetaKey = p[p.length - 2];
-            console.log(`  → Carpeta detectada: ${carpetaKey}`);
-            carpetas[carpetaKey] ??= [];
-            carpetas[carpetaKey].push(f);
-        }
-        console.log("Carpetas agrupadas:", Object.keys(carpetas));
+        // Agrupar archivos inteligentemente
+        console.log("=== INICIO AGRUPACIÓN DE ARCHIVOS INTELIGENTE ===");
+        const carpetasAgrupadas = agruparArchivosInteligente(
+            input.files,
+            tipoPaqueteFallback,
+            tipoValidacion,
+        );
+        const carpetasKeys = Object.keys(carpetasAgrupadas);
+        console.log("Carpetas agrupadas:", carpetasKeys);
         console.log("=== FIN AGRUPACIÓN ===");
 
         // Inicializar progreso
-        const totalCarpetas = Object.keys(carpetas).length;
+        const totalCarpetas = carpetasKeys.length;
 
         if (totalCarpetas === 0) {
             estado.classList.remove("oculto");
@@ -1126,50 +1316,61 @@ input.addEventListener("change", async () => {
         let carpetasProcesadas = 0;
 
         // Procesar cada carpeta
-        for (const carpeta in carpetas) {
-            resultados[carpeta] = inicializarResultado(
+        for (const carpetaKey of carpetasKeys) {
+            const infoCarpeta = carpetasAgrupadas[carpetaKey];
+            const carpeta = infoCarpeta.carpetaNombre;
+            const paqueteParaCarpeta = infoCarpeta.tipoPaquete;
+
+            resultados[carpetaKey] = inicializarResultado(
                 tipoValidacion,
-                tipoPaquete,
+                paqueteParaCarpeta,
                 convenio,
             );
+            resultados[carpetaKey].tipoPaquete = paqueteParaCarpeta;
 
             // Detectar tipo de carpeta (para validación por evento)
             if (tipoValidacion === "evento") {
-                detectarTipoCarpeta(carpeta, resultados[carpeta], convenio);
+                detectarTipoCarpeta(carpeta, resultados[carpetaKey], convenio);
             } else {
-                resultados[carpeta].tipo = `Paquete: ${
-                    tipoPaquete === "cronico"
-                        ? "Crónico"
-                        : "Crónico con terapias"
-                }`;
+                resultados[carpetaKey].tipo = paqueteParaCarpeta;
+            }
+
+            // Si hubo error o advertencia detectando el paquete, registrarlo en General
+            if (infoCarpeta.errorPaquete) {
+                resultados[carpetaKey].servicios.add("General");
+                resultados[carpetaKey].erroresPorServicio["General"] =
+                    resultados[carpetaKey].erroresPorServicio["General"] || [];
+                resultados[carpetaKey].erroresPorServicio["General"].push(
+                    infoCarpeta.errorPaquete,
+                );
             }
 
             // Crear fila placeholder
             createPlaceholderRow(
                 tablaBody,
-                carpeta,
+                carpetaKey,
                 tipoValidacion,
-                tipoPaquete,
+                paqueteParaCarpeta,
             );
 
-            const archivos = carpetas[carpeta];
+            const archivos = infoCarpeta.archivos;
             const nombres = archivos.map((a) => a.name);
             const nroDocumento = carpeta.match(/^\d+/)?.[0] || "";
 
             // Guardar datos útiles para copiar
-            resultados[carpeta].nroDocumento = nroDocumento;
-            resultados[carpeta].primerArchivoRelPath =
+            resultados[carpetaKey].nroDocumento = nroDocumento;
+            resultados[carpetaKey].primerArchivoRelPath =
                 archivos[0]?.webkitRelativePath || carpeta;
-            resultados[carpeta].listaArchivos = nombres;
+            resultados[carpetaKey].listaArchivos = nombres;
 
             // Inicializar URLs de archivos
-            inicializarURLsArchivos(archivos, resultados[carpeta]);
+            inicializarURLsArchivos(archivos, resultados[carpetaKey]);
 
             if (tipoValidacion === "paquete") {
                 await validarPorPaquete(
-                    carpeta,
+                    carpetaKey,
                     archivos,
-                    tipoPaquete,
+                    paqueteParaCarpeta,
                     nroDocumento,
                     resultados,
                     estado,
@@ -1194,7 +1395,7 @@ input.addEventListener("change", async () => {
             } else {
                 // Validación por evento
                 await procesarValidacionEvento(
-                    carpeta,
+                    carpetaKey,
                     archivos,
                     nombres,
                     nroDocumento,
@@ -1202,42 +1403,47 @@ input.addEventListener("change", async () => {
                     convenio,
                 );
                 // Actualizar fila después de procesar evento
-                if (tablaBody && carpeta && resultados[carpeta]) {
-                    console.log(`Actualizando fila para carpeta: ${carpeta}`);
+                if (tablaBody && carpetaKey && resultados[carpetaKey]) {
+                    console.log(`Actualizando fila para carpeta: ${carpetaKey}`);
                     updateRow(
                         tablaBody,
-                        carpeta,
-                        resultados[carpeta],
+                        carpetaKey,
+                        resultados[carpetaKey],
                         mostrarExitosCheckbox
                             ? mostrarExitosCheckbox.checked
                             : false,
                     );
                     const filasEnTabla = tablaBody.querySelectorAll(
-                        `tr[data-carpeta="${carpeta}"]`,
+                        `tr[data-carpeta="${carpetaKey}"]`,
                     );
                     console.log(
-                        `Filas encontradas para ${carpeta}: ${filasEnTabla.length}`,
+                        `Filas encontradas para ${carpetaKey}: ${filasEnTabla.length}`,
                     );
                 } else {
                     console.warn(
-                        `No se pudo actualizar fila: tablaBody=${!!tablaBody}, carpeta=${!!carpeta}, resultado=${!!resultados[carpeta]}`,
+                        `No se pudo actualizar fila: tablaBody=${!!tablaBody}, carpetaKey=${!!carpetaKey}, resultado=${!!resultados[carpetaKey]}`,
                     );
                 }
             }
 
             // Quitar spinner final
-            const row = document.querySelector(`tr[data-carpeta="${carpeta}"]`);
+            const row = document.querySelector(
+                `tr[data-carpeta="${carpetaKey}"]`,
+            );
             if (row) row.classList.remove("processing");
 
             // Actualizar progreso y resumen incremental
             carpetasProcesadas++;
             actualizarProgreso(carpetasProcesadas, totalCarpetas, carpeta);
             actualizarResumen(resultados, true); // true = incremental
+
+            // Ceder tiempo al hilo principal para actualizar la UI y permitir Garbage Collection
+            await cederHiloPrincipal();
         }
 
         // Guardar resultados globales y actualizar resumen final
         todosLosResultados = resultados;
-        todasLasCarpetas = Object.keys(carpetas);
+        todasLasCarpetas = carpetasKeys;
         actualizarResumen(resultados, false); // false = mostrar filtros
         btnDescargar.classList.remove("oculto");
         if (tipoValidacion === "evento" && convenio === "fomag") {
@@ -1282,15 +1488,16 @@ async function recorrerCarpetaRecursivo(handle, basePath = "") {
 }
 
 // Alternativa: abrir carpeta con File System Access API (Chrome/Edge)
-btnAbrirFS.addEventListener("click", async () => {
-    if (!window.showDirectoryPicker) {
-        alert(
-            "Esta opción requiere Chrome/Edge con permisos de sitio (no funciona en Firefox ni file://). Abra en Chrome o use el selector de carpeta.",
-        );
-        return;
-    }
-    try {
-        const dirHandle = await window.showDirectoryPicker();
+if (btnAbrirFS) {
+    btnAbrirFS.addEventListener("click", async () => {
+        if (!window.showDirectoryPicker) {
+            alert(
+                "Esta opción requiere Chrome/Edge con permisos de sitio (no funciona en Firefox ni file://). Abra en Chrome o use el selector de carpeta.",
+            );
+            return;
+        }
+        try {
+            const dirHandle = await window.showDirectoryPicker();
 
         console.log(
             "Carpeta seleccionada, recorriendo estructura recursivamente...",
@@ -1321,7 +1528,8 @@ btnAbrirFS.addEventListener("click", async () => {
         }
         // AbortError es normal cuando el usuario cancela
     }
-});
+    });
+}
 
 // Carga dinámica de la librería XLSX con fallback
 async function cargarXLSX() {
@@ -1369,6 +1577,7 @@ async function procesarArchivosDesdeFS(fsFiles) {
             `Procesando ${fsFiles.length} archivos desde File System API...`,
         );
 
+        reiniciarFiltros(false);
         tablaBody.innerHTML = "";
         estado.classList.remove("oculto");
         barraProgresoDiv.classList.remove("oculto");
@@ -1376,15 +1585,14 @@ async function procesarArchivosDesdeFS(fsFiles) {
         resumenDiv.classList.add("oculto");
         filtrosDiv.classList.add("oculto");
 
-        const carpetas = {};
         const resultados = {};
         const tipoValidacion = tipoValidacionSelect.value;
-        const tipoPaquete = tipoPaqueteSelect.value;
+        const tipoPaqueteFallback = tipoPaqueteSelect.value;
         const convenio = convenioSelect.value;
 
         console.log("Configuración:", {
             tipoValidacion,
-            tipoPaquete,
+            tipoPaqueteFallback,
             convenio,
         });
 
@@ -1392,42 +1600,21 @@ async function procesarArchivosDesdeFS(fsFiles) {
             tabla,
             tablaHeader,
             tipoValidacion,
-            tipoPaquete,
+            tipoPaqueteFallback,
             convenio,
         );
 
-        // console.log("=== INICIO AGRUPACIÓN DE ARCHIVOS (FS) ===");
-        for (const f of fsFiles) {
-            console.log(
-                `Procesando archivo: ${f.name}, webkitRelativePath: ${f.webkitRelativePath}`,
-            );
+        console.log("=== INICIO AGRUPACIÓN DE ARCHIVOS INTELIGENTE (FS) ===");
+        const carpetasAgrupadas = agruparArchivosInteligente(
+            fsFiles,
+            tipoPaqueteFallback,
+            tipoValidacion,
+        );
+        const carpetasKeys = Object.keys(carpetasAgrupadas);
+        console.log("Carpetas agrupadas:", carpetasKeys);
+        console.log("=== FIN AGRUPACIÓN (FS) ===");
 
-            if (IGNORAR_ARCHIVOS.has(f.name.toLowerCase())) {
-                console.log(`  → Ignorado`);
-                continue;
-            }
-
-            const p = f.webkitRelativePath.split("/");
-            console.log(
-                `  → Partes: ${JSON.stringify(p)}, Length: ${p.length}`,
-            );
-
-            if (p.length < 2) {
-                console.log(`  → Saltado: estructura inválida`);
-                continue;
-            }
-
-            const carpetaKey = p[p.length - 2];
-            console.log(`  → Carpeta detectada: ${carpetaKey}`);
-
-            carpetas[carpetaKey] ??= [];
-            carpetas[carpetaKey].push(f);
-        }
-
-        console.log("Carpetas agrupadas:", Object.keys(carpetas));
-        // console.log("=== FIN AGRUPACIÓN (FS) ===");
-
-        const totalCarpetas = Object.keys(carpetas).length;
+        const totalCarpetas = carpetasKeys.length;
 
         if (totalCarpetas === 0) {
             estado.classList.remove("oculto");
@@ -1439,49 +1626,62 @@ async function procesarArchivosDesdeFS(fsFiles) {
 
         let carpetasProcesadas = 0;
 
-        for (const carpeta in carpetas) {
-            resultados[carpeta] = inicializarResultado(
+        for (const carpetaKey of carpetasKeys) {
+            const infoCarpeta = carpetasAgrupadas[carpetaKey];
+            const carpeta = infoCarpeta.carpetaNombre;
+            const paqueteParaCarpeta = infoCarpeta.tipoPaquete;
+
+            resultados[carpetaKey] = inicializarResultado(
                 tipoValidacion,
-                tipoPaquete,
+                paqueteParaCarpeta,
                 convenio,
             );
+            resultados[carpetaKey].tipoPaquete = paqueteParaCarpeta;
+
             if (tipoValidacion === "evento") {
-                detectarTipoCarpeta(carpeta, resultados[carpeta], convenio);
+                detectarTipoCarpeta(carpeta, resultados[carpetaKey], convenio);
             } else {
-                resultados[carpeta].tipo = `Paquete: ${
-                    tipoPaquete === "cronico"
-                        ? "Crónico"
-                        : "Crónico con terapias"
-                }`;
+                resultados[carpetaKey].tipo = paqueteParaCarpeta;
             }
+
+            // Si hubo error o advertencia detectando el paquete, registrarlo en General
+            if (infoCarpeta.errorPaquete) {
+                resultados[carpetaKey].servicios.add("General");
+                resultados[carpetaKey].erroresPorServicio["General"] =
+                    resultados[carpetaKey].erroresPorServicio["General"] || [];
+                resultados[carpetaKey].erroresPorServicio["General"].push(
+                    infoCarpeta.errorPaquete,
+                );
+            }
+
             createPlaceholderRow(
                 tablaBody,
-                carpeta,
+                carpetaKey,
                 tipoValidacion,
-                tipoPaquete,
+                paqueteParaCarpeta,
             );
 
-            const archivos = carpetas[carpeta];
+            const archivos = infoCarpeta.archivos;
             const nombres = archivos.map((a) => a.name);
             const nroDocumento = carpeta.match(/^\d+/)?.[0] || "";
-            resultados[carpeta].nroDocumento = nroDocumento;
-            resultados[carpeta].primerArchivoRelPath =
+            resultados[carpetaKey].nroDocumento = nroDocumento;
+            resultados[carpetaKey].primerArchivoRelPath =
                 archivos[0]?.webkitRelativePath || carpeta;
-            resultados[carpeta].listaArchivos = nombres;
-            inicializarURLsArchivos(archivos, resultados[carpeta]);
+            resultados[carpetaKey].listaArchivos = nombres;
+            inicializarURLsArchivos(archivos, resultados[carpetaKey]);
 
             if (tipoValidacion === "paquete") {
                 await validarPorPaquete(
-                    carpeta,
+                    carpetaKey,
                     archivos,
-                    tipoPaqueteSelect.value,
+                    paqueteParaCarpeta,
                     nroDocumento,
                     resultados,
                     estado,
-                    (carpeta, resultado) =>
+                    (carp, resultado) =>
                         updateRow(
                             tablaBody,
-                            carpeta,
+                            carp,
                             resultado,
                             mostrarExitosCheckbox.checked,
                         ),
@@ -1497,7 +1697,7 @@ async function procesarArchivosDesdeFS(fsFiles) {
                 );
             } else {
                 await procesarValidacionEvento(
-                    carpeta,
+                    carpetaKey,
                     archivos,
                     nombres,
                     nroDocumento,
@@ -1507,21 +1707,26 @@ async function procesarArchivosDesdeFS(fsFiles) {
                 // Actualizar fila después de procesar evento
                 updateRow(
                     tablaBody,
-                    carpeta,
-                    resultados[carpeta],
+                    carpetaKey,
+                    resultados[carpetaKey],
                     mostrarExitosCheckbox.checked,
                 );
             }
 
-            const row = document.querySelector(`tr[data-carpeta="${carpeta}"]`);
+            const row = document.querySelector(
+                `tr[data-carpeta="${carpetaKey}"]`,
+            );
             if (row) row.classList.remove("processing");
             carpetasProcesadas++;
             actualizarProgreso(carpetasProcesadas, totalCarpetas, carpeta);
             actualizarResumen(resultados, true);
+
+            // Ceder tiempo al hilo principal para actualizar la UI y permitir Garbage Collection
+            await cederHiloPrincipal();
         }
 
         todosLosResultados = resultados;
-        todasLasCarpetas = Object.keys(carpetas);
+        todasLasCarpetas = carpetasKeys;
         actualizarResumen(resultados, false);
         btnDescargar.classList.remove("oculto");
         estado.classList.add("oculto");
@@ -1775,41 +1980,268 @@ async function procesarValidacionEvento(
     }
 }
 
-// ================= FUNCIONES GLOBALES PARA MODAL =================
-window.abrirPDFModal = function (url, titulo, anchorEl) {
-    const modal = document.getElementById("pdfModal");
-    const frame = document.getElementById("pdfFrame");
-    const tituloElement = document.getElementById("pdfModalTitle");
+// ================= VISOR PDF NATIVO MULTI-PÁGINA (SCROLL CONTINUO Y CENTRADO) =================
+let currentPdfDoc = null;
+let currentPdfPage = 1;
+let currentPdfScale = 1.0;
+let currentPdfRotation = 0;
+let isRenderingDocument = false;
 
-    tituloElement.textContent = titulo;
-    // Abrir con zoom del visor a 150% sin afectar resolución
-    try {
-        frame.src = url + "#zoom=150";
-    } catch {
-        frame.src = url;
+async function renderizarDocumentoPDF() {
+    if (!currentPdfDoc) return;
+    isRenderingDocument = true;
+
+    const container = document.getElementById("pdfCanvasContainer");
+    const pagesContainer = document.getElementById("pdfPagesContainer");
+    if (!container || !pagesContainer) return;
+
+    pagesContainer.innerHTML = "";
+    const numPages = currentPdfDoc.numPages;
+
+    const paddingW = 40;
+    const paddingH = 40;
+    const availWidth = Math.max((container.clientWidth || 900) - paddingW, 300);
+    const availHeight = Math.max((container.clientHeight || 650) - paddingH, 300);
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+        const pageWrapper = document.createElement("div");
+        pageWrapper.className = "pdf-page-wrapper";
+        pageWrapper.id = `pdfPageWrapper_${pageNum}`;
+        pageWrapper.setAttribute("data-page", pageNum);
+
+        const canvas = document.createElement("canvas");
+        canvas.className = "pdf-page-canvas";
+        canvas.id = `pdfCanvas_${pageNum}`;
+
+        pageWrapper.appendChild(canvas);
+        pagesContainer.appendChild(pageWrapper);
+
+        try {
+            const page = await currentPdfDoc.getPage(pageNum);
+            const ctx = canvas.getContext("2d");
+
+            const totalRotation = (page.rotate + currentPdfRotation) % 360;
+            const unscaledViewport = page.getViewport({ scale: 1, rotation: totalRotation });
+
+            let baseScale = Math.min(availWidth / unscaledViewport.width, availHeight / unscaledViewport.height);
+            if (baseScale <= 0 || isNaN(baseScale)) baseScale = 1.0;
+
+            const finalScale = baseScale * currentPdfScale;
+            const viewport = page.getViewport({ scale: finalScale, rotation: totalRotation });
+
+            const outputScale = window.devicePixelRatio || 1;
+            canvas.width = Math.floor(viewport.width * outputScale);
+            canvas.height = Math.floor(viewport.height * outputScale);
+            canvas.style.width = Math.floor(viewport.width) + "px";
+            canvas.style.height = Math.floor(viewport.height) + "px";
+
+            const transform = outputScale !== 1 ? [outputScale, 0, 0, outputScale, 0, 0] : null;
+
+            await page.render({
+                canvasContext: ctx,
+                transform: transform,
+                viewport: viewport,
+            }).promise;
+
+            if (page.cleanup) page.cleanup();
+        } catch (err) {
+            console.warn(`Error renderizando página ${pageNum}:`, err);
+        }
     }
-    modal.style.display = "block";
 
-    // Marcar la fila asociada
+    isRenderingDocument = false;
+    actualizarBadgePagina(currentPdfPage);
+    iniciarScrollObserver();
+}
+
+function iniciarScrollObserver() {
+    const container = document.getElementById("pdfCanvasContainer");
+    if (!container) return;
+
+    if (container._scrollHandler) {
+        container.removeEventListener("scroll", container._scrollHandler);
+    }
+
+    container._scrollHandler = () => {
+        const pages = container.querySelectorAll(".pdf-page-wrapper");
+        if (pages.length === 0) return;
+
+        const containerTop = container.scrollTop;
+        const containerCenter = containerTop + container.clientHeight / 2;
+
+        let activePage = 1;
+        let minDiff = Infinity;
+
+        pages.forEach((page) => {
+            const pageNum = parseInt(page.getAttribute("data-page"), 10);
+            const pageCenter = page.offsetTop + page.clientHeight / 2;
+            const diff = Math.abs(containerCenter - pageCenter);
+            if (diff < minDiff) {
+                minDiff = diff;
+                activePage = pageNum;
+            }
+        });
+
+        if (activePage !== currentPdfPage) {
+            currentPdfPage = activePage;
+            actualizarBadgePagina(currentPdfPage);
+        }
+    };
+
+    container.addEventListener("scroll", container._scrollHandler, { passive: true });
+}
+
+function actualizarBadgePagina(pageNum) {
+    const pageInfo = document.getElementById("pdfPageInfo");
+    if (pageInfo && currentPdfDoc) {
+        pageInfo.textContent = `Página ${pageNum} de ${currentPdfDoc.numPages}`;
+    }
+
+    const zoomVal = document.getElementById("pdfZoomLevel");
+    if (zoomVal) {
+        zoomVal.textContent = `${Math.round(currentPdfScale * 100)}%`;
+    }
+
+    const btnPrev = document.getElementById("btnPdfPrev");
+    const btnNext = document.getElementById("btnPdfNext");
+    if (btnPrev) btnPrev.disabled = pageNum <= 1;
+    if (btnNext) btnNext.disabled = !currentPdfDoc || pageNum >= currentPdfDoc.numPages;
+}
+
+function irAPagina(pageNum) {
+    if (!currentPdfDoc || pageNum < 1 || pageNum > currentPdfDoc.numPages) return;
+    currentPdfPage = pageNum;
+    const target = document.getElementById(`pdfPageWrapper_${pageNum}`);
+    if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    actualizarBadgePagina(pageNum);
+}
+
+window.abrirPDFModal = async function (url, titulo, anchorEl) {
+    const modal = document.getElementById("pdfModal");
+    const tituloElement = document.getElementById("pdfModalTitle");
+    tituloElement.textContent = titulo;
+
+    modal.style.display = "flex";
+
     if (anchorEl) {
         const fila = anchorEl.closest("tr");
         seleccionarFila(fila);
     }
 
-    // Cerrar con ESC
     document.addEventListener("keydown", handleEscKey);
+
+    currentPdfPage = 1;
+    currentPdfScale = 1.0;
+    currentPdfRotation = 0;
+
+    const pageInfo = document.getElementById("pdfPageInfo");
+    if (pageInfo) pageInfo.textContent = "Cargando...";
+
+    const container = document.getElementById("pdfCanvasContainer");
+    if (container) container.scrollTop = 0;
+
+    try {
+        if (currentPdfDoc) {
+            try { currentPdfDoc.destroy(); } catch (_) {}
+            currentPdfDoc = null;
+        }
+
+        const loadingTask = pdfjsLib.getDocument({ url: url });
+        currentPdfDoc = await loadingTask.promise;
+        await renderizarDocumentoPDF();
+    } catch (error) {
+        console.error("Error abriendo PDF en modal:", error);
+        if (pageInfo) pageInfo.textContent = "Error al abrir";
+    }
 };
 
 window.cerrarModal = function () {
     const modal = document.getElementById("pdfModal");
-    const frame = document.getElementById("pdfFrame");
-
     modal.style.display = "none";
-    frame.src = "";
-    // No modificar estilos al cerrar para evitar acumulaciones
+
+    if (currentPdfDoc) {
+        try {
+            currentPdfDoc.destroy();
+        } catch (_) {}
+        currentPdfDoc = null;
+    }
+
+    const pagesContainer = document.getElementById("pdfPagesContainer");
+    if (pagesContainer) {
+        pagesContainer.innerHTML = "";
+    }
 
     document.removeEventListener("keydown", handleEscKey);
 };
+
+// Event listeners para controles del visor PDF
+function inicializarControlesPDF() {
+    const btnPrev = document.getElementById("btnPdfPrev");
+    const btnNext = document.getElementById("btnPdfNext");
+    const btnZoomIn = document.getElementById("btnPdfZoomIn");
+    const btnZoomOut = document.getElementById("btnPdfZoomOut");
+    const btnFit = document.getElementById("btnPdfFit");
+    const btnRotate = document.getElementById("btnPdfRotate");
+
+    if (btnPrev && !btnPrev._bound) {
+        btnPrev._bound = true;
+        btnPrev.addEventListener("click", () => {
+            if (currentPdfPage > 1) {
+                irAPagina(currentPdfPage - 1);
+            }
+        });
+    }
+
+    if (btnNext && !btnNext._bound) {
+        btnNext._bound = true;
+        btnNext.addEventListener("click", () => {
+            if (currentPdfDoc && currentPdfPage < currentPdfDoc.numPages) {
+                irAPagina(currentPdfPage + 1);
+            }
+        });
+    }
+
+    if (btnZoomIn && !btnZoomIn._bound) {
+        btnZoomIn._bound = true;
+        btnZoomIn.addEventListener("click", () => {
+            currentPdfScale = Math.min(currentPdfScale + 0.25, 3.0);
+            renderizarDocumentoPDF();
+        });
+    }
+
+    if (btnZoomOut && !btnZoomOut._bound) {
+        btnZoomOut._bound = true;
+        btnZoomOut.addEventListener("click", () => {
+            currentPdfScale = Math.max(currentPdfScale - 0.25, 0.5);
+            renderizarDocumentoPDF();
+        });
+    }
+
+    if (btnFit && !btnFit._bound) {
+        btnFit._bound = true;
+        btnFit.addEventListener("click", () => {
+            currentPdfScale = 1.0;
+            currentPdfRotation = 0;
+            renderizarDocumentoPDF();
+        });
+    }
+
+    if (btnRotate && !btnRotate._bound) {
+        btnRotate._bound = true;
+        btnRotate.addEventListener("click", () => {
+            currentPdfRotation = (currentPdfRotation + 90) % 360;
+            renderizarDocumentoPDF();
+        });
+    }
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", inicializarControlesPDF);
+} else {
+    inicializarControlesPDF();
+}
 
 function handleEscKey(e) {
     if (e.key === "Escape") {
@@ -1847,16 +2279,82 @@ tablaBody.addEventListener("click", function (event) {
     }
 });
 
+// ====== Popover para ver archivos de la carpeta ======
+window.verArchivosCarpeta = function (carpeta, triggerEl) {
+    const triggerBtn = triggerEl ? (triggerEl.closest("button") || triggerEl) : null;
+    const r = todosLosResultados[carpeta];
+    if (!r || !r.listaArchivos || r.listaArchivos.length === 0) return;
+
+    // Remover popover previo si existe
+    const prev = document.getElementById("archivosPopoverActivo");
+    if (prev) {
+        prev.remove();
+        if (prev._trigger === triggerBtn) return; // Toggle off
+    }
+
+    const popover = document.createElement("div");
+    popover.id = "archivosPopoverActivo";
+    popover.className = "archivos-floating-popover";
+    popover._trigger = triggerBtn;
+
+    const filesListHTML = r.listaArchivos
+        .map((archivo) => {
+            const urlKey = Object.keys(r.fileUrls || {}).find(
+                (k) => k.toLowerCase() === archivo.toLowerCase()
+            );
+            const url = urlKey ? r.fileUrls[urlKey] : null;
+            if (url) {
+                return `<a href="#" onclick="abrirPDFModal('${url}', '${archivo}', this); return false;" class="popover-file-link">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <span>${archivo}</span>
+                </a>`;
+            }
+            return `<div class="popover-file-item">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span>${archivo}</span>
+            </div>`;
+        })
+        .join("");
+
+    popover.innerHTML = `
+        <div class="popover-header">
+            <span>Soportes (${r.listaArchivos.length})</span>
+            <button type="button" class="popover-close-btn" onclick="document.getElementById('archivosPopoverActivo')?.remove()">&times;</button>
+        </div>
+        <div class="popover-body">${filesListHTML}</div>
+    `;
+
+    document.body.appendChild(popover);
+
+    // Posicionar cerca del botón
+    if (triggerBtn) {
+        const rect = triggerBtn.getBoundingClientRect();
+        popover.style.left = `${Math.max(10, rect.left)}px`;
+        popover.style.top = `${rect.bottom + 6}px`;
+    } else {
+        popover.style.left = "260px";
+        popover.style.top = "100px";
+    }
+
+    // Cerrar al hacer clic fuera
+    const closeListener = (e) => {
+        if (!popover.contains(e.target) && (!triggerBtn || !triggerBtn.contains(e.target))) {
+            popover.remove();
+            document.removeEventListener("click", closeListener);
+        }
+    };
+    setTimeout(() => document.addEventListener("click", closeListener), 50);
+};
+
 // ====== Utilidades de copia ======
 window.copiarNumero = function (event, carpeta) {
-    const r = todosLosResultados[carpeta];
-    const texto = r?.nroDocumento || "";
+    const texto = carpeta || "";
     if (!texto) return;
     navigator.clipboard?.writeText(texto).then(() => {
         // Mostrar tooltip cerca del cursor
         const tip = document.createElement("div");
         tip.className = "tooltip-copy";
-        tip.textContent = "Número copiado";
+        tip.textContent = "Carpeta copiada: " + texto;
         document.body.appendChild(tip);
         const x = event.pageX;
         const y = event.pageY;
@@ -1866,6 +2364,81 @@ window.copiarNumero = function (event, carpeta) {
             tip.remove();
         }, 1400);
     });
+};
+
+// ====== Modal Pop up para Reglas de Paquete ======
+window.mostrarModalReglasPaquete = function (paquete) {
+    const pkg = paquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
+    
+    let terapias = "";
+    switch (pkg) {
+        case "CPF1109":
+            terapias = "Entre 6 y 12 evoluciones sumadas en total.";
+            break;
+        case "CPF1110":
+            terapias = "Entre 12 y 20 evoluciones sumadas en total.";
+            break;
+        case "CPF1105":
+        case "CPF1106":
+            terapias = "Entre 12 y 30 evoluciones sumadas en total.";
+            break;
+        case "CPF1108":
+            terapias = "Sin requisitos específicos de cantidad.";
+            break;
+        default:
+            terapias = "Requisitos según paquete.";
+    }
+
+    // Remover popup previo si existe
+    const prev = document.getElementById("modalReglasPaqueteActivo");
+    if (prev) prev.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "modalReglasPaqueteActivo";
+    backdrop.className = "modal-rules-backdrop";
+
+    backdrop.innerHTML = `
+        <div class="modal-rules-card" onclick="event.stopPropagation()">
+            <div class="modal-rules-header">
+                <div class="modal-rules-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    <span>Reglas de Validación: <strong>${pkg}</strong></span>
+                </div>
+                <button type="button" class="modal-rules-close" onclick="document.getElementById('modalReglasPaqueteActivo').remove()">&times;</button>
+            </div>
+            <div class="modal-rules-body">
+                <div class="paquete-rules-card">
+                    <div class="rule-group">
+                        <span class="rule-label">Archivo Base:</span>
+                        <span class="rule-value">Código del paquete dentro de <code>2 PAQ.pdf</code></span>
+                    </div>
+                    <div class="rule-group">
+                        <span class="rule-label">Fijos Obligatorios:</span>
+                        <div class="rule-chips">
+                            <span class="rule-chip required">VM: 1</span>
+                            <span class="rule-chip required">ENF: 1</span>
+                            <span class="rule-chip required">VENF: 1</span>
+                        </div>
+                    </div>
+                    <div class="rule-group">
+                        <span class="rule-label">A Elección (1 solo):</span>
+                        <div class="rule-chips">
+                            <span class="rule-chip choice">PSI (1)</span>
+                            <span class="rule-chip choice">NUT (1)</span>
+                            <span class="rule-chip choice">TS (1)</span>
+                        </div>
+                    </div>
+                    <div class="rule-group">
+                        <span class="rule-label">Terapias:</span>
+                        <span class="rule-value highlight">${terapias}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", () => backdrop.remove());
 };
 
 // Event listener para el botón de descarga principal (si no estaba en otro lado)

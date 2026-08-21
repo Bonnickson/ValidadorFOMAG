@@ -139,9 +139,9 @@ export async function validarPorPaquete(
     resultados[carpeta].exitosPorServicio["General"] ||= [];
     resultados[carpeta].alertasPorServicio["General"] ||= [];
 
-    // Crear URLs para archivos PDF
+    // Asegurar URLs para archivos PDF solo si no existen
     for (const f of archivos) {
-        if (f.type === "application/pdf") {
+        if (f.type === "application/pdf" && !resultados[carpeta].fileUrls[f.name]) {
             resultados[carpeta].fileUrls[f.name] = URL.createObjectURL(f);
         }
     }
@@ -444,8 +444,9 @@ async function validarPDFPaquete(
     convenio = "capital-salud",
     tipoPaquete = ""
 ) {
+    let pdf = null;
     try {
-        const pdf = await pdfjsLib.getDocument({
+        pdf = await pdfjsLib.getDocument({
             data: await file.arrayBuffer(),
         }).promise;
 
@@ -679,10 +680,16 @@ async function validarPDFPaquete(
                     resultados[carpeta].erroresPorServicio[servicio] =
                         resultados[carpeta].erroresPorServicio[servicio] || [];
 
+                    const nombreMostrar = file?.name || `${numArchivo}.pdf`;
+                    const mensajeFalta =
+                        textosABuscar.length === 1
+                            ? `${nombreMostrar}: no contiene el texto requerido "${textosABuscar[0]}"`
+                            : `${nombreMostrar}: no contiene ninguno de los textos requeridos (${textosABuscar
+                                  .map((t) => `"${t}"`)
+                                  .join(" o ")})`;
+
                     resultados[carpeta].erroresPorServicio[servicio].push(
-                        `${numArchivo}.pdf: falta alguno de: ${textosABuscar.join(
-                            " o "
-                        )}`
+                        mensajeFalta
                     );
                     // Marcar el archivo con error
                     if (resultados[carpeta].pdfsPorServicio[servicio]) {
@@ -693,8 +700,9 @@ async function validarPDFPaquete(
                 } else {
                     resultados[carpeta].exitosPorServicio[servicio] =
                         resultados[carpeta].exitosPorServicio[servicio] || [];
+                    const nombreMostrar = file?.name || `${numArchivo}.pdf`;
                     resultados[carpeta].exitosPorServicio[servicio].push(
-                        `${numArchivo}.pdf: se encontró "${textoEncontrado}"`
+                        `${nombreMostrar}: contiene "${textoEncontrado}"`
                     );
                 }
 
@@ -763,6 +771,12 @@ async function validarPDFPaquete(
             if (numArchivo && resultados[carpeta].pdfsPorServicio[servicio]) {
                 resultados[carpeta].pdfsPorServicio[servicio][numArchivo] = "✗";
             }
+        }
+    } finally {
+        if (pdf && pdf.destroy) {
+            try {
+                await pdf.destroy();
+            } catch (_) {}
         }
     }
 }

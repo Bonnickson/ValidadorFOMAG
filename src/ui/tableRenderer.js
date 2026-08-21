@@ -17,7 +17,7 @@ const renderErrorItem = (errorText) => {
         ? "Cant autorizaciones ≠ cant evoluciones"
         : tipoError;
     const tipoNorm = normalizarTipoError(tipoFiltro);
-    return `<div class="error-item" data-error-type="${tipoFiltro}" data-error-type-normalized="${tipoNorm}">• ${errorText}</div>`;
+    return `<div class="error-item" data-error-type="${tipoFiltro}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">✕</span> <span>${errorText}</span></div>`;
 };
 
 const renderErrorItems = (errors = []) =>
@@ -122,13 +122,12 @@ export function actualizarHeadersTabla(
         tabla.classList.add("modo-paquete-dinamico");
         tablaHeader.innerHTML = `
             <tr>
-                <th>Tipo</th>
-                <th>Carpeta</th>
-                <th>Servicios</th>
-                <th>Evoluciones</th>
+                <th></th>
+                <th>Servicio</th>
                 <th>Archivos</th>
-                <th>Evoluciones Detalle</th>
-                <th>Errores</th>
+                <th>Evoluciones</th>
+                <th>Fechas</th>
+                <th>Errores / Hallazgos</th>
             </tr>
         `;
 
@@ -139,13 +138,12 @@ export function actualizarHeadersTabla(
         // Agregar colgroup para modo paquete
         const colgroupHTML = `
             <colgroup>
+                <col style="width: 130px;">
+                <col style="width: 145px;">
                 <col style="width: 100px;">
-                <col style="width: 130px;">
-                <col style="width: 130px;">
                 <col style="width: 70px;">
-                <col style="width: 130px;">
-                <col style="width: 130px;">
-                <col style="width: 220px;">
+                <col style="width: 165px;">
+                <col style="width: 250px;">
             </colgroup>
         `;
         tabla.insertAdjacentHTML("afterbegin", colgroupHTML);
@@ -168,15 +166,14 @@ export function createPlaceholderRow(
     tr.classList.add("processing");
 
     if (tipoValidacion === "paquete") {
-        // Placeholder simple para paquete
+        // Placeholder con exactamente 6 celdas coincidentes con las columnas
         tr.innerHTML = `
-            <td>—</td>
-            <td>${carpeta} <span class="spinner" aria-hidden></span></td>
+            <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta}</span></td>
+            <td class="servicio-nombre"><span class="spinner" aria-hidden></span> Procesando...</td>
             <td>…</td>
-            <td>…</td>
-            <td>…</td>
-            <td>…</td>
-            <td>—</td>
+            <td class="count-evol-cell">—</td>
+            <td class="fechas">—</td>
+            <td><span style="color: var(--text-muted); font-size: 11px;">Analizando archivos...</span></td>
         `;
     } else {
         tr.innerHTML = `
@@ -341,7 +338,9 @@ function renderPaqueteFilas(
         "TO",
     ];
 
-    const serviciosArray = [...r.servicios].sort((a, b) => {
+    // Excluir 'General' de la lista de filas para no crear una fila separada de paquete
+    const serviciosReales = [...r.servicios].filter(s => s !== "General");
+    const serviciosArray = serviciosReales.sort((a, b) => {
         const indexA = ordenServicios.indexOf(a);
         const indexB = ordenServicios.indexOf(b);
 
@@ -353,27 +352,93 @@ function renderPaqueteFilas(
         return a.localeCompare(b);
     });
 
-    const erroresGenerales = r.errores || [];
+    // Si por alguna razón no hay otros servicios, dejar al menos uno
+    if (serviciosArray.length === 0) {
+        serviciosArray.push("VM");
+    }
 
+    const erroresGenerales = [
+        ...(r.errores || []),
+        ...(r.erroresPorServicio?.["General"] || [])
+    ];
+    const alertasGenerales = r.alertasPorServicio?.["General"] || [];
+    const exitosGenerales = r.exitosPorServicio?.["General"] || [];
+
+    // 1. Fila de Encabezado del Documento / Lote (Fila 1)
+    const totalArchivos = (r.listaArchivos || []).length;
+    let badge2PaqHTML = "";
+    const tiene2Paq = (r.listaArchivos || []).some(a => a.toLowerCase() === "2 paq.pdf");
+    if (tiene2Paq) {
+        const nombreArchivo = (r.listaArchivos || []).find(a => a.toLowerCase() === "2 paq.pdf") || "2 PAQ.pdf";
+        const urlKey = Object.keys(r.fileUrls || {}).find(k => k.toLowerCase() === "2 paq.pdf");
+        const url = urlKey ? r.fileUrls[urlKey] : null;
+        const etiquetaLimpia = "2 PAQ";
+        if (url) {
+            badge2PaqHTML = `<a href="#" onclick="abrirPDFModal('${url}', '${nombreArchivo}', this); return false;" class="archivo-link ok" title="Abrir ${nombreArchivo}">${etiquetaLimpia}</a>`;
+        } else {
+            badge2PaqHTML = `<span class="archivo-link ok">${etiquetaLimpia}</span>`;
+        }
+    }
+
+    // 1. Fila de Encabezado del Lote con celda de Documento que abarca todas las filas (rowspan)
+    const totalFilasLote = serviciosArray.length + 1;
+    const trHeader = document.createElement("tr");
+    trHeader.setAttribute("data-carpeta", carpeta);
+    trHeader.classList.add("paquete-row", "paquete-doc-header-row", grupoClase, "grupo-inicio");
+    
+    // Estado general del lote
+    const estadoGeneral = (r.errores && r.errores.length > 0) || (erroresGenerales.length > 0)
+        ? "con-errores"
+        : (alertasGenerales.length > 0 ? "con-alertas" : "sin-errores");
+    trHeader.setAttribute("data-estado", estadoGeneral);
+
+    const erroresGeneralesHeaderHTML = [
+        ...exitosGenerales.map(e => `<div class="exito-item validacion-exitosa" style="display: ${mostrarExitos ? "" : "none"}">✓ ${e}</div>`),
+        ...alertasGenerales.map(a => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${a}</strong></div>`),
+        renderErrorItems(erroresGenerales)
+    ].filter(Boolean).join("") || "";
+
+    const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
+
+    trHeader.innerHTML = `
+        <td rowspan="${totalFilasLote}" class="carpeta-cell doc-header-grouped">
+            <div class="doc-badge-stack">
+                <div class="doc-package-tag">
+                    <span class="package-name">${paqueteCodigo}</span>
+                    <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${paqueteCodigo}')" title="Ver reglas del paquete ${paqueteCodigo}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                    </button>
+                </div>
+                <div class="doc-title-line">
+                    <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar nombre de carpeta">📋</button>
+                    <span class="carpeta-nombre">${carpeta}</span>
+                </div>
+                <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                    <span>${totalArchivos} soportes</span>
+                </button>
+            </div>
+        </td>
+        <td class="servicio-nombre">📦 Paquete</td>
+        <td class="archivos-cell center-cell">${badge2PaqHTML || "—"}</td>
+        <td class="count-evol-cell">—</td>
+        <td class="fechas">—</td>
+        <td class="errores-cell">${erroresGeneralesHeaderHTML || (estadoGeneral === "sin-errores" ? '<div class="badge-exito">✔ Todo correcto</div>' : "—")}</td>
+    `;
+    tablaBody.appendChild(trHeader);
+
+    // 2. Filas de los Servicios Clínicos (Fila 2 en adelante)
     serviciosArray.forEach((s, index) => {
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
         tr.setAttribute("data-servicio", s);
-        tr.classList.add("paquete-row");
-        tr.classList.add(grupoClase);
+        tr.classList.add("paquete-row", "paquete-service-row", grupoClase);
 
-        // Marcar la primera fila del grupo para agregar espaciado
-        if (index === 0) {
-            tr.classList.add("grupo-inicio");
-        }
-
-        // Marcar la última fila del grupo
         if (index === serviciosArray.length - 1) {
             tr.classList.add("grupo-fin");
         }
 
         const fechas5 = r.fechasPorServicio[s] || [];
-        const numero2 = r.numerosPorServicio?.[s] || "—";
         const cant5 = [...new Set(fechas5)].length;
         const servicioLower = s === "SUCCION" ? "succion" : s.toLowerCase();
 
@@ -381,11 +446,7 @@ function renderPaqueteFilas(
         const erroresServicio = r.erroresPorServicio?.[s] || [];
         const alertasServicio = r.alertasPorServicio?.[s] || [];
 
-        // Incluir errores generales una sola vez (en la primera fila del grupo)
-        const erroresGeneralesFila = index === 0 ? erroresGenerales : [];
-
-        const tieneErrores =
-            erroresServicio.length > 0 || erroresGeneralesFila.length > 0;
+        const tieneErrores = erroresServicio.length > 0;
         const tieneAlertas = alertasServicio.length > 0;
 
         let estado = "sin-errores";
@@ -396,70 +457,56 @@ function renderPaqueteFilas(
         }
         tr.setAttribute("data-estado", estado);
 
-        // Para "General", mostrar 2 PAQ.pdf si existe
-        let archivosHTML = "—";
-        if (s === "General") {
-            const tiene2Paq = (r.listaArchivos || []).some(a => a.toLowerCase() === "2 paq.pdf");
-            if (tiene2Paq) {
-                const nombreArchivo = (r.listaArchivos || []).find(a => a.toLowerCase() === "2 paq.pdf") || "2 PAQ.pdf";
-                const urlKey = Object.keys(r.fileUrls).find(k => k.toLowerCase() === "2 paq.pdf");
+        // Mostrar siempre los archivos 4, 5 sin tooltip hover invasivo
+        const archivosEsperados = ["4", "5"];
+        const archivosHTML = archivosEsperados
+            .map((num) => {
+                const nombreArchivo = `${num} ${servicioLower}.pdf`;
+                const urlKey = Object.keys(r.fileUrls).find(
+                    (k) => k.toLowerCase() === nombreArchivo.toLowerCase()
+                );
                 const url = urlKey ? r.fileUrls[urlKey] : null;
-                const cls = "ok";
+                const status = r.pdfsPorServicio[s]?.[num] || "—";
+                const cls =
+                    status === "✔"
+                        ? "ok"
+                        : status === "—"
+                            ? "missing"
+                            : "fail";
+                const label = `${num} ${status}`;
                 if (url) {
-                    archivosHTML = `<a href="#" onclick="abrirPDFModal('${url}', '${nombreArchivo}', this); return false;" class="archivo-link ${cls}" title="Abrir ${nombreArchivo}">${nombreArchivo}</a>`;
-                } else {
-                    archivosHTML = `<span class="archivo-link ${cls}">${nombreArchivo}</span>`;
+                    return `<a href="#" onclick="abrirPDFModal('${url}', '${nombreArchivo}', this); return false;" class="archivo-link ${cls}">${label}</a>`;
                 }
-            }
-        } else {
-            // Mostrar siempre los archivos 4, 5 (existan o no)
-            const archivosEsperados = ["4", "5"];
-            archivosHTML = archivosEsperados
-                .map((num) => {
-                    const nombreArchivo = `${num} ${servicioLower}.pdf`;
-                    // Buscar la URL sin importar mayúsculas/minúsculas
-                    const urlKey = Object.keys(r.fileUrls).find(
-                        (k) => k.toLowerCase() === nombreArchivo.toLowerCase()
-                    );
-                    const url = urlKey ? r.fileUrls[urlKey] : null;
-                    const status = r.pdfsPorServicio[s]?.[num] || "—";
-                    const cls =
-                        status === "✔"
-                            ? "ok"
-                            : status === "—"
-                                ? "missing"
-                                : "fail";
-                    const label = `${num} ${status}`;
-                    if (url) {
-                        return `<a href="#" onclick="abrirPDFModal('${url}', '${nombreArchivo}', this); return false;" class="archivo-link ${cls}" title="Abrir ${nombreArchivo}">${label}</a>`;
-                    }
-                    return `<span class="archivo-link ${cls}">${label}</span>`;
-                })
-                .join(" ");
-        }
+                return `<span class="archivo-link ${cls}">${label}</span>`;
+            })
+            .join(" ");
 
-        // Formatear fechas con el mismo diseño que evento (pills)
+        // Formatear fechas con flechas sutiles de scroll si son más de 2
         const fechasFormateadas = [...new Set(fechas5)].map(formatearFecha);
-        const fechasPills = fechasFormateadas
-            .map((f) => `<span class="fecha-text">${f}</span>`)
-            .join("");
-        const scrollClass = fechasFormateadas.length > 4 ? "fechas-scroll" : "";
-        const fechasHTML =
-            fechasFormateadas.length > 0
-                ? `<div class="fechas-list ${scrollClass}">${fechasPills}</div>`
-                : "—";
+        let fechasHTML = "—";
+        if (fechasFormateadas.length > 0) {
+            const fechasPills = fechasFormateadas
+                .map((f) => `<span class="fecha-text">${f}</span>`)
+                .join("");
+            
+            if (fechasFormateadas.length > 2) {
+                fechasHTML = `
+                    <div class="fechas-slider-wrapper">
+                        <button type="button" class="btn-scroll-fecha" onclick="this.nextElementSibling.scrollBy({left: -80, behavior: 'smooth'})" title="Fecha anterior">‹</button>
+                        <div class="fechas-list">${fechasPills}</div>
+                        <button type="button" class="btn-scroll-fecha" onclick="this.previousElementSibling.scrollBy({left: 80, behavior: 'smooth'})" title="Siguiente fecha">›</button>
+                    </div>
+                `;
+            } else {
+                fechasHTML = `<div class="fechas-list">${fechasPills}</div>`;
+            }
+        }
 
         const nombreCompleto = SERVICIOS_NOMBRES[s] || s;
 
-        // Obtener errores, éxitos y alertas específicos del servicio para renderizar
-        const erroresServicioRender = [
-            ...(r.erroresPorServicio?.[s] || []),
-            ...erroresGeneralesFila,
-        ];
         const exitosServicio = r.exitosPorServicio?.[s] || [];
         const alertasServicioRender = r.alertasPorServicio?.[s] || [];
 
-        // Ordenar validaciones exitosas por número de archivo (2, 4, 5)
         const ordenArchivo = { 2: 1, 4: 2, 5: 3 };
         const exitosOrdenados = [...exitosServicio].sort((a, b) => {
             const aNum =
@@ -480,11 +527,10 @@ function renderPaqueteFilas(
             )
             .join("");
         const alertasHTML = alertasServicioRender
-            .map((e) => `<div class="alerta-item">⚠ ${e}</div>`)
+            .map((e) => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${e}</strong></div>`)
             .join("");
-        const erroresHTML = renderErrorItems(erroresServicioRender);
+        const erroresHTML = renderErrorItems(erroresServicio);
 
-        // Si solo hay éxitos (sin errores ni alertas), agregar badge verde
         const soloExitos = exitosHTML && !alertasHTML && !erroresHTML;
         const badgeExito = soloExitos
             ? `<div class="badge-exito">✔ Todo correcto</div>`
@@ -495,26 +541,17 @@ function renderPaqueteFilas(
                 ? badgeExito + exitosHTML + alertasHTML + erroresHTML
                 : "—";
 
-        // Agregar clase especial si solo tiene éxitos (sin errores ni alertas)
         if (soloExitos) {
             tr.classList.add("solo-exitos");
         }
 
-        // Todas las filas tienen 8 celdas con TIPO y CARPETA visibles
+        // Sin celda vacía porque la primera columna está cubierta por el rowspan
         tr.innerHTML = `
-            <td>${tipoDisplay}</td>
-            <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta}
-                <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar número" aria-label="Copiar número">📋</button>
-            </span>
-                <div class="carpeta-contenido">${(r.listaArchivos || [])
-                .map((a) => `<span class='archivo-mini'>${a}</span>`)
-                .join(" ")}</div>
-            </td>
             <td class="servicio-nombre">${nombreCompleto}</td>
-            <td>${cant5}</td>
-            <td>${archivosHTML || "—"}</td>
-            <td>${fechasHTML}</td>
-            <td>${erroresServicioHTML}</td>
+            <td class="archivos-cell center-cell">${archivosHTML || "—"}</td>
+            <td class="count-evol-cell">${cant5}</td>
+            <td class="fechas">${fechasHTML}</td>
+            <td class="errores-cell">${erroresServicioHTML}</td>
         `;
 
         tablaBody.appendChild(tr);
@@ -657,7 +694,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const alertasServicio = r.alertasPorServicio?.[servicio] || [];
         const erroresHTML = renderErrorItems(erroresServicio);
         const alertasHTML = alertasServicio
-            .map((a) => `<div class="alerta-item">⚠️ ${a}</div>`)
+            .map((a) => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${a}</strong></div>`)
             .join("");
 
         const exitosServicio = r.exitosPorServicio?.[servicio] || [];
@@ -706,11 +743,11 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
                 <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar número">📋</button>
             </span></td>
             <td class="servicio-nombre">${nombreCompleto}</td>
-            <td>${archivosHTML || "—"}</td>
-            <td class="${cantAutoClass}">${cantAuto || "—"}</td>
-            <td>${cantEvol || "—"}</td>
-            <td>${fechasHTML}</td>
-            <td>${erroresServicioHTML}</td>
+            <td class="archivos-cell center-cell">${archivosHTML || "—"}</td>
+            <td class="cant-auto-cell ${cantAutoClass}">${cantAuto || "—"}</td>
+            <td class="count-evol-cell">${cantEvol || "—"}</td>
+            <td class="fechas">${fechasHTML}</td>
+            <td class="errores-cell">${erroresServicioHTML}</td>
         `;
 
         tablaBody.appendChild(tr);

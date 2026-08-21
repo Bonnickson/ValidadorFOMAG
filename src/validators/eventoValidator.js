@@ -119,8 +119,9 @@ export async function validarPDF(
     // console.log(`   Ruta: ${file.webkitRelativePath || file.name}`);
     // console.log(`   Convenio: ${convenio}`);
 
+    let pdf = null;
     try {
-        const pdf = await pdfjsLib.getDocument({
+        pdf = await pdfjsLib.getDocument({
             data: await file.arrayBuffer(),
         }).promise;
 
@@ -250,19 +251,20 @@ export async function validarPDF(
             }
 
             if (!textoEncontrado) {
+                const mensajeFalta =
+                    textosABuscar.length === 1
+                        ? `${file.name}: no contiene el texto requerido "${textosABuscar[0]}"`
+                        : `${file.name}: no contiene ninguno de los textos requeridos (${textosABuscar
+                              .map((t) => `"${t}"`)
+                              .join(" o ")})`;
+
                 // Error: va a erroresPorServicio si es FOMAG con servicio
                 if (servicioUpper && convenio === "fomag") {
                     resultados[carpeta].erroresPorServicio[servicioUpper].push(
-                        `${file.name}: falta alguno de: ${textosABuscar.join(
-                            " o "
-                        )}`
+                        mensajeFalta
                     );
                 } else {
-                    resultados[carpeta].errores.push(
-                        `${file.name}: falta alguno de: ${textosABuscar.join(
-                            " o "
-                        )}`
-                    );
+                    resultados[carpeta].errores.push(mensajeFalta);
                 }
                 if (resultados[carpeta].pdfs?.[file.name] !== undefined) {
                     resultados[carpeta].pdfs[file.name] = "❌";
@@ -393,6 +395,12 @@ export async function validarPDF(
         if (resultados[carpeta].pdfs?.[file.name] !== undefined) {
             resultados[carpeta].pdfs[file.name] = "❌";
         }
+    } finally {
+        if (pdf && pdf.destroy) {
+            try {
+                await pdf.destroy();
+            } catch (_) {}
+        }
     }
 }
 
@@ -406,8 +414,9 @@ export async function procesarArchivo2PaqEvento(
     resultados,
     serviciosDetectados
 ) {
+    let pdf = null;
     try {
-        const pdf = await pdfjsLib.getDocument({
+        pdf = await pdfjsLib.getDocument({
             data: await file.arrayBuffer(),
         }).promise;
 
@@ -437,5 +446,11 @@ export async function procesarArchivo2PaqEvento(
         }
     } catch {
         resultados[carpeta].errores.push(`2 paq.pdf: error leyendo PDF`);
+    } finally {
+        if (pdf && pdf.destroy) {
+            try {
+                await pdf.destroy();
+            } catch (_) {}
+        }
     }
 }

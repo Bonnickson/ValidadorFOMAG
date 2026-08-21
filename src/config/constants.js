@@ -20,17 +20,25 @@ export const ALLOWED_TYPES = [
 
 export const SERVICIOS_TERAPIA = ["TF", "TR", "SUCCION", "TO", "FON"];
 
+export const PAQUETES_SOPORTADOS = [
+    "CPF1105",
+    "CPF1106",
+    "CPF1108",
+    "CPF1109",
+    "CPF1110",
+];
+
 export const SERVICIOS_NOMBRES = {
-    General: "⚠️ General",
-    VM: "👨‍⚕️ Valoración Médica",
-    ENF: "🩺 Enfermería",
-    ENF12: "🩺 Enfermería 12h",
+    General: "📦 Paquete",
+    VM: "🩺 Valoración Médica",
+    ENF: "💉 Enfermería",
+    ENF12: "💉 Enfermería 12h",
     TF: "🏃 Terapia Física",
     TR: "🫁 Terapia Respiratoria",
-    SUCCION: "💨 Succión",
+    SUCCION: "🌬️ Succión",
     TRS: "🫁 Terapia Respiratoria Succión",
     TO: "🧘 Terapia Ocupacional",
-    TS: "🤝 Trabajo Social",
+    TS: "👥 Trabajo Social",
     PSI: "🧠 Psicología",
     FON: "🗣️ Fonoaudiología",
     NUT: "🥗 Nutrición",
