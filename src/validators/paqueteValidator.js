@@ -1,6 +1,13 @@
 import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs";
 import { obtenerReglasPaquete } from "../reglas.js";
-import { DEBUG, SERVICIOS_TERAPIA } from "../config/constants.js";
+import {
+    DEBUG,
+    SERVICIOS_TERAPIA,
+    TERAPIAS_CONTABLES,
+    REGLAS_TERAPIAS_PAQUETES,
+    obtenerTextoServicioFomag,
+    REGEX_SERVICIO_ARCHIVO,
+} from "../config/constants.js";
 import {
     normalizeForSearch,
     escapeRegExp,
@@ -29,31 +36,15 @@ export function validarArchivosPermitidosPaquete(
     convenio
 ) {
     const archivosNoPermitidos = [];
-    const serviciosValidos = [
-        "vm",
-        "enf",
-        "tf",
-        "tr",
-        "succion",
-        "suc",
-        "ts",
-        "psi",
-        "to",
-        "fon",
-        "nut",
-        "venf",
-        "trs"
-    ];
 
     for (const archivo of archivos) {
         const nombreLower = archivo.name.toLowerCase();
 
         // Patrón válido: "2 vm.pdf", "4 enf.pdf", etc.
-        const patronServicio =
-            /^[2-5]\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/;
+        const patronServicio = REGEX_SERVICIO_ARCHIVO;
 
         // Patrón válido solo para FOMAG: "2 paq.pdf"
-        const patron2Paq = /^2\s+paq\.pdf$/;
+        const patron2Paq = /^2\s+paq\.pdf$/i;
 
         const esArchivoValido =
             patronServicio.test(nombreLower) ||
@@ -293,28 +284,15 @@ export async function validarPorPaquete(
         }
 
         // Sumar evoluciones de las 5 terapias
-        const TERAPIAS_CONTABLES = new Set(["TF", "TR", "FON", "TO", "TRS"]);
         let totalTerapias = 0;
         for (const s of TERAPIAS_CONTABLES) {
             totalTerapias +=
                 resultados[carpeta].fechasPorServicio?.[s]?.length || 0;
         }
 
-        let minTerapias = 0;
-        let maxTerapias = 0;
-
-        switch (tipoPaquete) {
-            case "CPF1109":
-                minTerapias = 6; maxTerapias = 12;
-                break;
-            case "CPF1110":
-                minTerapias = 12; maxTerapias = 20;
-                break;
-            case "CPF1105":
-            case "CPF1106":
-                minTerapias = 12; maxTerapias = 30;
-                break;
-        }
+        const reglaTerapias = REGLAS_TERAPIAS_PAQUETES[tipoPaquete];
+        const minTerapias = reglaTerapias?.min || 0;
+        const maxTerapias = reglaTerapias?.max || 0;
 
         if (minTerapias > 0) {
             if (totalTerapias < minTerapias) {
@@ -887,24 +865,4 @@ async function validarArchivo2Fomag(
             `${file.name}: no se pudo extraer el número después del texto`
         );
     }
-}
-
-/**
- * Obtiene el texto a buscar para un servicio en FOMAG
- */
-function obtenerTextoServicioFomag(servicio) {
-    const textos = {
-        TF: "ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPIA",
-        TR: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA RESPIRATORIA",
-        SUCCION: "TERAPIA SUCCION",
-        FON: "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
-        VM: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
-        ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
-        PSI: "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
-        TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
-        TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
-        VENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
-        TRS: "Terapia respiratoria Succion"
-    };
-    return textos[servicio] || null;
 }

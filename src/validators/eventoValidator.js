@@ -1,33 +1,16 @@
 import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs";
 import { obtenerReglasEvento } from "../reglas.js";
-import { DEBUG } from "../config/constants.js";
+import {
+    DEBUG,
+    obtenerTextoServicioFomag,
+    REGEX_SERVICIO_ARCHIVO,
+} from "../config/constants.js";
 import {
     normalizeForSearch,
     escapeRegExp,
     extraerNumeroDelTexto,
 } from "../utils/textUtils.js";
 import { extraerTextoPDF, extraerFechas } from "../utils/pdfUtils.js";
-
-/**
- * Obtiene el texto a buscar para un servicio en FOMAG (igual que en paquetes)
- */
-function obtenerTextoServicioFomag(servicio) {
-    const textos = {
-        TF: "ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPIA",
-        TR: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA RESPIRATORIA",
-        SUCCION: "TERAPIA SUCCION",
-        TRS: "Terapia respiratoria Succion",
-        FON: "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
-        VM: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
-        ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
-        ENF12: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
-        PSI: "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
-        TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
-        TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
-        NUT: "ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA",
-    };
-    return textos[servicio] || null;
-}
 
 /**
  * Valida que solo existan archivos permitidos en la carpeta de evento
@@ -53,8 +36,7 @@ export function validarArchivosPermitidosEvento(
 
     // En FOMAG por evento, también se aceptan archivos por servicio:
     // Ej: "2 tf.pdf", "4 tr.pdf", "5 enf.pdf", "2 paq.pdf" (insensible a mayúsculas)
-    const patronServicio =
-        /^[2-5]\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
+    const patronServicio = REGEX_SERVICIO_ARCHIVO;
     const es2Paq = (nombre) => nombre.toLowerCase() === "2 paq.pdf";
 
     for (const archivo of archivos) {

@@ -766,6 +766,37 @@ tbody tr:hover td {
     background: var(--bg-card-hover);
 }
 
+/* ================= SOMBREADO DE REGISTRO SELECCIONADO / ACTIVO ================= */
+tbody tr.selected-folder td,
+tbody tr.selected td {
+    background: rgba(37, 99, 235, 0.16) !important;
+}
+
+tbody tr.selected-folder td.carpeta-cell,
+tbody tr.selected td.carpeta-cell {
+    border-left: 5px solid var(--accent, #2563eb) !important;
+    background: rgba(37, 99, 235, 0.22) !important;
+}
+
+tbody tr.selected td {
+    background: rgba(37, 99, 235, 0.24) !important;
+}
+
+body.theme-dark tbody tr.selected-folder td,
+body.theme-dark tbody tr.selected td {
+    background: rgba(59, 130, 246, 0.28) !important;
+}
+
+body.theme-dark tbody tr.selected-folder td.carpeta-cell,
+body.theme-dark tbody tr.selected td.carpeta-cell {
+    border-left: 5px solid #60a5fa !important;
+    background: rgba(59, 130, 246, 0.38) !important;
+}
+
+body.theme-dark tbody tr.selected td {
+    background: rgba(59, 130, 246, 0.42) !important;
+}
+
 /* Paquete Row Groups */
 .paquete-row.grupo-inicio td {
     border-top: 1.5px solid var(--border-strong);
@@ -844,14 +875,15 @@ td.missing {
 
 .alerta-item {
     font-size: 11px;
-    color: var(--warning-text, #f59e0b);
     font-weight: 700 !important;
+    color: var(--warning-text, #f59e0b);
     margin-bottom: 3px;
     display: flex;
     align-items: flex-start;
     gap: 4px;
 }
 
+.alerta-item span,
 .alerta-item strong {
     font-weight: 700 !important;
     color: inherit;
@@ -864,11 +896,17 @@ td.missing {
 
 .error-item {
     font-size: 11px;
+    font-weight: 700 !important;
     color: var(--danger-text, #ef4444);
     margin-bottom: 3px;
     display: flex;
     align-items: flex-start;
     gap: 4px;
+}
+
+.error-item span,
+.error-item strong {
+    font-weight: 700 !important;
 }
 
 .error-item .error-icon {
@@ -2122,8 +2160,8 @@ td.fechas {
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-modal);
-    width: 240px;
-    max-height: 260px;
+    width: 270px;
+    max-height: 280px;
     display: flex;
     flex-direction: column;
     animation: popoverFadeIn 0.15s ease-out;
@@ -2172,8 +2210,8 @@ td.fechas {
 .popover-file-item {
     display: flex;
     align-items: center;
-    gap: 6px;
-    padding: 4px 8px;
+    gap: 7px;
+    padding: 5px 8px;
     border-radius: 4px;
     font-size: 11px;
     font-family: var(--font-mono);
@@ -2184,10 +2222,59 @@ td.fechas {
     transition: var(--transition);
 }
 
+.popover-file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .popover-file-link:hover {
     background: var(--accent-glow);
     color: var(--accent-text);
     border-color: var(--accent-border);
+}
+
+.soporte-icon {
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    flex-shrink: 0;
+}
+
+.soporte-icon.error-x {
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.popover-file-link.soporte-no-reconocido,
+.popover-file-item.soporte-no-reconocido {
+    border-color: rgba(239, 68, 68, 0.35) !important;
+    background: rgba(239, 68, 68, 0.06) !important;
+    color: var(--danger-text) !important;
+}
+
+.popover-file-link.soporte-no-reconocido:hover {
+    background: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.6) !important;
+}
+
+.badge-no-reconocido {
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(239, 68, 68, 0.18);
+    color: #dc2626;
+    font-weight: 700;
+    font-family: var(--font-sans);
+    flex-shrink: 0;
+}
+
+body.theme-dark .badge-no-reconocido {
+    color: #f87171;
+    background: rgba(239, 68, 68, 0.25);
 }
 /* ================= ALINEACIÓN DE COLUMNAS Y CELDAS DE TABLA ================= */
 .count-evol-cell {
@@ -2471,11 +2558,12 @@ body.theme-dark .fecha-text {
     white-space: nowrap !important;
     line-height: 1.2 !important;
 }
-/* ================= VISOR EXACTO DE 2 FECHAS COMPLETAS ================= */
+/* ================= VISOR DE AL MENOS 3 FECHAS COMPLETAS ================= */
 #tabla.modo-paquete-dinamico th:nth-child(5),
 #tabla.modo-paquete-dinamico td.fechas {
-    width: 190px !important;
-    max-width: 190px !important;
+    width: 285px !important;
+    min-width: 285px !important;
+    max-width: 285px !important;
     text-align: left !important;
 }
 
@@ -2484,12 +2572,12 @@ body.theme-dark .fecha-text {
     align-items: center !important;
     gap: 4px !important;
     width: 100% !important;
-    max-width: 180px !important;
+    max-width: 280px !important;
 }
 
 .fechas-slider-wrapper .fechas-list {
-    width: 155px !important; /* Espacio exacto para mostrar 2 fechas de 74px completas */
-    max-width: 155px !important;
+    width: 250px !important; /* Espacio para mostrar al menos 3 fechas completas sin recortes */
+    max-width: 250px !important;
     overflow-x: hidden !important;
     scroll-snap-type: x mandatory !important;
 }
@@ -2741,9 +2829,9 @@ body.theme-dark .fecha-text {
 
 #tabla th:nth-child(5),
 #tabla td.fechas {
-    width: 165px !important;
-    min-width: 165px !important;
-    max-width: 165px !important;
+    width: 285px !important;
+    min-width: 285px !important;
+    max-width: 285px !important;
 }
 
 #tabla th:nth-child(6),
@@ -2759,12 +2847,12 @@ tr.processing td {
 }
 
 .fechas-slider-wrapper {
-    max-width: 155px !important;
+    max-width: 280px !important;
 }
 
 .fechas-slider-wrapper .fechas-list {
-    width: 135px !important;
-    max-width: 135px !important;
+    width: 250px !important;
+    max-width: 250px !important;
 }
 /* ================= SIDEBAR MÁS DELGADO Y RESPONSIVE ================= */
 .sidebar-panel {
@@ -2907,7 +2995,7 @@ tr.processing td {
     box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-/* Evitar que el texto de errores se corte bruscamente */
+/* Evitar que el texto de errores se corte bruscamente y forzar negrilla */
 .error-item,
 .exito-item,
 .alerta-item {
@@ -2916,7 +3004,15 @@ tr.processing td {
     white-space: normal !important;
     line-height: 1.35 !important;
     font-size: 11px !important;
+    font-weight: 700 !important;
     margin-bottom: 2px !important;
+}
+
+.error-item span,
+.error-item strong,
+.alerta-item span,
+.alerta-item strong {
+    font-weight: 700 !important;
 }
 /* ================= GRID DE INCIDENCIAS FLUIDO Y MULTI-COLUMNA ================= */
 .error-cards-grid {
@@ -3003,7 +3099,23 @@ tr.processing td {
 .doc-title-line {
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 5px !important;
+}
+
+.doc-title-line .copy-inline-btn {
+    font-size: 12px !important;
+    padding: 0 !important;
+    background: transparent !important;
+    border: none !important;
+    cursor: pointer !important;
+    line-height: 1 !important;
+    opacity: 0.7 !important;
+    transition: var(--transition) !important;
+}
+
+.doc-title-line .copy-inline-btn:hover {
+    opacity: 1 !important;
+    transform: scale(1.18);
 }
 
 .doc-title-line .carpeta-nombre {
@@ -3119,7 +3231,7 @@ tr.processing td {
     overflow-y: auto;
 }
 
-/* ================= NOMBRE DE PAQUETE DESTACADO ================= */
+/* ================= NOMBRE DE PAQUETE DESTACADO Y COLORES ESPECÍFICOS ================= */
 .doc-package-tag {
     display: inline-flex !important;
     align-items: center !important;
@@ -3131,11 +3243,7 @@ tr.processing td {
     padding: 2px 7px !important;
     width: fit-content !important;
     transition: var(--transition) !important;
-}
-
-.doc-package-tag:hover {
-    border-color: var(--accent) !important;
-    background: rgba(99, 102, 241, 0.18) !important;
+    cursor: default;
 }
 
 .doc-package-tag .package-name {
@@ -3146,7 +3254,7 @@ tr.processing td {
 }
 
 .btn-package-rules {
-    color: var(--accent-text) !important;
+    color: currentColor !important;
     opacity: 0.85 !important;
 }
 
@@ -3154,6 +3262,90 @@ tr.processing td {
     opacity: 1 !important;
     transform: scale(1.15);
 }
+
+/* Colores específicos por cada paquete */
+/* CPF1108: Azul cielo / Cyan */
+.doc-package-tag.pkg-cpf1108 {
+    background: rgba(2, 132, 199, 0.12) !important;
+    color: #0284c7 !important;
+    border-color: rgba(2, 132, 199, 0.35) !important;
+}
+.doc-package-tag.pkg-cpf1108:hover {
+    background: rgba(2, 132, 199, 0.22) !important;
+    border-color: #0284c7 !important;
+}
+
+/* CPF1109: Esmeralda / Verde */
+.doc-package-tag.pkg-cpf1109 {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #059669 !important;
+    border-color: rgba(16, 185, 129, 0.35) !important;
+}
+.doc-package-tag.pkg-cpf1109:hover {
+    background: rgba(16, 185, 129, 0.22) !important;
+    border-color: #10b981 !important;
+}
+
+/* CPF1110: Ámbar / Dorado */
+.doc-package-tag.pkg-cpf1110 {
+    background: rgba(245, 158, 11, 0.12) !important;
+    color: #d97706 !important;
+    border-color: rgba(245, 158, 11, 0.35) !important;
+}
+.doc-package-tag.pkg-cpf1110:hover {
+    background: rgba(245, 158, 11, 0.22) !important;
+    border-color: #f59e0b !important;
+}
+
+/* CPF1105: Violeta / Púrpura */
+.doc-package-tag.pkg-cpf1105 {
+    background: rgba(139, 92, 246, 0.12) !important;
+    color: #7c3aed !important;
+    border-color: rgba(139, 92, 246, 0.35) !important;
+}
+.doc-package-tag.pkg-cpf1105:hover {
+    background: rgba(139, 92, 246, 0.22) !important;
+    border-color: #8b5cf6 !important;
+}
+
+/* CPF1106: Rosa / Fucsia */
+.doc-package-tag.pkg-cpf1106 {
+    background: rgba(244, 63, 94, 0.12) !important;
+    color: #e11d48 !important;
+    border-color: rgba(244, 63, 94, 0.35) !important;
+}
+.doc-package-tag.pkg-cpf1106:hover {
+    background: rgba(244, 63, 94, 0.22) !important;
+    border-color: #f43f5e !important;
+}
+
+/* Modo oscuro para los paquetes */
+body.theme-dark .doc-package-tag.pkg-cpf1108 {
+    background: rgba(56, 189, 248, 0.16) !important;
+    color: #38bdf8 !important;
+    border-color: rgba(56, 189, 248, 0.4) !important;
+}
+body.theme-dark .doc-package-tag.pkg-cpf1109 {
+    background: rgba(52, 211, 153, 0.16) !important;
+    color: #34d399 !important;
+    border-color: rgba(52, 211, 153, 0.4) !important;
+}
+body.theme-dark .doc-package-tag.pkg-cpf1110 {
+    background: rgba(251, 191, 36, 0.16) !important;
+    color: #fbbf24 !important;
+    border-color: rgba(251, 191, 36, 0.4) !important;
+}
+body.theme-dark .doc-package-tag.pkg-cpf1105 {
+    background: rgba(167, 139, 250, 0.16) !important;
+    color: #a78bfa !important;
+    border-color: rgba(167, 139, 250, 0.4) !important;
+}
+body.theme-dark .doc-package-tag.pkg-cpf1106 {
+    background: rgba(251, 113, 133, 0.16) !important;
+    color: #fb7185 !important;
+    border-color: rgba(251, 113, 133, 0.4) !important;
+}
+
 /* ================= ALINEACIÓN ESTRICTA POR CLASES EN MODO PAQUETE ================= */
 .paquete-row td.carpeta-cell {
     width: 130px !important;
@@ -3170,22 +3362,289 @@ tr.processing td {
 
 .paquete-row td.center-cell,
 .paquete-service-row td:not(.carpeta-cell):not(.servicio-nombre):not(.count-evol-cell):not(.fechas):first-of-type {
-    width: 100px !important;
-    min-width: 100px !important;
-    max-width: 100px !important;
+    width: 90px !important;
+    min-width: 90px !important;
+    max-width: 90px !important;
     text-align: center !important;
 }
 
 .paquete-row td.count-evol-cell {
-    width: 70px !important;
-    min-width: 70px !important;
-    max-width: 70px !important;
+    width: 65px !important;
+    min-width: 65px !important;
+    max-width: 65px !important;
     text-align: center !important;
 }
 
 .paquete-row td.fechas {
-    width: 165px !important;
-    min-width: 165px !important;
-    max-width: 165px !important;
+    width: 285px !important;
+    min-width: 285px !important;
+    max-width: 285px !important;
     text-align: left !important;
+}
+
+/* ================= TOAST FLOTANTE DE COPIA SIN DESPLAZAR LAYOUT ================= */
+.tooltip-copy {
+    position: fixed !important;
+    bottom: 24px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    background: var(--bg-card) !important;
+    color: var(--text-pure) !important;
+    border: 1px solid var(--accent) !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2) !important;
+    border-radius: 8px !important;
+    padding: 8px 16px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    font-family: var(--font-mono) !important;
+    z-index: 999999 !important;
+    pointer-events: none !important;
+    animation: toastSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    display: block !important;
+    white-space: nowrap !important;
+}
+
+@keyframes toastSlideUp {
+    from { opacity: 0; transform: translate(-50%, 8px); }
+    to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+/* ================= MODAL DE AVISO OBLIGATORIO DE REVISIÓN DE FIRMAS ================= */
+.modal-aviso-firmas-backdrop {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(15, 23, 42, 0.65) !important;
+    backdrop-filter: blur(4px) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    z-index: 99999 !important;
+    animation: fadeIn 0.15s ease-out !important;
+}
+
+.modal-aviso-firmas-card {
+    background: var(--bg-card) !important;
+    border: 1px solid var(--border-strong) !important;
+    border-radius: var(--radius-lg, 14px) !important;
+    width: 92% !important;
+    max-width: 480px !important;
+    box-shadow: var(--shadow-modal) !important;
+    padding: 22px 24px !important;
+    text-align: left !important;
+    animation: popIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    max-height: 92vh !important;
+    overflow-y: auto !important;
+}
+
+.modal-aviso-firmas-header {
+    text-align: center !important;
+    margin-bottom: 14px !important;
+}
+
+.modal-aviso-firmas-icon {
+    width: 46px !important;
+    height: 46px !important;
+    margin: 0 auto 10px !important;
+    border-radius: 50% !important;
+    background: rgba(245, 158, 11, 0.14) !important;
+    color: #f59e0b !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    font-size: 22px !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+.modal-aviso-firmas-title {
+    font-size: 15px !important;
+    font-weight: 800 !important;
+    color: var(--text-pure) !important;
+    text-align: center !important;
+    margin-bottom: 0 !important;
+}
+
+.aviso-intro-text {
+    font-size: 12.5px !important;
+    color: var(--text-secondary) !important;
+    line-height: 1.45 !important;
+    margin-bottom: 12px !important;
+}
+
+.aviso-checklist {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+    margin-bottom: 14px !important;
+    background: var(--bg-subtle) !important;
+    padding: 10px 12px !important;
+    border-radius: 8px !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.checklist-item {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 9px !important;
+    font-size: 12px !important;
+    line-height: 1.4 !important;
+    color: var(--text-secondary) !important;
+}
+
+.chk-icon {
+    font-size: 13px !important;
+    flex-shrink: 0 !important;
+    margin-top: 1px !important;
+}
+
+.chk-content strong {
+    color: var(--text-pure) !important;
+}
+
+/* Ejemplo gráfico de orientación con mini tabla de firmas */
+.orientacion-ejemplo-box {
+    margin-bottom: 18px !important;
+    padding: 14px 16px !important;
+    background: var(--bg-subtle) !important;
+    border-radius: 10px !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.orientacion-title {
+    font-size: 11px !important;
+    font-weight: 800 !important;
+    color: var(--text-pure) !important;
+    margin-bottom: 12px !important;
+    text-align: center !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.4px !important;
+}
+
+.orientacion-grid {
+    display: flex !important;
+    align-items: flex-start !important;
+    justify-content: center !important;
+    gap: 20px !important;
+}
+
+.orientacion-card {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 8px !important;
+    flex: 1 !important;
+    max-width: 190px !important;
+}
+
+.firma-table-container {
+    width: 100% !important;
+    height: 75px !important;
+    background: #ffffff !important;
+    border-radius: 6px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    overflow: hidden !important;
+    position: relative !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06) !important;
+}
+
+.firma-table-container.incorrecto-box {
+    border: 1.5px solid #ef4444 !important;
+    background: rgba(239, 68, 68, 0.05) !important;
+}
+
+.firma-table-container.correcto-box {
+    border: 1.5px solid #10b981 !important;
+    background: rgba(16, 185, 129, 0.06) !important;
+}
+
+.mini-tabla-firmas {
+    width: 90% !important;
+    border-collapse: collapse !important;
+    font-size: 9px !important;
+    font-family: var(--font-mono) !important;
+    line-height: 1.15 !important;
+}
+
+.mini-tabla-firmas th {
+    background: var(--bg-subtle) !important;
+    color: var(--text-primary) !important;
+    font-weight: 700 !important;
+    padding: 2px 4px !important;
+    border-bottom: 1px solid var(--border-strong) !important;
+    text-align: left !important;
+    font-size: 8.5px !important;
+}
+
+.mini-tabla-firmas td {
+    padding: 2px 4px !important;
+    color: var(--text-secondary) !important;
+    border-bottom: 1px solid var(--border-subtle) !important;
+}
+
+.firma-table-container.incorrecto-box .mini-tabla-firmas {
+    transform: rotate(-90deg) scale(0.8) !important;
+    transform-origin: center center !important;
+}
+
+.orientacion-label {
+    font-size: 11px !important;
+    font-weight: 700 !important;
+    font-family: var(--font-mono) !important;
+    white-space: nowrap !important;
+}
+
+.orientacion-card.incorrecto .orientacion-label {
+    color: #ef4444 !important;
+}
+
+.orientacion-card.correcto .orientacion-label {
+    color: #10b981 !important;
+}
+
+body.theme-dark .firma-table-container {
+    background: #1e293b !important;
+}
+
+body.theme-dark .firma-table-container.incorrecto-box {
+    background: rgba(239, 68, 68, 0.12) !important;
+}
+
+body.theme-dark .firma-table-container.correcto-box {
+    background: rgba(16, 185, 129, 0.14) !important;
+}
+
+.btn-aviso-firmas {
+    background: var(--accent) !important;
+    color: #ffffff !important;
+    border: none !important;
+    padding: 11px 20px !important;
+    border-radius: 6px !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    transition: var(--transition) !important;
+    width: 100% !important;
+    text-align: center !important;
+}
+
+.btn-aviso-firmas:disabled {
+    opacity: 0.55 !important;
+    cursor: not-allowed !important;
+    background: var(--bg-subtle) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border-subtle) !important;
+}
+
+.btn-aviso-firmas.btn-aviso-firmas-ready {
+    background: var(--accent) !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3) !important;
+}
+
+.btn-aviso-firmas.btn-aviso-firmas-ready:hover {
+    filter: brightness(1.1) !important;
 }

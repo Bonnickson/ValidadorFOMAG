@@ -1,0 +1,27 @@
+Folder PATH listing for volume Sistema Operativo
+Volume serial number is 000000AC 60EC:0A9E
+C:.
+|   .groupedtimelineinclude
+|   a.txt
+|   index.html
+|   README.md
+|   styles.css
+|   
+\---src
+    |   app.js
+    |   reglas.js
+    |   
+    +---config
+    |       constants.js
+    |       
+    +---ui
+    |       tableRenderer.js
+    |       
+    +---utils
+    |       pdfUtils.js
+    |       textUtils.js
+    |       
+    \---validators
+            eventoValidator.js
+            paqueteValidator.js
+            

@@ -1,11 +1,14 @@
 import { formatearFecha, formatearFechaCompacta } from "../utils/textUtils.js";
-import { SERVICIOS_NOMBRES } from "../config/constants.js";
+import {
+    SERVICIOS_NOMBRES,
+    PAQUETES_INFO,
+    ORDEN_SERVICIOS_CLINICOS,
+} from "../config/constants.js";
+import { normalizarTipoError } from "./filterManager.js";
 
 // Map para rastrear el color de grupo de cada carpeta
 const gruposPorCarpeta = new Map();
 let contadorGrupo = 0;
-
-const normalizarTipoError = (txt) => (txt || "").trim().toLowerCase();
 
 const renderErrorItem = (errorText) => {
     const [tipoRaw] = errorText.split(":");
@@ -140,10 +143,10 @@ export function actualizarHeadersTabla(
             <colgroup>
                 <col style="width: 130px;">
                 <col style="width: 145px;">
-                <col style="width: 100px;">
-                <col style="width: 70px;">
-                <col style="width: 165px;">
-                <col style="width: 250px;">
+                <col style="width: 90px;">
+                <col style="width: 65px;">
+                <col style="width: 285px;">
+                <col style="width: 240px;">
             </colgroup>
         `;
         tabla.insertAdjacentHTML("afterbegin", colgroupHTML);
@@ -321,22 +324,8 @@ function renderPaqueteFilas(
     // Obtener clase de grupo para esta carpeta
     const grupoClase = obtenerGrupoClase(carpeta);
 
-    // Orden personalizado de servicios: General primero, luego VM, ENF, TR, TF, y luego los demás
-    const ordenServicios = [
-        "General",
-        "VM",
-        "ENF",
-        "ENF12",
-        "NUT",
-        "TR",
-        "TF",
-        "SUCCION",
-        "TRS",
-        "FON",
-        "PSI",
-        "TS",
-        "TO",
-    ];
+    // Orden personalizado de servicios canónico
+    const ordenServicios = ORDEN_SERVICIOS_CLINICOS;
 
     // Excluir 'General' de la lista de filas para no crear una fila separada de paquete
     const serviciosReales = [...r.servicios].filter(s => s !== "General");
@@ -399,18 +388,22 @@ function renderPaqueteFilas(
     ].filter(Boolean).join("") || "";
 
     const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
+    const paqueteInfo = PAQUETES_INFO[paqueteCodigo] || { nombre: `Paquete ${paqueteCodigo}` };
+    const paqueteClase = `pkg-${paqueteCodigo.toLowerCase()}`;
 
     trHeader.innerHTML = `
         <td rowspan="${totalFilasLote}" class="carpeta-cell doc-header-grouped">
             <div class="doc-badge-stack">
-                <div class="doc-package-tag">
-                    <span class="package-name">${paqueteCodigo}</span>
-                    <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${paqueteCodigo}')" title="Ver reglas del paquete ${paqueteCodigo}">
+                <div class="doc-package-tag ${paqueteClase}" title="${paqueteInfo.nombre}">
+                    <span class="package-name" title="${paqueteInfo.nombre}">${paqueteCodigo}</span>
+                    <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${paqueteCodigo}')" title="Ver reglas de ${paqueteInfo.nombre}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                     </button>
                 </div>
                 <div class="doc-title-line">
-                    <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar nombre de carpeta">📋</button>
+                    <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar sólo documento/carpeta">📋</button>
+                    <button class="copy-inline-btn copy-full-btn" onclick="copiarFormatoCompleto(event,'${paqueteCodigo}','${carpeta}')" title="Copiar '${paqueteCodigo} - ${carpeta} - '">🏷️</button>
+                    <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Paquete - Documento - Servicio - Archivo - Error">📝</button>
                     <span class="carpeta-nombre">${carpeta}</span>
                 </div>
                 <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)">
@@ -481,7 +474,7 @@ function renderPaqueteFilas(
             })
             .join(" ");
 
-        // Formatear fechas con flechas sutiles de scroll si son más de 2
+        // Formatear fechas mostrando mínimo 3 fechas completas si aplica (slider con > 3 fechas)
         const fechasFormateadas = [...new Set(fechas5)].map(formatearFecha);
         let fechasHTML = "—";
         if (fechasFormateadas.length > 0) {
@@ -489,12 +482,12 @@ function renderPaqueteFilas(
                 .map((f) => `<span class="fecha-text">${f}</span>`)
                 .join("");
             
-            if (fechasFormateadas.length > 2) {
+            if (fechasFormateadas.length > 3) {
                 fechasHTML = `
                     <div class="fechas-slider-wrapper">
-                        <button type="button" class="btn-scroll-fecha" onclick="this.nextElementSibling.scrollBy({left: -80, behavior: 'smooth'})" title="Fecha anterior">‹</button>
+                        <button type="button" class="btn-scroll-fecha" onclick="this.nextElementSibling.scrollBy({left: -82, behavior: 'smooth'})" title="Fecha anterior">‹</button>
                         <div class="fechas-list">${fechasPills}</div>
-                        <button type="button" class="btn-scroll-fecha" onclick="this.previousElementSibling.scrollBy({left: 80, behavior: 'smooth'})" title="Siguiente fecha">›</button>
+                        <button type="button" class="btn-scroll-fecha" onclick="this.previousElementSibling.scrollBy({left: 82, behavior: 'smooth'})" title="Siguiente fecha">›</button>
                     </div>
                 `;
             } else {
@@ -618,21 +611,8 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         return;
     }
 
-    // Orden de servicios
-    const ordenServicios = [
-        "VM",
-        "ENF",
-        "ENF12",
-        "NUT",
-        "TR",
-        "TF",
-        "SUCCION",
-        "TRS",
-        "FON",
-        "PSI",
-        "TS",
-        "TO",
-    ];
+    // Orden de servicios canónico
+    const ordenServicios = ORDEN_SERVICIOS_CLINICOS;
     const serviciosArray = [...serviciosDetectados].sort((a, b) => {
         const indexA = ordenServicios.indexOf(a);
         const indexB = ordenServicios.indexOf(b);
@@ -741,6 +721,8 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         tr.innerHTML = `
             <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta}
                 <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar número">📋</button>
+                <button class="copy-inline-btn copy-full-btn" onclick="copiarFormatoCompleto(event,'${r.tipoPaquete || 'FOMAG'}','${carpeta}')" title="Copiar formato">🏷️</button>
+                <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Paquete - Documento - Servicio - Archivo - Error">📝</button>
             </span></td>
             <td class="servicio-nombre">${nombreCompleto}</td>
             <td class="archivos-cell center-cell">${archivosHTML || "—"}</td>
