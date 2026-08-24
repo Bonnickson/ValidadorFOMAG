@@ -279,6 +279,49 @@ body {
     background: var(--accent-glow);
 }
 
+.studio-dropzone.mini-dropzone {
+    flex-direction: row;
+    padding: 7px 16px;
+    gap: 10px;
+    border-radius: var(--radius-md);
+    border: 1.5px dashed var(--accent, #2563eb);
+    background: var(--bg-card);
+    min-width: 270px;
+}
+
+.studio-dropzone.mini-dropzone:hover {
+    border-color: var(--accent);
+    background: var(--accent-glow);
+}
+
+.studio-dropzone.mini-dropzone .dropzone-icon {
+    width: 26px;
+    height: 26px;
+    color: var(--accent, #2563eb);
+    background: var(--accent-glow);
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+
+.studio-dropzone.mini-dropzone .dropzone-text-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.studio-dropzone.mini-dropzone .dropzone-title {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-pure);
+}
+
+.studio-dropzone.mini-dropzone .dropzone-subtitle {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
 .studio-dropzone input[type="file"] {
     position: absolute;
     top: 0;
@@ -4169,7 +4212,7 @@ body.theme-dark .preval-table thead {
     font-size: 10.5px;
     font-weight: 700;
     color: var(--text-muted);
-    text-transform: uppercase;
+    text-transform: none;
     letter-spacing: 0.3px;
 }
 
@@ -4354,12 +4397,40 @@ body.theme-dark .pserv-tag.opt.dim {
     background: var(--bg-subtle, #f1f5f9);
     color: var(--text-secondary);
     border-color: var(--border-subtle, #dbe1ec);
-    font-size: 9px;
+    font-size: 9.5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 1px 4px;
 }
 
 body.theme-dark .pserv-tag.ter-detail {
     background: #1e293b;
     border-color: var(--border-subtle, #232f46);
+}
+
+.pserv-ter-item {
+    display: inline-block;
+    padding: 0 1px;
+}
+
+.pserv-ter-item.zero {
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.45;
+}
+
+.pserv-ter-item.active {
+    color: var(--text-pure, #0f172a);
+    font-weight: 700;
+}
+
+body.theme-dark .pserv-ter-item.active {
+    color: #f1f5f9;
+}
+
+body.theme-dark .pserv-ter-item.zero {
+    color: #64748b;
+    opacity: 0.45;
 }
 
 .preval-badge {
@@ -4382,28 +4453,87 @@ body.theme-dark .pserv-tag.ter-detail {
     color: #ef4444;
 }
 
+.btn-copy-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: rgba(239, 68, 68, 0.18);
+    border: 1px solid rgba(239, 68, 68, 0.35);
+    color: #ef4444;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: var(--transition);
+    outline: none;
+}
+
+.btn-copy-pill:hover {
+    background: #ef4444;
+    color: #ffffff;
+    border-color: #dc2626;
+    box-shadow: 0 2px 6px rgba(239, 68, 68, 0.3);
+}
+
+.btn-copy-pill:active {
+    transform: scale(0.96);
+}
+
 .preval-item-error {
     display: flex;
-    align-items: flex-start;
-    gap: 4px;
-    color: var(--danger, #dc2626);
-    font-size: 10.5px;
-    margin-bottom: 2px;
+    align-items: baseline;
+    gap: 5px;
+    color: var(--danger-text, #dc2626);
+    font-size: 11px;
+    margin-bottom: 3px;
+    line-height: 1.35;
 }
 
 .preval-item-warning {
     display: flex;
-    align-items: flex-start;
-    gap: 4px;
-    color: var(--warning, #d97706);
-    font-size: 10.5px;
-    margin-bottom: 2px;
+    align-items: baseline;
+    gap: 5px;
+    color: var(--warning-text, #d97706);
+    font-size: 11px;
+    margin-bottom: 3px;
+    line-height: 1.35;
+}
+
+.preval-err-tag {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    font-size: 9.5px;
+    font-weight: 800;
+    font-family: var(--font-mono);
+    padding: 1px 5px;
+    border-radius: 3px;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.preval-item-warning .preval-err-tag {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.25);
+}
+
+.preval-err-desc {
+    color: var(--text-primary);
+    font-size: 11px;
+    font-weight: 500;
+}
+
+body.theme-dark .preval-err-desc {
+    color: #cbd5e1;
 }
 
 .preval-icon-bullet {
     font-weight: 800;
-    font-size: 10px;
+    font-size: 9.5px;
     display: inline-block;
+    flex-shrink: 0;
 }
 
 .preval-ok-text {

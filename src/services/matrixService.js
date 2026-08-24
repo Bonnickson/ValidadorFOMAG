@@ -1,4 +1,3 @@
-import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs";
 import { REGLAS_TERAPIAS_PAQUETES } from "../config/constants.js";
 
 /**
@@ -28,21 +27,37 @@ export const MAPEO_COLUMNAS_MATRIZ = {
 };
 
 /**
+ * Obtiene la instancia de XLSX de forma segura (window.XLSX o import dinámico)
+ */
+async function obtenerLibreriaXLSX() {
+    if (window.XLSX && window.XLSX.read) {
+        return window.XLSX;
+    }
+    try {
+        const mod = await import("https://cdn.sheetjs.com/xlsx-0.20.3/package/xlsx.mjs");
+        return mod.default || mod;
+    } catch (e) {
+        if (window.XLSX) return window.XLSX;
+        throw new Error("No se pudo cargar la librería XLSX para procesar el Excel. Verifica tu conexión a internet.");
+    }
+}
+
+/**
  * Lee un archivo Excel (.xlsx, .xls) o CSV y devuelve el array de filas crudo
  * @param {File} file
  * @returns {Promise<Array<Array<any>>>}
  */
 export async function leerArchivoMatriz(file) {
+    const xlsxLib = await obtenerLibreriaXLSX();
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.onload = (e) => {
             try {
                 const data = new Uint8Array(e.target.result);
-                const xlsxLib = XLSX || window.XLSX;
-                if (!xlsxLib || !xlsxLib.read) {
-                    throw new Error("No se pudo inicializar la librería XLSX para procesar el archivo.");
-                }
                 const workbook = xlsxLib.read(data, { type: "array" });
+                if (!workbook || !workbook.SheetNames || workbook.SheetNames.length === 0) {
+                    throw new Error("El archivo Excel no contiene hojas de datos legibles.");
+                }
                 const firstSheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[firstSheetName];
                 const jsonRows = xlsxLib.utils.sheet_to_json(worksheet, {
@@ -177,13 +192,13 @@ export function parsearMatriz(rawRows) {
         if (paquete && paquete.startsWith("CPF")) {
             // 1. Validar Fijos Obligatorios: exactamente 1 VM, 1 VENF y 1 ENF
             if (vm !== 1) {
-                erroresFila.push(`Paquete ${paquete} requiere exactamente 1 evolución de VM (tiene ${vm}).`);
+                erroresFila.push(`VM: requiere 1 (tiene ${vm})`);
             }
             if (venf !== 1) {
-                erroresFila.push(`Paquete ${paquete} requiere exactamente 1 evolución de VENF (Enfermería Profesional, tiene ${venf}).`);
+                erroresFila.push(`VENF (Enf. Prof.): requiere 1 (tiene ${venf})`);
             }
             if (enf !== 1) {
-                erroresFila.push(`Paquete ${paquete} requiere exactamente 1 evolución de ENF (Auxiliar Enfermería, tiene ${enf}).`);
+                erroresFila.push(`ENF (Aux. Enf.): requiere 1 (tiene ${enf})`);
             }
 
             // 2. Validar A Elección: exactamente 1 entre (PSI, NUT, TS) con cantidad 1
@@ -193,14 +208,14 @@ export function parsearMatriz(rawRows) {
             if (ts > 0) opcionalesConValor.push({ serv: "TS", cant: ts });
 
             if (opcionalesConValor.length === 0) {
-                erroresFila.push(`Paquete ${paquete} debe incluir 1 servicio a elección entre PSI, NUT o TS.`);
+                erroresFila.push(`Opcional: Falta elegir 1 (PSI, NUT o TS)`);
             } else if (opcionalesConValor.length > 1) {
-                const lista = opcionalesConValor.map(o => `${o.serv}(${o.cant})`).join(", ");
-                erroresFila.push(`Paquete ${paquete} debe incluir solo 1 servicio a elección (se encontraron varios: ${lista}).`);
+                const lista = opcionalesConValor.map(o => `${o.serv}:${o.cant}`).join(", ");
+                erroresFila.push(`Opcional: Solo 1 permitido (tiene varios: ${lista})`);
             } else {
                 const unico = opcionalesConValor[0];
                 if (unico.cant !== 1) {
-                    erroresFila.push(`El servicio a elección ${unico.serv} debe tener exactamente 1 evolución (tiene ${unico.cant}).`);
+                    erroresFila.push(`${unico.serv}: requiere 1 (tiene ${unico.cant})`);
                 }
             }
 
@@ -208,8 +223,19 @@ export function parsearMatriz(rawRows) {
             const regla = REGLAS_TERAPIAS_PAQUETES[paquete];
             if (regla && (regla.min > 0 || regla.max > 0)) {
                 if (totalTerapias < regla.min || totalTerapias > regla.max) {
+                    const terapiasActivas = [];
+                    if (tf > 0) terapiasActivas.push(`${tf} TF`);
+                    if (tr > 0) terapiasActivas.push(`${tr} TR`);
+                    if (trs > 0) terapiasActivas.push(`${trs} TRS`);
+                    if (fon > 0) terapiasActivas.push(`${fon} FON`);
+                    if (to > 0) terapiasActivas.push(`${to} TO`);
+
+                    const detalleStr = terapiasActivas.length > 0
+                        ? ` (${terapiasActivas.join(", ")})`
+                        : " (0 asignadas)";
+
                     erroresFila.push(
-                        `Paquete ${paquete} requiere entre ${regla.min} y ${regla.max} terapias sumadas (tiene ${totalTerapias}: TF:${tf}, TR:${tr}, TRS:${trs}, FON:${fon}, TO:${to}).`
+                        `Terapias: Requiere ${regla.min}-${regla.max} sumadas (tiene ${totalTerapias}${detalleStr})`
                     );
                 }
             }

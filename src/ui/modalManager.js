@@ -343,15 +343,49 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             ? `<span class="preval-badge success">✔ Conforme</span>`
             : `<span class="preval-badge error">✗ Novedades</span>`;
 
+        const renderDiagItem = (texto, tipo) => {
+            const icon = tipo === "error" ? "✕" : "!";
+            const cls = tipo === "error" ? "preval-item-error" : "preval-item-warning";
+            const parts = texto.split(":");
+            if (parts.length > 1) {
+                const header = parts[0].trim();
+                const body = parts.slice(1).join(":").trim();
+                return `<div class="${cls}"><span class="preval-icon-bullet">${icon}</span><span class="preval-err-tag">${header}</span><span class="preval-err-desc">${body}</span></div>`;
+            }
+            return `<div class="${cls}"><span class="preval-icon-bullet">${icon}</span><span>${texto}</span></div>`;
+        };
+
         const detalles = [
-            ...(p.errores || []).map(e => `<div class="preval-item-error"><span class="preval-icon-bullet">✕</span><span>${e}</span></div>`),
-            ...(p.alertas || []).map(a => `<div class="preval-item-warning"><span class="preval-icon-bullet">!</span><span>${a}</span></div>`),
+            ...(p.errores || []).map(e => renderDiagItem(e, "error")),
+            ...(p.alertas || []).map(a => renderDiagItem(a, "warning")),
         ].join("");
 
         const pkgCode = p.paquete || p.paqueteRaw || "—";
         const pkgCls = p.paquete ? `pkg-${p.paquete.toLowerCase()}` : "";
-        const s = p.servicios;
-        const nombrePascal = formatPascalCase(p.nombre);
+        const s = p.servicios || {};
+
+        // Helper para formatear cadenas a PascalCase
+        const toPascalCase = (str) => {
+            if (!str) return "—";
+            return str
+                .toLowerCase()
+                .replace(/(?:^|\s|\/|-)\S/g, (match) => match.toUpperCase());
+        };
+
+        const nombrePascal = toPascalCase(p.nombre);
+
+        // Desglose de terapias con formato visual (grisesito las que tienen 0)
+        const listaTerapias = [
+            { nombre: "TF", cant: s.TF || 0 },
+            { nombre: "TR", cant: s.TR || 0 },
+            { nombre: "TRS", cant: s.TRS || 0 },
+            { nombre: "FON", cant: s.FON || 0 },
+            { nombre: "TO", cant: s.TO || 0 },
+        ];
+
+        const terapiasDetalleChips = listaTerapias
+            .map((t) => `<span class="pserv-ter-item ${t.cant === 0 ? 'zero' : 'active'}">${t.nombre}:${t.cant}</span>`)
+            .join(" ");
 
         // Texto plano del error para el botón de copiar
         const textoErroresRaw = (p.errores || []).join(" | ") || (p.alertas || []).join(" | ") || "Conforme";
@@ -385,7 +419,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <span class="pserv-group-title">Terapias:</span>
                     <div class="pserv-group-items">
                         <span class="pserv-tag ter-total">Total: ${p.totalTerapias}</span>
-                        <span class="pserv-tag ter-detail" title="TF:${s.TF} TR:${s.TR} TRS:${s.TRS} FON:${s.FON} TO:${s.TO}">TF:${s.TF} TR:${s.TR} TRS:${s.TRS} FON:${s.FON} TO:${s.TO}</span>
+                        <div class="pserv-tag ter-detail">${terapiasDetalleChips}</div>
                     </div>
                 </div>
             </div>
@@ -406,9 +440,9 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                             <span class="carpeta-nombre preval-doc-num">${p.documento || "—"}</span>
                         </div>
                         <div class="preval-copy-btn-group">
-                            <button type="button" class="btn-copy-minimal" onclick="copiarTextoSimple(event, '${p.documento}')" title="Copiar sólo documento (${p.documento})">📋</button>
-                            <button type="button" class="btn-copy-minimal" onclick="copiarTextoSimple(event, '${pkgCode} - ${p.documento} - ')" title="Copiar '${pkgCode} - ${p.documento} - '">🏷️</button>
-                            <button type="button" class="btn-copy-minimal" onclick="copiarErrorMatriz(event, '${pkgCode}', '${p.documento}', '${textoErroresEscaped}')" title="Copiar con novedad">📝</button>
+                            <button type="button" class="btn-copy-minimal btn-copy-doc" title="Copiar sólo documento (${p.documento})">📋</button>
+                            <button type="button" class="btn-copy-minimal btn-copy-pkg-doc" title="Copiar '${pkgCode} - ${p.documento} - '">🏷️</button>
+                            <button type="button" class="btn-copy-minimal btn-copy-err" title="Copiar con novedad">📝</button>
                         </div>
                     </div>
                 </td>
@@ -476,11 +510,6 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                             <button type="button" class="btn-segmented" data-filter-estado="conforme">Conformes</button>
                             <button type="button" class="btn-segmented" data-filter-estado="novedades">Con novedades</button>
                         </div>
-
-                        <select id="prevalFiltroPaqueteSelect" class="studio-filter-select" style="font-size:11.5px; padding:4px 8px;">
-                            <option value="">Paquete: Todos</option>
-                            ${Object.keys(diagnosticoGlobal.conteoPorPaquete || {}).map(pkg => `<option value="${pkg}">${pkg}</option>`).join("")}
-                        </select>
                     </div>
                 </div>
 
@@ -507,44 +536,49 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             <!-- Modal Footer -->
             <div class="preval-modal-footer">
                 <span class="preval-footer-hint">Las cantidades programadas en la matriz se compararán de forma estricta contra las evoluciones de los PDFs.</span>
-                <div style="display:flex;gap:8px;align-items:center;">
-                    <button type="button" id="btnCargarSoportesDiagnostico" class="btn-studio btn-studio-success" style="padding: 6px 14px; font-size: 12px; display:flex; align-items:center; gap:5px;">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                        Cargar Soportes
-                    </button>
-                    <button type="button" class="btn-studio btn-studio-primary" style="padding: 6px 14px; font-size: 12px;" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()">
-                        Listo, Continuar
-                    </button>
-                </div>
+                <label class="studio-dropzone mini-dropzone" id="dropzoneModalSoportes" title="Click o arrastra la carpeta de soportes aquí">
+                    <div class="dropzone-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:15px;height:15px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                    </div>
+                    <div class="dropzone-text-row">
+                        <span class="dropzone-title">Cargar Soportes</span>
+                        <span class="dropzone-subtitle">(Click o arrastra carpeta)</span>
+                    </div>
+                    <input type="file" id="inputFolderModal" webkitdirectory directory multiple />
+                </label>
             </div>
         </div>
     `;
 
     document.body.appendChild(backdrop);
 
-    // Botón "Cargar Soportes" desde el modal de diagnóstico
-    const btnCargarSoportesDiag = document.getElementById("btnCargarSoportesDiagnostico");
-    if (btnCargarSoportesDiag) {
-        btnCargarSoportesDiag.addEventListener("click", () => {
-            // Cerrar modal
-            backdrop.remove();
-            // Mostrar sección de soportes en el sidebar
-            const secSoportes = document.getElementById("seccionSoportes");
-            if (secSoportes) secSoportes.classList.remove("oculto");
-            // Disparar click en el input de soportes
-            const inputFolder = document.getElementById("inputFolder");
-            if (inputFolder) inputFolder.click();
+    // Conectar el input del mini dropzone con el input principal para disparar la validación
+    const inputFolderModal = document.getElementById("inputFolderModal");
+    if (inputFolderModal) {
+        inputFolderModal.addEventListener("change", (e) => {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                // Cerrar modal de prevalidación
+                backdrop.remove();
+                // Mostrar sección de soportes
+                const secSoportes = document.getElementById("seccionSoportes");
+                if (secSoportes) secSoportes.classList.remove("oculto");
+                // Transferir archivos y disparar validación en el input principal
+                const mainInput = document.getElementById("inputFolder");
+                if (mainInput) {
+                    mainInput.files = files;
+                    mainInput.dispatchEvent(new Event("change"));
+                }
+            }
         });
     }
 
     // ================= FUNCIONALIDAD DE FILTRADO DINÁMICO =================
     const buscarInput = document.getElementById("prevalBuscarInput");
     const filtroEstadoBtns = document.querySelectorAll("#prevalFiltroEstadoGroup .btn-segmented");
-    const filtroPkgSelect = document.getElementById("prevalFiltroPaqueteSelect");
     const tbody = document.getElementById("prevalTableBody");
 
     let estadoActivo = "";
-    let pkgActivo = "";
 
     const aplicarFiltrosModal = () => {
         if (!tbody) return;
@@ -554,14 +588,12 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
         filas.forEach((tr) => {
             const doc = tr.getAttribute("data-doc") || "";
             const nombre = tr.getAttribute("data-nombre") || "";
-            const pkg = tr.getAttribute("data-pkg") || "";
             const estado = tr.getAttribute("data-estado") || "";
 
             const matchTexto = !q || doc.includes(q) || nombre.includes(q);
             const matchEstado = !estadoActivo || estado === estadoActivo;
-            const matchPkg = !pkgActivo || pkg === pkgActivo;
 
-            if (matchTexto && matchEstado && matchPkg) {
+            if (matchTexto && matchEstado) {
                 tr.style.display = "";
             } else {
                 tr.style.display = "none";
@@ -584,11 +616,124 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
         });
     }
 
-    if (filtroPkgSelect) {
-        filtroPkgSelect.addEventListener("change", () => {
-            pkgActivo = filtroPkgSelect.value;
-            aplicarFiltrosModal();
+    // Event delegation para los 3 botones de copiar en cada fila
+    if (tbody) {
+        tbody.addEventListener("click", (e) => {
+            const btnDoc = e.target.closest(".btn-copy-doc");
+            const btnPkgDoc = e.target.closest(".btn-copy-pkg-doc");
+            const btnErr = e.target.closest(".btn-copy-err");
+
+            if (!btnDoc && !btnPkgDoc && !btnErr) return;
+            e.stopPropagation();
+
+            const tr = e.target.closest("tr.preval-row");
+            if (!tr) return;
+
+            const doc = tr.getAttribute("data-doc") || "";
+            const pkg = tr.getAttribute("data-pkg") || "";
+            const paciente = pacientesList.find((p) => p.documento === doc);
+
+            if (btnDoc) {
+                copiarTextoSimple(e, doc);
+            } else if (btnPkgDoc) {
+                copiarTextoSimple(e, `${pkg} - ${doc} - `);
+            } else if (btnErr) {
+                const textoErroresRaw = paciente
+                    ? (paciente.errores || []).join(" | ") || (paciente.alertas || []).join(" | ") || "Conforme"
+                    : "Conforme";
+                const nombreStr = paciente?.nombre
+                    ? paciente.nombre.toLowerCase().replace(/(?:^|\s|\/|-)\S/g, (match) => match.toUpperCase())
+                    : "";
+                copiarErrorMatriz(e, pkg, doc, textoErroresRaw, nombreStr);
+            }
         });
     }
 }
+
+/**
+ * Modal emergente al terminar la validación que avisa si se encontraron errores
+ */
+export function mostrarModalAlertaFinalValidacion(totalCarpetas, totalConErrores, totalConAlertas, contexto = "auditoria") {
+    const prev = document.getElementById("modalAlertaFinalValidacionActivo");
+    if (prev) prev.remove();
+
+    const esMatriz = contexto === "matriz";
+    const hayProblemas = totalConErrores > 0;
+    const soloAlertas = !hayProblemas && totalConAlertas > 0;
+    const conformes = Math.max(0, totalCarpetas - totalConErrores - totalConAlertas);
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "modalAlertaFinalValidacionActivo";
+    backdrop.className = "modal-rules-backdrop";
+    backdrop.style.zIndex = "2100";
+
+    const iconoSVG = hayProblemas
+        ? `<div class="modal-aviso-firmas-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px;">⚠️</div>`
+        : soloAlertas
+            ? `<div class="modal-aviso-firmas-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px;">🔔</div>`
+            : `<div class="modal-aviso-firmas-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981; width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 22px;">✅</div>`;
+
+    const tituloModal = esMatriz
+        ? (hayProblemas
+            ? "Pre-validación: Matriz con Novedades"
+            : (soloAlertas ? "Pre-validación: Matriz con Alertas" : "Pre-validación: Matriz Conforme"))
+        : (hayProblemas
+            ? "Validación Finalizada con Novedades"
+            : (soloAlertas ? "Validación Finalizada con Alertas" : "Validación Finalizada con Éxito"));
+
+    const subtituloModal = esMatriz
+        ? "Diagnóstico de programación de matriz"
+        : "Resumen general de auditoría";
+
+    const mensajePrincipal = esMatriz
+        ? (hayProblemas
+            ? `Se han detectado <strong style="color:#ef4444;">${totalConErrores} paciente(s) con inconsistencias</strong> en las reglas de paquetes programados en la matriz.`
+            : (soloAlertas
+                ? `Se han detectado <strong style="color:#f59e0b;">${totalConAlertas} paciente(s) con alertas</strong> en la matriz.`
+                : `Los <strong>${totalCarpetas} paciente(s)</strong> de la matriz cumplen las reglas de paquete.`))
+        : (hayProblemas
+            ? `Se han detectado <strong style="color:#ef4444;">${totalConErrores} paciente(s) con novedades o inconsistencias</strong> durante la validación de los soportes.`
+            : (soloAlertas
+                ? `Se han detectado <strong style="color:#f59e0b;">${totalConAlertas} paciente(s) con alertas</strong> durante la auditoría.`
+                : `Todos los <strong>${totalCarpetas} paciente(s)</strong> han superado la validación sin errores.`));
+
+    backdrop.innerHTML = `
+        <div class="modal-rules-card" style="max-width: 480px; padding: 0; overflow: hidden; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
+            <div style="padding: 16px 20px; display: flex; align-items: center; gap: 14px; background: var(--bg-subtle); border-bottom: 1px solid var(--border-subtle);">
+                ${iconoSVG}
+                <div>
+                    <h3 style="margin: 0; font-size: 15px; font-weight: 700; color: var(--text-pure);">${tituloModal}</h3>
+                    <p style="margin: 2px 0 0 0; font-size: 11.5px; color: var(--text-muted);">${subtituloModal}</p>
+                </div>
+            </div>
+            <div style="padding: 18px 20px; display: flex; flex-direction: column; gap: 14px;">
+                <p style="margin: 0; font-size: 12.5px; line-height: 1.45; color: var(--text-primary);">${mensajePrincipal}</p>
+                
+                <div class="stats-cluster" style="display: flex; gap: 8px; justify-content: stretch; width: 100%;">
+                    <div class="stat-pill" style="flex: 1; text-align: center; justify-content: center;">
+                        <span class="stat-pill-label">Total</span>
+                        <span class="stat-pill-value">${totalCarpetas}</span>
+                    </div>
+                    <div class="stat-pill success" style="flex: 1; text-align: center; justify-content: center;">
+                        <span class="stat-pill-label">Conformes</span>
+                        <span class="stat-pill-value">${conformes}</span>
+                    </div>
+                    <div class="stat-pill ${totalConErrores > 0 ? 'error' : ''}" style="flex: 1; text-align: center; justify-content: center;">
+                        <span class="stat-pill-label">Novedades</span>
+                        <span class="stat-pill-value">${totalConErrores}</span>
+                    </div>
+                </div>
+            </div>
+            <div style="padding: 12px 20px; background: var(--bg-subtle); border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 8px;">
+                <button type="button" class="btn-studio btn-studio-primary" style="padding: 7px 18px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modalAlertaFinalValidacionActivo')?.remove()">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", () => backdrop.remove());
+}
+
 

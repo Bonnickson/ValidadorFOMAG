@@ -104,20 +104,22 @@ export async function copiarTextoSimple(event, texto) {
 }
 
 /**
- * Copia el formato error de matriz: "${paquete} - ${documento} - ${errores}"
+ * Copia el formato error de matriz: "${nombre} - ${documento} - ${paquete} - ${errores}"
  */
-export async function copiarErrorMatriz(event, paquete, documento, erroresTexto) {
+export async function copiarErrorMatriz(event, paquete, documento, erroresTexto, nombre = "") {
     if (event) event.stopPropagation();
     const pkg = paquete || "CPF";
     const doc = documento || "";
     const err = erroresTexto ? erroresTexto.trim() : "Sin novedades";
-    const texto = `${pkg} - ${doc} - ${err}`;
+    const nom = nombre ? nombre.trim() : "";
+    const texto = nom ? `${nom} - ${doc} - ${pkg} - ${err}` : `${doc} - ${pkg} - ${err}`;
     await copiarTextoAlPortapapeles(texto);
     mostrarToastCopia(texto);
 }
 
 /**
- * Copia los hallazgos completos estructurados por línea
+ * Copia los hallazgos completos estructurados por línea:
+ * "${nombreResponsableOCliente} - ${documento} - ${paquete} - ${servicio} - ${archivo} - ${error}" o "${paquete} - ${documento}..."
  */
 export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobales, seleccionarCarpetaCallback) {
     if (typeof seleccionarCarpetaCallback === "function") {
@@ -132,10 +134,18 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
 
         const pkg = r?.tipoPaquete || r?.tipo || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
         const doc = carpeta || "";
+        
+        // Obtener el responsable (auditor de la carpeta) o nombre del paciente
+        let responsable = r?.auditor || r?.datosMatriz?.nombre || "";
+        if (responsable) {
+            responsable = responsable.toLowerCase().replace(/(?:^|\s|\/|-)\S/g, (match) => match.toUpperCase()).trim();
+        }
+        const prefijo = responsable ? `${responsable} - ${doc} - ${pkg}` : `${pkg} - ${doc}`;
+        
         const lineas = [];
 
         if (!r) {
-            lineas.push(`${pkg} - ${doc} - 📦 Paquete - N/A - Sin datos procesados`);
+            lineas.push(`${prefijo} - 📦 Paquete - N/A - Sin datos procesados`);
         } else {
             // 1. Errores y alertas generales / de paquete
             const errsGen = [...(r.errores || []), ...(r.erroresPorServicio?.["General"] || [])];
@@ -145,7 +155,7 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
             todosGen.forEach((err) => {
                 const fileMatch = err.match(/\b([0-9A-Za-z_-]+(?:\s+[0-9A-Za-z_-]+)?\.pdf)\b/i);
                 const archivo = fileMatch ? fileMatch[1] : (r.pdfsPorServicio?.["General"] ? Object.keys(r.pdfsPorServicio["General"]).join(", ") : "2 PAQ.pdf");
-                lineas.push(`${pkg} - ${doc} - 📦 Paquete - ${archivo} - ${err.trim()}`);
+                lineas.push(`${prefijo} - 📦 Paquete - ${archivo} - ${err.trim()}`);
             });
 
             // 2. Errores y alertas por servicio
@@ -165,12 +175,12 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
                         const pdfKeys = Object.keys(pdfs);
                         archivo = pdfKeys.length > 0 ? pdfKeys.join(", ") : "N/A";
                     }
-                    lineas.push(`${pkg} - ${doc} - ${sNombre} - ${archivo} - ${err.trim()}`);
+                    lineas.push(`${prefijo} - ${sNombre} - ${archivo} - ${err.trim()}`);
                 });
             });
 
             if (lineas.length === 0) {
-                lineas.push(`${pkg} - ${doc} - 📦 Paquete - N/A - Sin novedades`);
+                lineas.push(`${prefijo} - 📦 Paquete - N/A - Sin novedades`);
             }
         }
 

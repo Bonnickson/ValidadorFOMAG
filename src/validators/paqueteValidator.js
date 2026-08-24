@@ -249,12 +249,12 @@ export async function validarPorPaquete(
             if (cantEsperada > 0) {
                 if (!tieneArchivo) {
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `Matriz programa ${cantEsperada} de ${s}, pero NO se encontró soporte 5 ${s.toLowerCase()}.pdf en la carpeta.`
+                        `${s}: Falta soporte 5 ${s.toLowerCase()}.pdf (programadas: ${cantEsperada})`
                     );
                 } else if (cantEncontrada !== cantEsperada) {
                     const nombreSoporte = `5 ${s.toLowerCase()}.pdf`;
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `Discrepancia en ${s}: Matriz espera ${cantEsperada} evoluciones, pero se encontraron ${cantEncontrada} en ${nombreSoporte}.`
+                        `${s}: Matriz espera ${cantEsperada}, pero hay ${cantEncontrada} en ${nombreSoporte}`
                     );
                 } else {
                     resultados[carpeta].exitosPorServicio["General"].push(
@@ -265,7 +265,7 @@ export async function validarPorPaquete(
                 // cantEsperada === 0
                 if (tieneArchivo && cantEncontrada > 0) {
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `Soporte no programado: Se encontró ${s} con ${cantEncontrada} evoluciones, pero en la matriz está en 0 / vacío.`
+                        `${s}: Soporte no programado (${cantEncontrada} evoluciones en 5 ${s.toLowerCase()}.pdf)`
                     );
                 }
             }

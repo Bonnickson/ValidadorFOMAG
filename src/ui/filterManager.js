@@ -230,28 +230,156 @@ export function aplicarFiltros(elements = {}, state = {}) {
             }
         }
 
-        if (cellCarpeta) {
-            if (filasVisibles.length > 0) {
-                const primeraVisible = filasVisibles[0];
-                if (!primeraVisible.contains(cellCarpeta)) {
-                    primeraVisible.insertAdjacentElement("afterbegin", cellCarpeta);
+            if (cellCarpeta) {
+                if (filasVisibles.length > 0) {
+                    const primeraVisible = filasVisibles[0];
+                    if (!primeraVisible.contains(cellCarpeta)) {
+                        primeraVisible.insertAdjacentElement("afterbegin", cellCarpeta);
+                    }
+                    cellCarpeta.setAttribute("rowspan", filasVisibles.length);
+                    cellCarpeta.style.display = "";
+                } else {
+                    const headerRow = filasCarpeta[0];
+                    if (headerRow && !headerRow.contains(cellCarpeta)) {
+                        headerRow.insertAdjacentElement("afterbegin", cellCarpeta);
+                    }
+                    cellCarpeta.setAttribute("rowspan", filasCarpeta.length);
                 }
-                cellCarpeta.setAttribute("rowspan", filasVisibles.length);
-                cellCarpeta.style.display = "";
-            } else {
-                const headerRow = filasCarpeta[0];
-                if (headerRow && !headerRow.contains(cellCarpeta)) {
-                    headerRow.insertAdjacentElement("afterbegin", cellCarpeta);
-                }
-                cellCarpeta.setAttribute("rowspan", filasCarpeta.length);
             }
+        });
+
+        // Ordenar grupos de carpetas en la tabla según la opción activa
+        const ordenarSelect = document.getElementById("ordenarTabla");
+        const criterio = ordenarSelect ? ordenarSelect.value : "paquete";
+
+        const ordenadas = Object.keys(filasPorCarpeta).sort((a, b) => {
+            const fA = filasPorCarpeta[a][0];
+            const fB = filasPorCarpeta[b][0];
+
+            const docA = (fA?.getAttribute("data-documento") || a).trim();
+            const docB = (fB?.getAttribute("data-documento") || b).trim();
+            const paqA = (fA?.getAttribute("data-paquete") || "").trim();
+            const paqB = (fB?.getAttribute("data-paquete") || "").trim();
+            const respA = (fA?.getAttribute("data-responsable") || "").trim();
+            const respB = (fB?.getAttribute("data-responsable") || "").trim();
+
+            if (criterio === "documento") {
+                return docA.localeCompare(docB, undefined, { numeric: true });
+            }
+            if (criterio === "responsable") {
+                const cmp = respA.localeCompare(respB);
+                return cmp !== 0 ? cmp : docA.localeCompare(docB, undefined, { numeric: true });
+            }
+            // Por defecto: paquete
+            const cmpP = paqA.localeCompare(paqB);
+            return cmpP !== 0 ? cmpP : docA.localeCompare(docB, undefined, { numeric: true });
+        });
+
+        ordenadas.forEach((carp) => {
+            filasPorCarpeta[carp].forEach((fila) => tablaBody.appendChild(fila));
+        });
+
+        const exitosItems = document.querySelectorAll(".validacion-exitosa");
+        exitosItems.forEach((item) => {
+            item.style.display = mostrarExitos ? "" : "none";
+        });
+    }
+
+/**
+ * Copia todos los errores visibles en la tabla con el formato:
+ * Responsable - Documento - Paquete - Servicio - Archivo - Error
+ */
+export async function copiarTodosErroresVisibles(resultadosGlobales) {
+    const tablaBody = document.querySelector("#tabla tbody");
+    if (!tablaBody) return;
+
+    const filas = Array.from(tablaBody.querySelectorAll("tr"));
+    const carpetasVisibles = new Set();
+
+    filas.forEach((tr) => {
+        if (tr.style.display !== "none") {
+            const c = tr.getAttribute("data-carpeta");
+            if (c) carpetasVisibles.add(c);
         }
     });
 
-    const exitosItems = document.querySelectorAll(".validacion-exitosa");
-    exitosItems.forEach((item) => {
-        item.style.display = mostrarExitos ? "" : "none";
+    if (carpetasVisibles.size === 0) {
+        alert("No hay expedientes visibles con el filtro actual.");
+        return;
+    }
+
+    const lineas = [];
+
+    carpetasVisibles.forEach((carpeta) => {
+        const r = resultadosGlobales && resultadosGlobales[carpeta]
+            ? resultadosGlobales[carpeta]
+            : Object.values(resultadosGlobales || {}).find(item => item.carpetaNombre === carpeta || item.nroDocumento === carpeta);
+
+        if (!r) return;
+
+        const pkg = r?.tipoPaquete || r?.tipo || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
+        const doc = r?.nroDocumento || carpeta;
+
+        let responsable = r?.auditor || r?.datosMatriz?.nombre || "";
+        if (responsable) {
+            responsable = responsable.toLowerCase().replace(/(?:^|\s|\/|-)\S/g, (match) => match.toUpperCase()).trim();
+        }
+        const prefijo = responsable ? `${responsable} - ${doc} - ${pkg}` : `${pkg} - ${doc}`;
+
+        // 1. Errores generales / de paquete
+        const errsGen = [...(r.errores || []), ...(r.erroresPorServicio?.["General"] || [])];
+        const alertsGen = [...(r.alertas || []), ...(r.alertasPorServicio?.["General"] || [])];
+        const todosGen = [...new Set([...errsGen, ...alertsGen])];
+
+        todosGen.forEach((err) => {
+            const fileMatch = err.match(/\b([0-9A-Za-z_-]+(?:\s+[0-9A-Za-z_-]+)?\.pdf)\b/i);
+            const archivo = fileMatch ? fileMatch[1] : (r.pdfsPorServicio?.["General"] ? Object.keys(r.pdfsPorServicio["General"]).join(", ") : "2 PAQ.pdf");
+            lineas.push(`${prefijo} - 📦 Paquete - ${archivo} - ${err.trim()}`);
+        });
+
+        // 2. Errores por servicio
+        const servicios = [...(r.servicios || [])];
+        servicios.forEach((s) => {
+            if (s === "General") return;
+            const sNombre = SERVICIOS_NOMBRES[s] || s;
+            const errs = r.erroresPorServicio?.[s] || [];
+            const alerts = r.alertasPorServicio?.[s] || [];
+            const all = [...new Set([...errs, ...alerts])];
+
+            all.forEach((err) => {
+                const fileMatch = err.match(/\b([0-9A-Za-z_-]+(?:\s+[0-9A-Za-z_-]+)?\.pdf)\b/i);
+                let archivo = fileMatch ? fileMatch[1] : "";
+                if (!archivo) {
+                    const pdfs = r.pdfsPorServicio?.[s] || {};
+                    const pdfKeys = Object.keys(pdfs);
+                    archivo = pdfKeys.length > 0 ? pdfKeys.join(", ") : "N/A";
+                }
+                lineas.push(`${prefijo} - ${sNombre} - ${archivo} - ${err.trim()}`);
+            });
+        });
     });
+
+    if (lineas.length === 0) {
+        alert("No se encontraron errores en los expedientes visibles.");
+        return;
+    }
+
+    const textoFinal = lineas.join("\n");
+    try {
+        await navigator.clipboard.writeText(textoFinal);
+        const btn = document.getElementById("btnCopiarTodosErrores");
+        if (btn) {
+            const origHTML = btn.innerHTML;
+            btn.innerHTML = `✓ ${lineas.length} Errores Copiados`;
+            btn.style.color = "#10b981";
+            setTimeout(() => {
+                btn.innerHTML = origHTML;
+                btn.style.color = "var(--danger-text)";
+            }, 2200);
+        }
+    } catch (e) {
+        prompt("Copia los errores visibles:", textoFinal);
+    }
 }
 
 /**

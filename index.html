@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Validador de PDFs</title>
+    <title>Validador Soportes</title>
     <link rel="stylesheet" href="styles.css" />
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZMHK58V1KG"></script>
@@ -25,15 +25,14 @@
             <div class="sidebar-header">
                 <div class="studio-brand">
                     <div class="studio-brand-icon">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="width: 16px; height: 16px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 17px; height: 17px;">
                             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                             <polyline points="14 2 14 8 20 8"></polyline>
-                            <line x1="16" y1="13" x2="8" y2="13"></line>
-                            <line x1="16" y1="17" x2="8" y2="17"></line>
+                            <path d="M9 15l2 2 4-4"></path>
                         </svg>
                     </div>
                     <div>
-                        <div class="studio-brand-title">FOMAG Studio</div>
+                        <div class="studio-brand-title">Validador Soportes</div>
                     </div>
                 </div>
                 <div class="header-right-tools">
@@ -184,9 +183,15 @@
                         <span class="stat-pill-label">Alertas</span>
                         <span class="stat-pill-value" id="statAlertas">0</span>
                     </div>
-                    <div class="stat-pill error">
-                        <span class="stat-pill-label">Errores</span>
-                        <span class="stat-pill-value" id="statErrores">0</span>
+                    <div class="stat-pill error" style="display: flex; align-items: center; gap: 8px;">
+                        <div>
+                            <span class="stat-pill-label">Errores</span>
+                            <span class="stat-pill-value" id="statErrores">0</span>
+                        </div>
+                        <button id="btnCopiarTodosErrores" class="btn-copy-pill" title="Copiar todos los errores visibles con Responsable - Documento - Paquete - Servicio - Archivo - Error">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                            <span>Copiar</span>
+                        </button>
                     </div>
                 </div>
 
@@ -225,6 +230,18 @@
                             <option value="TS">🤝 TS - Trabajo Social</option>
                             <option value="FON">🗣️ FON - Fonoaudiología</option>
                             <option value="NUT">🥗 NUT - Nutrición</option>
+                        </select>
+                    </div>
+
+                    <!-- Selector de Orden Simple -->
+                    <div class="studio-filter-select-wrapper">
+                        <svg class="filter-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 6h18M6 12h12M10 18h4"></path>
+                        </svg>
+                        <select id="ordenarTabla" class="studio-filter-select" title="Organizar lista">
+                            <option value="paquete">Ordenar: Por Paquete</option>
+                            <option value="documento">Ordenar: Por Documento</option>
+                            <option value="responsable">Ordenar: Por Responsable</option>
                         </select>
                     </div>
 

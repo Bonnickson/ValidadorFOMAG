@@ -366,6 +366,9 @@ function renderPaqueteFilas(
     const totalFilasLote = serviciosArray.length + 1;
     const trHeader = document.createElement("tr");
     trHeader.setAttribute("data-carpeta", carpeta);
+    trHeader.setAttribute("data-documento", r.nroDocumento || carpeta);
+    trHeader.setAttribute("data-paquete", r.tipoPaquete || "CPF1108");
+    trHeader.setAttribute("data-responsable", r.auditor || r.datosMatriz?.nombre || "");
     trHeader.classList.add("paquete-row", "paquete-doc-header-row", grupoClase, "grupo-inicio");
     
     // Estado general del lote
@@ -411,7 +414,7 @@ function renderPaqueteFilas(
                 <div class="doc-title-line">
                     <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar sólo documento/carpeta">📋</button>
                     <button class="copy-inline-btn copy-full-btn" onclick="copiarFormatoCompleto(event,'${paqueteCodigo}','${carpeta}')" title="Copiar '${paqueteCodigo} - ${carpeta} - '">🏷️</button>
-                    <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Paquete - Documento - Servicio - Archivo - Error">📝</button>
+                    <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Responsable - Documento - Paquete - Servicio - Archivo - Error">📝</button>
                     <span class="carpeta-nombre">${carpeta}</span>
                 </div>
                 <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)">
@@ -432,6 +435,9 @@ function renderPaqueteFilas(
     serviciosArray.forEach((s, index) => {
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
+        tr.setAttribute("data-documento", r.nroDocumento || carpeta);
+        tr.setAttribute("data-paquete", r.tipoPaquete || "CPF1108");
+        tr.setAttribute("data-responsable", r.auditor || r.datosMatriz?.nombre || "");
         tr.setAttribute("data-servicio", s);
         if (esMatrizVirtual) {
             tr.setAttribute("data-es-matriz", "true");

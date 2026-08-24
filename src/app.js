@@ -24,6 +24,7 @@ import {
     mostrarModalReglasPaquete,
     mostrarAvisoRevisionFirmas,
     mostrarModalPrevalidacionMatriz,
+    mostrarModalAlertaFinalValidacion,
     verArchivosCarpeta as verArchivosCarpetaUI,
 } from "./ui/modalManager.js";
 import {
@@ -32,6 +33,7 @@ import {
     actualizarResumen,
     actualizarProgreso,
     normalizarTipoError,
+    copiarTodosErroresVisibles,
 } from "./ui/filterManager.js";
 import {
     copiarNumero,
@@ -554,7 +556,7 @@ async function procesarLoteArchivos(archivosLista) {
                             tablaBody,
                             carp,
                             res,
-                            mostrarExitosCheckbox.checked
+                            Boolean(mostrarExitosCheckbox?.checked)
                         ),
                     convenio,
                     (nombreArchivo) => {
@@ -580,7 +582,7 @@ async function procesarLoteArchivos(archivosLista) {
                     tablaBody,
                     carpetaKey,
                     resultados[carpetaKey],
-                    mostrarExitosCheckbox.checked
+                    Boolean(mostrarExitosCheckbox?.checked)
                 );
             }
 
@@ -615,7 +617,7 @@ async function procesarLoteArchivos(archivosLista) {
                     ];
 
                     createPlaceholderRow(tablaBody, carpetaVirtual, "paquete", pac.paquete);
-                    updateRow(tablaBody, carpetaVirtual, resultados[carpetaVirtual], mostrarExitosCheckbox.checked);
+                    updateRow(tablaBody, carpetaVirtual, resultados[carpetaVirtual], Boolean(mostrarExitosCheckbox?.checked));
                 }
             }
         }
@@ -632,6 +634,28 @@ async function procesarLoteArchivos(archivosLista) {
 
         estado.classList.add("oculto");
         barraProgresoDiv.classList.add("oculto");
+
+        // Mostrar mensaje emergente indicando si hay errores/novedades
+        const totalItems = Object.keys(resultados).length;
+        let totalConErrores = 0;
+        let totalConAlertas = 0;
+        Object.values(resultados).forEach((r) => {
+            const errs = [
+                ...(r.errores || []),
+                ...Object.values(r.erroresPorServicio || {}).flat()
+            ];
+            const alerts = [
+                ...(r.alertas || []),
+                ...Object.values(r.alertasPorServicio || {}).flat()
+            ];
+            if (errs.length > 0) {
+                totalConErrores++;
+            } else if (alerts.length > 0) {
+                totalConAlertas++;
+            }
+        });
+
+        mostrarModalAlertaFinalValidacion(totalItems, totalConErrores, totalConAlertas);
     } catch (error) {
         console.error("❌ Error en procesamiento de lote:", error);
         estado.classList.remove("oculto");
@@ -801,9 +825,19 @@ tipoPaqueteSelect.addEventListener("change", () => {
 convenioSelect.addEventListener("change", manejarCambioConfiguracion);
 
 // Event listeners de filtros y búsqueda
-buscarDocumentoInput.addEventListener("input", () => aplicarFiltros(domElements, appState));
-mostrarExitosCheckbox.addEventListener("change", () => aplicarFiltros(domElements, appState));
-filtroServicioSelect.addEventListener("change", () => aplicarFiltros(domElements, appState));
+if (buscarDocumentoInput) buscarDocumentoInput.addEventListener("input", () => aplicarFiltros(domElements, appState));
+if (mostrarExitosCheckbox) mostrarExitosCheckbox.addEventListener("change", () => aplicarFiltros(domElements, appState));
+if (filtroServicioSelect) filtroServicioSelect.addEventListener("change", () => aplicarFiltros(domElements, appState));
+
+const ordenarTablaSelect = document.getElementById("ordenarTabla");
+if (ordenarTablaSelect) {
+    ordenarTablaSelect.addEventListener("change", () => aplicarFiltros(domElements, appState));
+}
+
+const btnCopiarTodos = document.getElementById("btnCopiarTodosErrores");
+if (btnCopiarTodos) {
+    btnCopiarTodos.addEventListener("click", () => copiarTodosErroresVisibles(todosLosResultados));
+}
 
 if (grupoFiltroEstado) {
     grupoFiltroEstado.addEventListener("click", (e) => {
@@ -940,7 +974,7 @@ window.copiarFormatoCompleto = (event, paquete, carpeta) =>
 window.copiarHallazgosCompletos = (event, carpeta) =>
     copiarHallazgosCompletos(event, carpeta, todosLosResultados, seleccionarCarpeta);
 window.copiarTextoSimple = (event, texto) => copiarTextoSimple(event, texto);
-window.copiarErrorMatriz = (event, paquete, documento, erroresTexto) =>
-    copiarErrorMatriz(event, paquete, documento, erroresTexto);
+window.copiarErrorMatriz = (event, paquete, documento, erroresTexto, nombre) =>
+    copiarErrorMatriz(event, paquete, documento, erroresTexto, nombre);
 window.mostrarAvisoRevisionFirmas = mostrarAvisoRevisionFirmas;
 window.mostrarModalReglasPaquete = mostrarModalReglasPaquete;
