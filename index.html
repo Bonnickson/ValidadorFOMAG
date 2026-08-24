@@ -90,14 +90,49 @@
                     </div>
                 </div>
 
-                <!-- Input Dropzone -->
-                <div>
+                <!-- Input Matriz Dropzone -->
+                <div class="matrix-upload-section">
                     <div class="sidebar-section-title">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        Carga de Soportes
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                        1. Carga de Matriz (Obligatoria)
                     </div>
 
-                    <label class="studio-dropzone">
+                    <label class="studio-dropzone matrix-dropzone" id="matrixDropzone">
+                        <div class="dropzone-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
+                        </div>
+                        <span class="dropzone-title" id="matrixDropzoneTitle">Adjuntar Matriz</span>
+                        <span class="dropzone-subtitle" id="matrixDropzoneSubtitle">.xlsx, .xls o .csv</span>
+                        <input type="file" id="inputMatriz" accept=".xlsx,.xls,.csv" />
+                    </label>
+
+                    <div id="matrizInfoBadge" class="matriz-card-loaded oculto">
+                        <div class="matriz-card-top">
+                            <div class="matriz-file-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                            </div>
+                            <div class="matriz-file-details">
+                                <div class="matriz-file-name" id="matrizNombreArchivo" title="Archivo cargado">matriz.xlsx</div>
+                                <div class="matriz-file-caption" id="matrizStatsTexto">0 pacientes cargados</div>
+                            </div>
+                        </div>
+                        <div class="matriz-card-actions">
+                            <button type="button" id="btnVerPrevalidacion" class="btn-matriz-action" title="Abrir diagnóstico detallado">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <span>Diagnóstico</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Dropzone -->
+                <div id="seccionSoportes" class="oculto">
+                    <div class="sidebar-section-title">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        2. Carga de Soportes (PDFs)
+                    </div>
+
+                    <label class="studio-dropzone" id="soportesDropzone">
                         <div class="dropzone-icon">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
                         </div>
@@ -165,6 +200,12 @@
                         <button type="button" class="btn-segmented" data-estado="con-novedades">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                             Con novedades
+                        </button>
+                        <button type="button" class="btn-segmented" data-estado="carpetas-vs-matriz" title="Carpetas cargadas con inconsistencias contra la matriz o soportes faltantes">
+                            📁 vs 📊
+                        </button>
+                        <button type="button" class="btn-segmented" data-estado="matriz-vs-carpetas" title="Pacientes en la matriz que no tienen carpeta de soportes">
+                            📊 vs 📁
                         </button>
                     </div>
 

@@ -94,6 +94,29 @@ export async function copiarFormatoCompleto(event, paquete, carpeta, seleccionar
 }
 
 /**
+ * Copia el texto directo recibido
+ */
+export async function copiarTextoSimple(event, texto) {
+    if (event) event.stopPropagation();
+    if (!texto) return;
+    await copiarTextoAlPortapapeles(texto);
+    mostrarToastCopia(texto);
+}
+
+/**
+ * Copia el formato error de matriz: "${paquete} - ${documento} - ${errores}"
+ */
+export async function copiarErrorMatriz(event, paquete, documento, erroresTexto) {
+    if (event) event.stopPropagation();
+    const pkg = paquete || "CPF";
+    const doc = documento || "";
+    const err = erroresTexto ? erroresTexto.trim() : "Sin novedades";
+    const texto = `${pkg} - ${doc} - ${err}`;
+    await copiarTextoAlPortapapeles(texto);
+    mostrarToastCopia(texto);
+}
+
+/**
  * Copia los hallazgos completos estructurados por línea
  */
 export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobales, seleccionarCarpetaCallback) {

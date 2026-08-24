@@ -227,8 +227,51 @@ export async function validarPorPaquete(
     resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
     resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
     
-    if (tipoPaquete.startsWith("CPF")) {
-        // En paquete nuevo: exactamente 1 VM, 1 ENF y 1 VENF
+    // Si existen datos de la matriz para este paciente, validar contra la matriz
+    if (resultados[carpeta].datosMatriz) {
+        const mat = resultados[carpeta].datosMatriz;
+        const servMatriz = mat.servicios || {};
+
+        // Validar todos los servicios conocidos
+        const todosServicios = ["VM", "VENF", "ENF", "TF", "TR", "TRS", "FON", "TO", "NUT", "TS", "PSI"];
+
+        for (const s of todosServicios) {
+            const cantEsperada = servMatriz[s] || 0;
+            // Para TRS o SUCCION, revisar ambas claves
+            const cantEncontrada = s === "TRS" || s === "SUCCION"
+                ? (resultados[carpeta].fechasPorServicio?.["TRS"]?.length || resultados[carpeta].fechasPorServicio?.["SUCCION"]?.length || 0)
+                : (resultados[carpeta].fechasPorServicio?.[s]?.length || 0);
+
+            const tieneArchivo = resultados[carpeta].servicios?.has(s) || 
+                (s === "TRS" && resultados[carpeta].servicios?.has("SUCCION")) ||
+                (s === "SUCCION" && resultados[carpeta].servicios?.has("TRS"));
+
+            if (cantEsperada > 0) {
+                if (!tieneArchivo) {
+                    resultados[carpeta].erroresPorServicio["General"].push(
+                        `Matriz programa ${cantEsperada} de ${s}, pero NO se encontró soporte 5 ${s.toLowerCase()}.pdf en la carpeta.`
+                    );
+                } else if (cantEncontrada !== cantEsperada) {
+                    const nombreSoporte = `5 ${s.toLowerCase()}.pdf`;
+                    resultados[carpeta].erroresPorServicio["General"].push(
+                        `Discrepancia en ${s}: Matriz espera ${cantEsperada} evoluciones, pero se encontraron ${cantEncontrada} en ${nombreSoporte}.`
+                    );
+                } else {
+                    resultados[carpeta].exitosPorServicio["General"].push(
+                        `${s}: ${cantEncontrada} evoluciones (coincide con matriz) ✓`
+                    );
+                }
+            } else {
+                // cantEsperada === 0
+                if (tieneArchivo && cantEncontrada > 0) {
+                    resultados[carpeta].erroresPorServicio["General"].push(
+                        `Soporte no programado: Se encontró ${s} con ${cantEncontrada} evoluciones, pero en la matriz está en 0 / vacío.`
+                    );
+                }
+            }
+        }
+    } else if (tipoPaquete.startsWith("CPF")) {
+        // En paquete nuevo sin matriz: validaciones por defecto
         const cantVM =
             resultados[carpeta].fechasPorServicio?.["VM"]?.length || 0;
         const cantENF =
@@ -350,32 +393,30 @@ function validarNuevoPaquete(
         [...serviciosEncontrados].filter((s) => s !== "General" && s !== "PAQ")
     );
 
-    // 1. Validar Obligatorios (VM, ENF, VENF)
-    const obligatorios = ["VM", "ENF", "VENF"];
-    for (const req of obligatorios) {
-        if (!serviciosReales.has(req)) {
-            resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio obligatorio ${req}`);
+    // 1. Validar Obligatorios (VM, ENF, VENF) solo si no hay matriz
+    if (!resultados[carpeta].datosMatriz) {
+        const obligatorios = ["VM", "ENF", "VENF"];
+        for (const req of obligatorios) {
+            if (!serviciosReales.has(req)) {
+                resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio obligatorio ${req}`);
+            }
+        }
+
+        // 2. Validar "Uno de los siguientes" (PSI, NUT, TS)
+        const opcionales = ["PSI", "NUT", "TS"];
+        const opcionalesEncontrados = opcionales.filter(s => serviciosReales.has(s));
+        
+        if (opcionalesEncontrados.length !== 1) {
+            resultados[carpeta].errores.push(
+                `Paquete ${tipoPaquete} debe incluir exactamente 1 servicio de (PSI, NUT, TS). Se encontraron: ${opcionalesEncontrados.length}`
+            );
+        } else {
+            const opcionalSelec = opcionalesEncontrados[0];
+            resultados[carpeta].alertasPorServicio[opcionalSelec] = resultados[carpeta].alertasPorServicio[opcionalSelec] || [];
         }
     }
 
-    // 2. Validar "Uno de los siguientes" (PSI, NUT, TS)
-    const opcionales = ["PSI", "NUT", "TS"];
-    const opcionalesEncontrados = opcionales.filter(s => serviciosReales.has(s));
-    
-    if (opcionalesEncontrados.length !== 1) {
-        resultados[carpeta].errores.push(
-            `Paquete ${tipoPaquete} debe incluir exactamente 1 servicio de (PSI, NUT, TS). Se encontraron: ${opcionalesEncontrados.length}`
-        );
-    } else {
-        // Exigir 1 sola evolución para el opcional
-        const opcionalSelec = opcionalesEncontrados[0];
-        resultados[carpeta].alertasPorServicio[opcionalSelec] = resultados[carpeta].alertasPorServicio[opcionalSelec] || [];
-        // La validación de evoluciones se hace al procesar las fechas, pero podemos marcar un hint si queremos
-    }
-
     // Archivos requeridos por servicio para PAQUETE
-    // Ya no se requiere "2 [servicio].pdf", se saca del "2 paq.pdf" o "2 PAQ.pdf"
-    
     // Validar que NO haya "2 [servicio].pdf"
     for (const servicio of serviciosReales) {
         const servicioLower = servicio.toLowerCase();

@@ -23,6 +23,7 @@ import {
     mostrarCondicionesPaquete,
     mostrarModalReglasPaquete,
     mostrarAvisoRevisionFirmas,
+    mostrarModalPrevalidacionMatriz,
     verArchivosCarpeta as verArchivosCarpetaUI,
 } from "./ui/modalManager.js";
 import {
@@ -48,11 +49,25 @@ import {
     exportarResumenErroresXLSX,
     exportarFomagEvento,
 } from "./services/excelExportService.js";
+import {
+    leerArchivoMatriz,
+    parsearMatriz,
+    normalizarDocumentoMatriz,
+} from "./services/matrixService.js";
 
 // Configurar worker de PDF.js
 pdfjsLib.GlobalWorkerOptions.workerSrc = PDF_WORKER_URL;
 
 // Elementos del DOM
+const inputMatriz = document.getElementById("inputMatriz");
+const matrixDropzone = document.getElementById("matrixDropzone");
+const matrixDropzoneTitle = document.getElementById("matrixDropzoneTitle");
+const matrixDropzoneSubtitle = document.getElementById("matrixDropzoneSubtitle");
+const matrizInfoBadge = document.getElementById("matrizInfoBadge");
+const matrizNombreArchivo = document.getElementById("matrizNombreArchivo");
+const matrizStatsTexto = document.getElementById("matrizStatsTexto");
+const btnVerPrevalidacion = document.getElementById("btnVerPrevalidacion");
+
 const input = document.getElementById("inputFolder");
 const btnAbrirFS = document.getElementById("btnAbrirFS");
 const btnDescargar = document.getElementById("btnDescargar");
@@ -81,6 +96,7 @@ const progresoFill = document.getElementById("progresoFill");
 const resumenErroresDiv = document.getElementById("resumenErrores");
 const listaErroresDiv = document.getElementById("listaErrores");
 const paqueteCondicionesContent = document.getElementById("paqueteCondicionesContent");
+const seccionSoportes = document.getElementById("seccionSoportes");
 
 // Agrupación de elementos para gestores de UI
 const domElements = {
@@ -105,6 +121,7 @@ const domElements = {
 // Estado global de la aplicación
 let todosLosResultados = {};
 let todasLasCarpetas = [];
+let datosMatrizGlobal = null; // Almacena { pacientesPorDoc, pacientesList, diagnosticoGlobal }
 const appState = {
     estadoFiltroActivo: "",
     erroresSeleccionados: new Set(),
@@ -174,6 +191,18 @@ function limpiarResultados(limpiarInput = false) {
 
     if (limpiarInput && input) {
         input.value = "";
+    }
+
+    // Resetear también la matriz cargada si se limpia todo
+    if (limpiarInput) {
+        datosMatrizGlobal = null;
+        if (inputMatriz) inputMatriz.value = "";
+        if (matrizInfoBadge) matrizInfoBadge.classList.add("oculto");
+        if (matrixDropzoneTitle) matrixDropzoneTitle.textContent = "Adjuntar Matriz";
+        if (matrixDropzoneSubtitle) matrixDropzoneSubtitle.textContent = "Excel o CSV de programación";
+        if (matrizNombreArchivo) matrizNombreArchivo.textContent = "";
+        if (matrizStatsTexto) matrizStatsTexto.textContent = "0 pacientes cargados";
+        if (seccionSoportes) seccionSoportes.classList.add("oculto");
     }
 
     reiniciarFiltros(domElements, appState, false);
@@ -412,6 +441,14 @@ async function procesarLoteArchivos(archivosLista) {
             convenio
         );
 
+        // Validar que la matriz esté cargada obligatoriamente para validación por paquete
+        if (tipoValidacion === "paquete" && !datosMatrizGlobal) {
+            estado.classList.remove("oculto");
+            estado.textContent = "❌ Error: Debe adjuntar primero la matriz Excel/CSV (Paso 1) antes de validar los soportes.";
+            alert("Por favor adjunta la matriz de programación (.xlsx, .xls, .csv) en el Paso 1 antes de cargar los soportes.");
+            return;
+        }
+
         const carpetasAgrupadas = agruparArchivosInteligente(
             archivosLista,
             tipoPaqueteFallback,
@@ -427,13 +464,31 @@ async function procesarLoteArchivos(archivosLista) {
             return;
         }
 
+        // Registrar qué documentos de la matriz fueron encontrados en las carpetas
+        const documentosProcesadosSet = new Set();
+
         todasLasCarpetas = carpetasKeys;
         let carpetasProcesadas = 0;
 
         for (const carpetaKey of carpetasKeys) {
             const infoCarpeta = carpetasAgrupadas[carpetaKey];
             const carpeta = infoCarpeta.carpetaNombre;
-            const paqueteParaCarpeta = infoCarpeta.tipoPaquete;
+            let paqueteParaCarpeta = infoCarpeta.tipoPaquete;
+
+            // Extraer documento del nombre de la carpeta
+            const nroDocumento = normalizarDocumentoMatriz(carpeta.match(/^\d+/)?.[0] || carpeta);
+
+            // Cruce con la matriz si existe
+            let datosMatrizPaciente = null;
+            if (datosMatrizGlobal && datosMatrizGlobal.pacientesPorDoc) {
+                if (nroDocumento && datosMatrizGlobal.pacientesPorDoc.has(nroDocumento)) {
+                    datosMatrizPaciente = datosMatrizGlobal.pacientesPorDoc.get(nroDocumento);
+                    documentosProcesadosSet.add(nroDocumento);
+                    if (datosMatrizPaciente.paquete) {
+                        paqueteParaCarpeta = datosMatrizPaciente.paquete;
+                    }
+                }
+            }
 
             resultados[carpetaKey] = inicializarResultado(
                 tipoValidacion,
@@ -441,11 +496,25 @@ async function procesarLoteArchivos(archivosLista) {
                 convenio
             );
             resultados[carpetaKey].tipoPaquete = paqueteParaCarpeta;
+            resultados[carpetaKey].nroDocumento = nroDocumento;
+            resultados[carpetaKey].datosMatriz = datosMatrizPaciente;
+            resultados[carpetaKey].auditor = infoCarpeta.auditor || "";
+            resultados[carpetaKey].rutaRelativa = infoCarpeta.rutaRelativa || "";
 
             if (tipoValidacion === "evento") {
                 detectarTipoCarpeta(carpeta, resultados[carpetaKey], convenio);
             } else {
                 resultados[carpetaKey].tipo = paqueteParaCarpeta;
+            }
+
+            // Si el paciente de la carpeta NO está en la matriz cargada: ERROR
+            if (datosMatrizGlobal && !datosMatrizPaciente && tipoValidacion === "paquete") {
+                resultados[carpetaKey].servicios.add("General");
+                resultados[carpetaKey].erroresPorServicio["General"] =
+                    resultados[carpetaKey].erroresPorServicio["General"] || [];
+                resultados[carpetaKey].erroresPorServicio["General"].push(
+                    `El documento ${nroDocumento || carpeta} NO se encuentra programado en la matriz cargada.`
+                );
             }
 
             if (infoCarpeta.errorPaquete) {
@@ -466,9 +535,7 @@ async function procesarLoteArchivos(archivosLista) {
 
             const archivos = infoCarpeta.archivos;
             const nombres = archivos.map((a) => a.name);
-            const nroDocumento = carpeta.match(/^\d+/)?.[0] || "";
 
-            resultados[carpetaKey].nroDocumento = nroDocumento;
             resultados[carpetaKey].primerArchivoRelPath =
                 archivos[0]?.webkitRelativePath || carpeta;
             resultados[carpetaKey].listaArchivos = nombres;
@@ -527,6 +594,32 @@ async function procesarLoteArchivos(archivosLista) {
             await cederHiloPrincipal();
         }
 
+        // VALIDACIÓN BIDIRECCIONAL: Pacientes de la matriz que no tienen carpeta de soportes
+        if (datosMatrizGlobal && tipoValidacion === "paquete") {
+            for (const [doc, pac] of datosMatrizGlobal.pacientesPorDoc.entries()) {
+                if (!documentosProcesadosSet.has(doc)) {
+                    const carpetaVirtual = `${doc}`.trim();
+                    resultados[carpetaVirtual] = inicializarResultado(
+                        "paquete",
+                        pac.paquete || "CPF1108",
+                        convenio
+                    );
+                    resultados[carpetaVirtual].nroDocumento = doc;
+                    resultados[carpetaVirtual].tipo = pac.paquete || "CPF1108";
+                    resultados[carpetaVirtual].tipoPaquete = pac.paquete || "CPF1108";
+                    resultados[carpetaVirtual].datosMatriz = pac;
+                    resultados[carpetaVirtual].esDesdeMatriz = true;
+                    resultados[carpetaVirtual].servicios.add("General");
+                    resultados[carpetaVirtual].erroresPorServicio["General"] = [
+                        `No se encontró carpeta de soportes PDF para el documento ${doc} programado en la matriz.`
+                    ];
+
+                    createPlaceholderRow(tablaBody, carpetaVirtual, "paquete", pac.paquete);
+                    updateRow(tablaBody, carpetaVirtual, resultados[carpetaVirtual], mostrarExitosCheckbox.checked);
+                }
+            }
+        }
+
         todosLosResultados = resultados;
         actualizarResumen(resultados, domElements, appState, false, exportarResumenErroresXLSX);
         btnDescargar.classList.remove("oculto");
@@ -548,7 +641,64 @@ async function procesarLoteArchivos(archivosLista) {
 
 // ================= CONFIGURACIÓN DE EVENT LISTENERS =================
 
-// Input file selector
+// Input file selector de Matriz
+if (inputMatriz) {
+    inputMatriz.addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        try {
+            estado.classList.remove("oculto");
+            estado.textContent = "📊 Leyendo y analizando matriz...";
+
+            const rawRows = await leerArchivoMatriz(file);
+            const resultadoMatriz = parsearMatriz(rawRows);
+
+            datosMatrizGlobal = resultadoMatriz;
+
+            // Actualizar Badge en la UI
+            if (matrizInfoBadge) {
+                matrizInfoBadge.classList.remove("oculto");
+                matrizNombreArchivo.textContent = file.name;
+                const totalP = resultadoMatriz.diagnosticoGlobal.totalPacientes;
+                const errP = resultadoMatriz.diagnosticoGlobal.pacientesConErrores;
+                matrizStatsTexto.textContent = `${totalP} pacientes (${totalP - errP} conformes, ${errP} con novedades)`;
+            }
+            if (matrixDropzoneTitle) {
+                matrixDropzoneTitle.textContent = "Matriz Cargada ✓";
+            }
+            if (matrixDropzoneSubtitle) {
+                matrixDropzoneSubtitle.textContent = file.name;
+            }
+
+            // Mostrar sección de carga de soportes
+            if (seccionSoportes) {
+                seccionSoportes.classList.remove("oculto");
+            }
+
+            estado.classList.add("oculto");
+
+            // Mostrar modal de prevalidación inmediatamente para diagnóstico
+            mostrarModalPrevalidacionMatriz(datosMatrizGlobal);
+        } catch (err) {
+            console.error("Error al leer matriz:", err);
+            estado.classList.remove("oculto");
+            estado.textContent = `❌ Error leyendo matriz: ${err.message}`;
+            alert(`Error al procesar la matriz: ${err.message}`);
+        }
+    });
+}
+
+// Botón para reabrir diagnóstico de la matriz
+if (btnVerPrevalidacion) {
+    btnVerPrevalidacion.addEventListener("click", () => {
+        if (datosMatrizGlobal) {
+            mostrarModalPrevalidacionMatriz(datosMatrizGlobal);
+        }
+    });
+}
+
+// Input file selector de soportes
 input.addEventListener("change", async () => {
     await procesarLoteArchivos(input.files);
 });
@@ -688,6 +838,18 @@ listaErroresDiv.addEventListener("click", (e) => {
     } else {
         appState.erroresSeleccionados.delete(tipoNorm);
     }
+
+    const btnCopiar = document.getElementById("btnCopiarIncidenciasSeleccionadas");
+    if (btnCopiar) {
+        const count = appState.erroresSeleccionados.size;
+        if (count > 0) {
+            btnCopiar.classList.remove("oculto");
+            btnCopiar.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg> Copiar listado (${count})`;
+        } else {
+            btnCopiar.classList.add("oculto");
+        }
+    }
+
     aplicarFiltros(domElements, appState);
 });
 
@@ -699,6 +861,59 @@ tablaBody.addEventListener("click", (event) => {
     }
 });
 
+/**
+ * Inicializa el redimensionador interactivo por arrastre del panel de incidencias
+ */
+function initResumenResizer() {
+    const container = document.getElementById("resumenErrores");
+    if (!container) return;
+
+    let isDragging = false;
+    let startY = 0;
+    let startHeight = 0;
+    let rafId = 0;
+
+    const applyHeight = (newHeight) => {
+        container.style.setProperty("height", `${newHeight}px`, "important");
+        container.style.setProperty("max-height", `${newHeight}px`, "important");
+    };
+
+    const onMouseMove = (moveEvt) => {
+        if (!isDragging) return;
+        cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+            const deltaY = moveEvt.clientY - startY;
+            const newHeight = Math.min(800, Math.max(80, startHeight + deltaY));
+            applyHeight(newHeight);
+        });
+    };
+
+    const onMouseUp = () => {
+        isDragging = false;
+        cancelAnimationFrame(rafId);
+        const resizer = container.querySelector(":scope > #resumenResizer");
+        if (resizer) resizer.classList.remove("dragging");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        window.removeEventListener("mousemove", onMouseMove);
+        window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    container.addEventListener("mousedown", (e) => {
+        const resizer = e.target.closest("#resumenResizer");
+        if (!resizer) return;
+        e.preventDefault();
+        isDragging = true;
+        startY = e.clientY;
+        startHeight = container.getBoundingClientRect().height;
+        resizer.classList.add("dragging");
+        document.body.style.cursor = "row-resize";
+        document.body.style.userSelect = "none";
+        window.addEventListener("mousemove", onMouseMove);
+        window.addEventListener("mouseup", onMouseUp);
+    });
+}
+
 // Inicialización de la aplicación al cargar el DOM
 document.addEventListener("DOMContentLoaded", () => {
     const tipoValidacionInicial = tipoValidacionSelect.value;
@@ -709,6 +924,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     mostrarCondicionesPaquete(tipoPaqueteSelect, paqueteCondicionesContent);
     inicializarControlesPDF();
+    initResumenResizer();
 });
 
 // ================= EXPOSICIÓN GLOBAL PARA COMPATIBILIDAD CON UI =================
@@ -723,5 +939,8 @@ window.copiarFormatoCompleto = (event, paquete, carpeta) =>
     copiarFormatoCompleto(event, paquete, carpeta, seleccionarCarpeta);
 window.copiarHallazgosCompletos = (event, carpeta) =>
     copiarHallazgosCompletos(event, carpeta, todosLosResultados, seleccionarCarpeta);
+window.copiarTextoSimple = (event, texto) => copiarTextoSimple(event, texto);
+window.copiarErrorMatriz = (event, paquete, documento, erroresTexto) =>
+    copiarErrorMatriz(event, paquete, documento, erroresTexto);
 window.mostrarAvisoRevisionFirmas = mostrarAvisoRevisionFirmas;
 window.mostrarModalReglasPaquete = mostrarModalReglasPaquete;

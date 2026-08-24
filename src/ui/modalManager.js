@@ -79,17 +79,17 @@ export function mostrarModalReglasPaquete(paquete) {
                     <div class="rule-group">
                         <span class="rule-label">Fijos Obligatorios:</span>
                         <div class="rule-chips">
-                            <span class="rule-chip required">VM: 1</span>
-                            <span class="rule-chip required">ENF: 1</span>
-                            <span class="rule-chip required">VENF: 1</span>
+                            <span class="rule-chip required">🩺 Valoración Médica (1)</span>
+                            <span class="rule-chip required">🩺 Enfermería Profesional (1)</span>
+                            <span class="rule-chip required">💉 Auxiliar de Enfermería (1)</span>
                         </div>
                     </div>
                     <div class="rule-group">
                         <span class="rule-label">A Elección (1 solo):</span>
                         <div class="rule-chips">
-                            <span class="rule-chip choice">PSI (1)</span>
-                            <span class="rule-chip choice">NUT (1)</span>
-                            <span class="rule-chip choice">TS (1)</span>
+                            <span class="rule-chip choice">🧠 Psicología (1)</span>
+                            <span class="rule-chip choice">🥗 Nutrición (1)</span>
+                            <span class="rule-chip choice">👥 Trabajo Social (1)</span>
                         </div>
                     </div>
                     <div class="rule-group">
@@ -298,3 +298,297 @@ export function verArchivosCarpeta(
     };
     setTimeout(() => document.addEventListener("click", closeListener), 50);
 }
+
+/**
+ * Modal de diagnóstico y prevalidación de matriz
+ */
+export function mostrarModalPrevalidacionMatriz(matrizData) {
+    if (!matrizData) return;
+
+    const prev = document.getElementById("modalPrevalidacionMatrizActivo");
+    if (prev) prev.remove();
+
+    const { diagnosticoGlobal, pacientesList } = matrizData;
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "modalPrevalidacionMatrizActivo";
+    backdrop.className = "modal-rules-backdrop";
+
+    const totalPacientes = diagnosticoGlobal.totalPacientes || 0;
+    const conErrores = diagnosticoGlobal.pacientesConErrores || 0;
+    const conformes = totalPacientes - conErrores;
+
+    // Badges de conteo por paquete con los colores oficiales de badges
+    const paquetesHTML = Object.entries(diagnosticoGlobal.conteoPorPaquete || {})
+        .map(([pkg, count]) => {
+            const pkgCls = `pkg-${pkg.toLowerCase()}`;
+            return `
+                <div class="preval-pkg-chip doc-package-tag ${pkgCls}">
+                    <span class="package-name">${pkg}</span>
+                    <span class="preval-pkg-count">${count}</span>
+                </div>
+            `;
+        })
+        .join("") || "<span style='color:var(--text-muted); font-size:11px;'>Sin paquetes</span>";
+
+    // Helper para formatear nombres a Title/PascalCase
+    const formatPascalCase = (str) => {
+        if (!str) return "—";
+        return str.toLowerCase().replace(/(?:^|\s|\/|-)\S/g, match => match.toUpperCase());
+    };
+
+    // Filas de la tabla
+    const filasHTML = pacientesList.map((p) => {
+        const estadoBadge = p.valido
+            ? `<span class="preval-badge success">✔ Conforme</span>`
+            : `<span class="preval-badge error">✗ Novedades</span>`;
+
+        const detalles = [
+            ...(p.errores || []).map(e => `<div class="preval-item-error"><span class="preval-icon-bullet">✕</span><span>${e}</span></div>`),
+            ...(p.alertas || []).map(a => `<div class="preval-item-warning"><span class="preval-icon-bullet">!</span><span>${a}</span></div>`),
+        ].join("");
+
+        const pkgCode = p.paquete || p.paqueteRaw || "—";
+        const pkgCls = p.paquete ? `pkg-${p.paquete.toLowerCase()}` : "";
+        const s = p.servicios;
+        const nombrePascal = formatPascalCase(p.nombre);
+
+        // Texto plano del error para el botón de copiar
+        const textoErroresRaw = (p.errores || []).join(" | ") || (p.alertas || []).join(" | ") || "Conforme";
+        const textoErroresEscaped = textoErroresRaw.replace(/'/g, "\\'");
+
+        // 3 Grupos ordenados, alineados en columnas consistentes
+        const chipsServicios = `
+            <div class="preval-services-structured">
+                <!-- 1. Fijos Obligatorios -->
+                <div class="pserv-group">
+                    <span class="pserv-group-title">Fijos:</span>
+                    <div class="pserv-group-items">
+                        <span class="pserv-tag oblig ${s.VM === 1 ? 'ok' : 'err'}">VM: ${s.VM}</span>
+                        <span class="pserv-tag oblig ${s.VENF === 1 ? 'ok' : 'err'}">VENF: ${s.VENF}</span>
+                        <span class="pserv-tag oblig ${s.ENF === 1 ? 'ok' : 'err'}">ENF: ${s.ENF}</span>
+                    </div>
+                </div>
+
+                <!-- 2. Opcional A Elección -->
+                <div class="pserv-group">
+                    <span class="pserv-group-title">Opcional:</span>
+                    <div class="pserv-group-items">
+                        <span class="pserv-tag opt ${s.PSI > 0 ? 'active' : 'dim'}">PSI: ${s.PSI}</span>
+                        <span class="pserv-tag opt ${s.NUT > 0 ? 'active' : 'dim'}">NUT: ${s.NUT}</span>
+                        <span class="pserv-tag opt ${s.TS > 0 ? 'active' : 'dim'}">TS: ${s.TS}</span>
+                    </div>
+                </div>
+
+                <!-- 3. Terapias con Desglose y Suma -->
+                <div class="pserv-group">
+                    <span class="pserv-group-title">Terapias:</span>
+                    <div class="pserv-group-items">
+                        <span class="pserv-tag ter-total">Total: ${p.totalTerapias}</span>
+                        <span class="pserv-tag ter-detail" title="TF:${s.TF} TR:${s.TR} TRS:${s.TRS} FON:${s.FON} TO:${s.TO}">TF:${s.TF} TR:${s.TR} TRS:${s.TRS} FON:${s.FON} TO:${s.TO}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        return `
+            <tr class="preval-row ${p.valido ? 'valido' : 'con-novedad'}" data-doc="${p.documento || ''}" data-nombre="${(p.nombre || '').toLowerCase()}" data-pkg="${pkgCode}" data-estado="${p.valido ? 'conforme' : 'novedades'}">
+                <td class="preval-cell-num">${p.filaExcel}</td>
+                <td class="preval-cell-doc">
+                    <div class="doc-badge-stack preval-doc-badge-stack">
+                        <div class="doc-package-tag ${pkgCls}">
+                            <span class="package-name">${pkgCode}</span>
+                            <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${pkgCode}')" title="Ver reglas de ${pkgCode}">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                            </button>
+                        </div>
+                        <div class="doc-title-line preval-doc-title-line">
+                            <span class="carpeta-nombre preval-doc-num">${p.documento || "—"}</span>
+                        </div>
+                        <div class="preval-copy-btn-group">
+                            <button type="button" class="btn-copy-minimal" onclick="copiarTextoSimple(event, '${p.documento}')" title="Copiar sólo documento (${p.documento})">📋</button>
+                            <button type="button" class="btn-copy-minimal" onclick="copiarTextoSimple(event, '${pkgCode} - ${p.documento} - ')" title="Copiar '${pkgCode} - ${p.documento} - '">🏷️</button>
+                            <button type="button" class="btn-copy-minimal" onclick="copiarErrorMatriz(event, '${pkgCode}', '${p.documento}', '${textoErroresEscaped}')" title="Copiar con novedad">📝</button>
+                        </div>
+                    </div>
+                </td>
+                <td class="preval-cell-name-full" title="${p.nombre || ''}">${nombrePascal}</td>
+                <td class="preval-cell-terapias">
+                    ${chipsServicios}
+                </td>
+                <td class="preval-cell-status">${estadoBadge}</td>
+                <td class="preval-cell-diag">${detalles || '<span class="preval-ok-text">Cumple todas las condiciones</span>'}</td>
+            </tr>
+        `;
+    }).join("");
+
+    backdrop.innerHTML = `
+        <div class="preval-modal-card" onclick="event.stopPropagation()">
+            <!-- Modal Header Compacto -->
+            <div class="preval-modal-header">
+                <div class="preval-title-group">
+                    <div class="preval-header-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                    </div>
+                    <div>
+                        <h2 class="preval-modal-title">Pre-validación de Matriz</h2>
+                        <p class="preval-modal-subtitle">Verificación automática de reglas de paquete antes de la auditoría</p>
+                    </div>
+                </div>
+                <button type="button" class="modal-rules-close" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()" title="Cerrar">&times;</button>
+            </div>
+
+            <!-- Modal Content Body -->
+            <div class="preval-modal-body">
+                <!-- Ribbon Stats y Chips de Paquete -->
+                <div class="preval-top-toolbar">
+                    <div class="stats-cluster">
+                        <div class="stat-pill">
+                            <span class="stat-pill-label">Total</span>
+                            <span class="stat-pill-value" id="prevalKpiTotal">${totalPacientes}</span>
+                        </div>
+                        <div class="stat-pill success">
+                            <span class="stat-pill-label">Conformes</span>
+                            <span class="stat-pill-value" id="prevalKpiConformes">${conformes}</span>
+                        </div>
+                        <div class="stat-pill ${conErrores > 0 ? 'error' : ''}">
+                            <span class="stat-pill-label">Novedades</span>
+                            <span class="stat-pill-value" id="prevalKpiNovedades">${conErrores}</span>
+                        </div>
+                    </div>
+
+                    <div class="preval-pkg-section">
+                        <span class="preval-pkg-section-label">Paquetes:</span>
+                        <div class="preval-pkg-cluster">${paquetesHTML}</div>
+                    </div>
+                </div>
+
+                <!-- Barra de Búsqueda y Filtros Integrada -->
+                <div class="preval-filter-strip">
+                    <div class="preval-search-box">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;color:var(--text-muted);"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="prevalBuscarInput" class="preval-input-search" placeholder="Buscar por documento o nombre..." />
+                    </div>
+
+                    <div class="preval-filter-group">
+                        <div class="studio-segmented-control" id="prevalFiltroEstadoGroup">
+                            <button type="button" class="btn-segmented active" data-filter-estado="">Todos</button>
+                            <button type="button" class="btn-segmented" data-filter-estado="conforme">Conformes</button>
+                            <button type="button" class="btn-segmented" data-filter-estado="novedades">Con novedades</button>
+                        </div>
+
+                        <select id="prevalFiltroPaqueteSelect" class="studio-filter-select" style="font-size:11.5px; padding:4px 8px;">
+                            <option value="">Paquete: Todos</option>
+                            ${Object.keys(diagnosticoGlobal.conteoPorPaquete || {}).map(pkg => `<option value="${pkg}">${pkg}</option>`).join("")}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tabla de Diagnóstico Compacta -->
+                <div class="preval-table-container">
+                    <table class="preval-table" id="prevalTableMain">
+                        <thead>
+                            <tr>
+                                <th style="width: 36px;">Fila</th>
+                                <th style="width: 120px;">Documento</th>
+                                <th style="width: 180px;">Nombre Paciente</th>
+                                <th style="width: 320px;">Programación Matriz</th>
+                                <th style="width: 95px;">Estado</th>
+                                <th>Hallazgos / Reglas</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prevalTableBody">
+                            ${filasHTML}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="preval-modal-footer">
+                <span class="preval-footer-hint">Las cantidades programadas en la matriz se compararán de forma estricta contra las evoluciones de los PDFs.</span>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <button type="button" id="btnCargarSoportesDiagnostico" class="btn-studio btn-studio-success" style="padding: 6px 14px; font-size: 12px; display:flex; align-items:center; gap:5px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        Cargar Soportes
+                    </button>
+                    <button type="button" class="btn-studio btn-studio-primary" style="padding: 6px 14px; font-size: 12px;" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()">
+                        Listo, Continuar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+
+    // Botón "Cargar Soportes" desde el modal de diagnóstico
+    const btnCargarSoportesDiag = document.getElementById("btnCargarSoportesDiagnostico");
+    if (btnCargarSoportesDiag) {
+        btnCargarSoportesDiag.addEventListener("click", () => {
+            // Cerrar modal
+            backdrop.remove();
+            // Mostrar sección de soportes en el sidebar
+            const secSoportes = document.getElementById("seccionSoportes");
+            if (secSoportes) secSoportes.classList.remove("oculto");
+            // Disparar click en el input de soportes
+            const inputFolder = document.getElementById("inputFolder");
+            if (inputFolder) inputFolder.click();
+        });
+    }
+
+    // ================= FUNCIONALIDAD DE FILTRADO DINÁMICO =================
+    const buscarInput = document.getElementById("prevalBuscarInput");
+    const filtroEstadoBtns = document.querySelectorAll("#prevalFiltroEstadoGroup .btn-segmented");
+    const filtroPkgSelect = document.getElementById("prevalFiltroPaqueteSelect");
+    const tbody = document.getElementById("prevalTableBody");
+
+    let estadoActivo = "";
+    let pkgActivo = "";
+
+    const aplicarFiltrosModal = () => {
+        if (!tbody) return;
+        const q = (buscarInput?.value || "").toLowerCase().trim();
+        const filas = tbody.querySelectorAll("tr.preval-row");
+
+        filas.forEach((tr) => {
+            const doc = tr.getAttribute("data-doc") || "";
+            const nombre = tr.getAttribute("data-nombre") || "";
+            const pkg = tr.getAttribute("data-pkg") || "";
+            const estado = tr.getAttribute("data-estado") || "";
+
+            const matchTexto = !q || doc.includes(q) || nombre.includes(q);
+            const matchEstado = !estadoActivo || estado === estadoActivo;
+            const matchPkg = !pkgActivo || pkg === pkgActivo;
+
+            if (matchTexto && matchEstado && matchPkg) {
+                tr.style.display = "";
+            } else {
+                tr.style.display = "none";
+            }
+        });
+    };
+
+    if (buscarInput) {
+        buscarInput.addEventListener("input", aplicarFiltrosModal);
+    }
+
+    if (filtroEstadoBtns) {
+        filtroEstadoBtns.forEach((btn) => {
+            btn.addEventListener("click", () => {
+                filtroEstadoBtns.forEach((b) => b.classList.remove("active"));
+                btn.classList.add("active");
+                estadoActivo = btn.getAttribute("data-filter-estado") || "";
+                aplicarFiltrosModal();
+            });
+        });
+    }
+
+    if (filtroPkgSelect) {
+        filtroPkgSelect.addEventListener("change", () => {
+            pkgActivo = filtroPkgSelect.value;
+            aplicarFiltrosModal();
+        });
+    }
+}
+

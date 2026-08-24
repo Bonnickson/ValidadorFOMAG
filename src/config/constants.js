@@ -146,8 +146,9 @@ export function obtenerInfoSoporte(nombreArchivo) {
 
 export const SERVICIOS_NOMBRES = {
     General: "📦 Paquete",
-    VM: "🩺 Valoración Médica",
-    ENF: "💉 Enfermería",
+    VM: "🩺 Valoración Médica (1)",
+    VENF: "🩺 Enfermería Profesional (1)",
+    ENF: "💉 Auxiliar de Enfermería (1)",
     ENF12: "💉 Enfermería 12h",
     TF: "🏃 Terapia Física",
     TR: "🫁 Terapia Respiratoria",
@@ -158,7 +159,6 @@ export const SERVICIOS_NOMBRES = {
     PSI: "🧠 Psicología",
     FON: "🗣️ Fonoaudiología",
     NUT: "🥗 Nutrición",
-    VENF: "🩺 Visita Enfermería (Aux)",
 };
 
 export const PDF_WORKER_URL =

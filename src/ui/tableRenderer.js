@@ -4,23 +4,16 @@ import {
     PAQUETES_INFO,
     ORDEN_SERVICIOS_CLINICOS,
 } from "../config/constants.js";
-import { normalizarTipoError } from "./filterManager.js";
+import { normalizarTipoError, clasificarErrorResumen } from "./filterManager.js";
 
 // Map para rastrear el color de grupo de cada carpeta
 const gruposPorCarpeta = new Map();
 let contadorGrupo = 0;
 
 const renderErrorItem = (errorText) => {
-    const [tipoRaw] = errorText.split(":");
-    const tipoError = (tipoRaw || "").trim() || "Error";
-    const esAuthEvo = /cant\s+autorizaciones[^\n]*cant\s+evoluciones/i.test(
-        errorText
-    );
-    const tipoFiltro = esAuthEvo
-        ? "Cant autorizaciones ≠ cant evoluciones"
-        : tipoError;
-    const tipoNorm = normalizarTipoError(tipoFiltro);
-    return `<div class="error-item" data-error-type="${tipoFiltro}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">✕</span> <span>${errorText}</span></div>`;
+    const { tipo } = clasificarErrorResumen(errorText);
+    const tipoNorm = normalizarTipoError(tipo);
+    return `<div class="error-item" data-error-type="${tipo}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">✕</span> <span>${errorText}</span></div>`;
 };
 
 const renderErrorItems = (errors = []) =>
@@ -391,10 +384,25 @@ function renderPaqueteFilas(
     const paqueteInfo = PAQUETES_INFO[paqueteCodigo] || { nombre: `Paquete ${paqueteCodigo}` };
     const paqueteClase = `pkg-${paqueteCodigo.toLowerCase()}`;
 
+    const esMatrizVirtual = Boolean(r.esDesdeMatriz || (r.datosMatriz && totalArchivos === 0));
+    const iconoBadgeSVG = esMatrizVirtual
+        ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;color:#107c41;flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>`
+        : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;color:#d97706;flex-shrink:0;"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>`;
+
+    if (esMatrizVirtual) {
+        trHeader.setAttribute("data-es-matriz", "true");
+    }
+
+    const auditorBadgeHTML = r.auditor 
+        ? `<div class="auditor-tag" style="font-size:9.5px; font-weight:700; color:var(--text-muted); background:var(--bg-subtle); border:1px solid var(--border-subtle); padding:1px 5px; border-radius:3px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="Auditor / Carpeta raíz: ${r.auditor}">👤 ${r.auditor}</div>`
+        : "";
+
     trHeader.innerHTML = `
         <td rowspan="${totalFilasLote}" class="carpeta-cell doc-header-grouped">
             <div class="doc-badge-stack">
-                <div class="doc-package-tag ${paqueteClase}" title="${paqueteInfo.nombre}">
+                ${auditorBadgeHTML}
+                <div class="doc-package-tag ${paqueteClase}" title="${paqueteInfo.nombre} (${esMatrizVirtual ? 'Origen: Matriz Excel' : 'Origen: Carpeta de soportes'})">
+                    ${iconoBadgeSVG}
                     <span class="package-name" title="${paqueteInfo.nombre}">${paqueteCodigo}</span>
                     <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${paqueteCodigo}')" title="Ver reglas de ${paqueteInfo.nombre}">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
@@ -425,6 +433,9 @@ function renderPaqueteFilas(
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
         tr.setAttribute("data-servicio", s);
+        if (esMatrizVirtual) {
+            tr.setAttribute("data-es-matriz", "true");
+        }
         tr.classList.add("paquete-row", "paquete-service-row", grupoClase);
 
         if (index === serviciosArray.length - 1) {

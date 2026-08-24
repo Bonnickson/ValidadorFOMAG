@@ -86,6 +86,22 @@ export function agruparArchivosInteligente(
             }
         }
 
+        // Detectar si hay nivel de auditor/subcarpeta superior
+        // Ejemplos:
+        // p.length = 5: [Raiz, Auditor, Paquete, Paciente, Archivo.pdf] -> Auditor = p[1], Paquete = p[2]
+        // p.length = 4: [Raiz, Paquete, Paciente, Archivo.pdf] o [Auditor, Paquete, Paciente, Archivo.pdf]
+        let auditorDetectado = "";
+        if (p.length >= 5) {
+            auditorDetectado = p[1];
+        } else if (p.length === 4) {
+            const primerNivel = p[0];
+            const segundoNivel = p[1];
+            // Si el segundo nivel es paquete, el primer nivel es auditor
+            if (extraerCodigoPaquete(segundoNivel)) {
+                auditorDetectado = primerNivel;
+            }
+        }
+
         let key = carpetaPaciente;
         if (carpetas[key] && carpetas[key].tipoPaquete !== paqueteDetectado) {
             key = `${carpetaPaciente} (${paqueteDetectado})`;
@@ -96,11 +112,16 @@ export function agruparArchivosInteligente(
                 carpetaNombre: carpetaPaciente,
                 tipoPaquete: paqueteDetectado,
                 errorPaquete: errorPaquete,
+                auditor: auditorDetectado,
+                rutaRelativa: pathNormalizado,
                 archivos: [],
             };
         }
         if (errorPaquete && !carpetas[key].errorPaquete) {
             carpetas[key].errorPaquete = errorPaquete;
+        }
+        if (auditorDetectado && !carpetas[key].auditor) {
+            carpetas[key].auditor = auditorDetectado;
         }
         carpetas[key].archivos.push(f);
     }

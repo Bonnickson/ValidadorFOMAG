@@ -4,20 +4,87 @@
 export const normalizarTipoError = (txt) => (txt || "").trim().toLowerCase();
 
 /**
- * Agrupa errores similares bajo un tipo general
+ * Agrupa errores similares bajo un tipo general y catalogado
  */
 export function clasificarErrorResumen(error) {
-    const authEvoRegex = /cant\s+autorizaciones[^\n]*cant\s+evoluciones/i;
-    if (authEvoRegex.test(error)) {
+    const errorStr = (error || "").trim();
+
+    // 1. Paciente programado en la matriz pero sin carpeta de soportes
+    if (/No se encontr[oó] carpeta de soportes/i.test(errorStr)) {
         return {
-            tipo: "Cant autorizaciones ≠ cant evoluciones",
-            detalle:
-                "Revisar que las autorizaciones coincidan con las evoluciones",
+            tipo: "Matriz programada no encuentra soportes",
+            detalle: "Paciente está en matriz pero falta su carpeta de archivos",
         };
     }
 
-    const [tipoRaw, ...resto] = error.split(":");
-    const tipo = (tipoRaw || "").trim() || "Error";
+    // 2. Carpeta física que no está en la matriz cargada
+    if (/no se encuentra programado en la matriz/i.test(errorStr) || /No se encuentra cargado en matriz/i.test(errorStr) || /no est[aá] en la matriz/i.test(errorStr) || /no figura en la matriz/i.test(errorStr) || /no encontrado en matriz/i.test(errorStr)) {
+        return {
+            tipo: "No se encuentra programado en matriz",
+            detalle: "El documento de la carpeta no figura en la matriz cargada",
+        };
+    }
+
+    // 3. Matriz programa N sesiones de un servicio pero no se encontró el PDF
+    if (/Matriz programa \d+ de .+, pero NO se encontr[oó] soporte/i.test(errorStr)) {
+        return {
+            tipo: "Falta PDF programado en matriz",
+            detalle: "La matriz programa el servicio pero falta el soporte 5 [srv].pdf",
+        };
+    }
+
+    // 4. Discrepancia entre evoluciones encontradas y matriz
+    if (/Discrepancia en /i.test(errorStr) || /Matriz espera \d+ evoluciones/i.test(errorStr)) {
+        return {
+            tipo: "Discrepancia evoluciones vs matriz",
+            detalle: "Cantidad de fechas en 5.pdf difiere de lo programado en matriz",
+        };
+    }
+
+    // 5. Soporte en carpeta no programado en la matriz (matriz en 0)
+    if (/Soporte no programado/i.test(errorStr) || /en la matriz est[aá] en 0/i.test(errorStr)) {
+        return {
+            tipo: "Soporte no programado en matriz",
+            detalle: "Se encontró soporte pero en matriz está en 0 o vacío",
+        };
+    }
+
+    // 6. Reglas de cantidad de paquete CPF (mínimo, máximo o exactamente X)
+    if (/Paquete CPF\w+ debe tener/i.test(errorStr)) {
+        return {
+            tipo: "Incumple regla de cantidad de paquete",
+            detalle: "No cumple con el número de evoluciones o terapias del paquete",
+        };
+    }
+
+    // 7. No contiene número de documento
+    if (/no contiene n[uú]mero/i.test(errorStr) || /no coincide con documento/i.test(errorStr)) {
+        return {
+            tipo: "Documento no coincide en PDF",
+            detalle: "El número de documento no fue detectado en el archivo PDF",
+        };
+    }
+
+    // 8. No contiene texto requerido / regla de servicio
+    if (/no contiene el texto requerido/i.test(errorStr) || /no contiene ninguno de los textos/i.test(errorStr)) {
+        return {
+            tipo: "Falta texto requerido de servicio",
+            detalle: "El soporte no incluye la leyenda obligatoria del servicio",
+        };
+    }
+
+    // 9. Cant autorizaciones ≠ cant evoluciones (Capital Salud / FOMAG evento)
+    const authEvoRegex = /cant\s+autorizaciones[^\n]*cant\s+evoluciones/i;
+    if (authEvoRegex.test(errorStr)) {
+        return {
+            tipo: "Cant autorizaciones ≠ cant evoluciones",
+            detalle: "Revisar que las autorizaciones coincidan con las evoluciones",
+        };
+    }
+
+    // Fallback general: separar por dos puntos si existe
+    const [tipoRaw, ...resto] = errorStr.split(":");
+    const tipo = (tipoRaw || "").trim() || "Otras incidencias";
     const detalle = resto.join(":").trim();
     return { tipo, detalle };
 }
@@ -104,8 +171,23 @@ export function aplicarFiltros(elements = {}, state = {}) {
 
             if (filtroEst && mostrarFila) {
                 const estadoFila = fila.getAttribute("data-estado");
+                const esMatrizVirtual = fila.hasAttribute("data-es-matriz") || 
+                    (carpeta && carpeta in (window.__todosLosResultados || {}) && window.__todosLosResultados[carpeta]?.esDesdeMatriz) ||
+                    (fila.querySelector(".pkg-cpf1109 svg, .doc-package-tag svg path") && fila.querySelector(".carpeta-files-badge")?.textContent?.includes("0 soportes"));
+
                 if (filtroEst === "con-novedades") {
                     if (estadoFila === "sin-errores") {
+                        mostrarFila = false;
+                    }
+                } else if (filtroEst === "carpetas-vs-matriz") {
+                    // Carpetas cargadas que tienen novedades o errores
+                    const tieneNovedades = estadoFila !== "sin-errores";
+                    if (!tieneNovedades || esMatrizVirtual) {
+                        mostrarFila = false;
+                    }
+                } else if (filtroEst === "matriz-vs-carpetas") {
+                    // Pacientes de la matriz que no tienen carpeta
+                    if (!esMatrizVirtual) {
                         mostrarFila = false;
                     }
                 } else if (estadoFila !== filtroEst) {
@@ -196,6 +278,9 @@ export function reiniciarFiltros(elements = {}, state = {}, ejecutarAplicar = tr
 
     if (mostrarExitosCheckbox) mostrarExitosCheckbox.checked = false;
     if (state.erroresSeleccionados) state.erroresSeleccionados.clear();
+
+    const btnCopiar = document.getElementById("btnCopiarIncidenciasSeleccionadas");
+    if (btnCopiar) btnCopiar.classList.add("oculto");
 
     if (listaErroresDiv) {
         listaErroresDiv
@@ -309,43 +394,138 @@ export function actualizarResumen(
                     ? " selected"
                     : "";
 
-                const listaCarpetas = Array.from(carpetasPorTipo[tipo] || [])
-                    .slice(0, 8)
-                    .join(", ");
                 const totalCarpetasConEsteError = (carpetasPorTipo[tipo] || []).size;
-                const foldersExtra =
-                    totalCarpetasConEsteError > 8
-                        ? ` (+${totalCarpetasConEsteError - 8})`
-                        : "";
+                const subtitulo = detallePorTipo[tipo] || "Incidencia detectada en la auditoría";
 
-                return `<div class="error-card-pill${seleccionado}" data-tipo="${tipo}" data-tipo-normalized="${tipoNorm}">
-                    <div class="error-card-body">
-                        <div class="error-card-title">${tipo}${detallePorTipo[tipo] ? `<span class="error-card-subtitle">${detallePorTipo[tipo]}</span>` : ""}</div>
-                        <div class="error-card-meta">Docs: <code>${listaCarpetas}${foldersExtra}</code></div>
+                // Icono temático según categoría
+                let iconoIncidencia = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-card-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>`;
+                if (tipoNorm.includes("matriz programada no encuentra")) {
+                    iconoIncidencia = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-card-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><line x1="9" y1="15" x2="15" y2="15"></line></svg>`;
+                } else if (tipoNorm.includes("no se encuentra programado")) {
+                    iconoIncidencia = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-card-icon"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>`;
+                } else if (tipoNorm.includes("discrepancia")) {
+                    iconoIncidencia = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-card-icon"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>`;
+                } else if (tipoNorm.includes("falta pdf") || tipoNorm.includes("falta texto")) {
+                    iconoIncidencia = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="error-card-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>`;
+                }
+
+                return `<div class="error-card-pill${seleccionado}" data-tipo="${tipo}" data-tipo-normalized="${tipoNorm}" title="Click para filtrar por: ${tipo} (${totalCarpetasConEsteError} expedientes)">
+                    <div class="error-card-leading">
+                        ${iconoIncidencia}
                     </div>
-                    <div class="error-card-badge">${count}</div>
+                    <div class="error-card-body">
+                        <div class="error-card-title">${tipo}</div>
+                        <div class="error-card-subtitle">${subtitulo}</div>
+                    </div>
+                    <div class="error-card-badge" title="${count} incidencias">${count}</div>
                 </div>`;
             })
             .join("");
 
+        const totalSeleccionados = state.erroresSeleccionados ? state.erroresSeleccionados.size : 0;
         const exportBtnHtml = `
             <div class="resumen-toolbar">
-                <span class="resumen-counter">${Object.keys(erroresPorTipo).length} tipos de incidencias detectadas</span>
-                <button id="btnExportarErrores" class="btn-studio btn-studio-ghost" style="padding: 5px 10px; width: auto; font-size: 11.5px;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
-                    Exportar Excel
-                </button>
+                <div class="resumen-title-group">
+                    <span class="resumen-counter-badge">${Object.keys(erroresPorTipo).length}</span>
+                    <span class="resumen-counter-text">Tipos de incidencias catalogadas</span>
+                </div>
+                <div class="resumen-actions-group" style="display:flex;align-items:center;gap:6px;">
+                    <button id="btnCopiarIncidenciasSeleccionadas" class="btn-studio btn-studio-primary ${totalSeleccionados > 0 ? '' : 'oculto'}" style="padding: 4px 10px; width: auto; font-size: 11px; background:#ef4444; border-color:#dc2626;" title="Copiar mensaje con los documentos de las incidencias seleccionadas">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                        Copiar listado (${totalSeleccionados})
+                    </button>
+                    <button id="btnExportarErrores" class="btn-studio btn-studio-ghost" style="padding: 4px 9px; width: auto; font-size: 11px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="13"></line></svg>
+                        Exportar XLSX
+                    </button>
+                </div>
             </div>
         `;
 
         listaErroresDiv.innerHTML = exportBtnHtml + `<div class="error-cards-grid">${errorItems}</div>`;
-        if (resumenErroresDiv) resumenErroresDiv.classList.remove("oculto");
+        if (resumenErroresDiv) {
+            resumenErroresDiv.classList.remove("oculto");
+            // Asegurar que el resizer esté al final del contenedor resumenErrores
+            let resizer = resumenErroresDiv.querySelector(":scope > #resumenResizer");
+            if (!resizer) {
+                resizer = document.createElement("div");
+                resizer.id = "resumenResizer";
+                resizer.className = "resumen-resizer";
+                resizer.title = "Arrastra verticalmente para redimensionar el panel de incidencias";
+                resizer.innerHTML = `<div class="resizer-grip"></div>`;
+                resumenErroresDiv.appendChild(resizer);
+            }
+        }
 
         const btnExport = document.getElementById("btnExportarErrores");
         if (btnExport && typeof onExportarErroresCallback === "function") {
             btnExport.addEventListener("click", (e) => {
                 e.stopPropagation();
                 onExportarErroresCallback(erroresPorTipo, detallePorTipo, carpetasPorTipo);
+            });
+        }
+
+        const btnCopiar = document.getElementById("btnCopiarIncidenciasSeleccionadas");
+        if (btnCopiar) {
+            btnCopiar.addEventListener("click", async (e) => {
+                e.stopPropagation();
+                if (!state.erroresSeleccionados || state.erroresSeleccionados.size === 0) return;
+
+                const lineasReporte = [];
+                const tiposSeleccionados = Array.from(state.erroresSeleccionados);
+
+                tiposSeleccionados.forEach((tipoNorm) => {
+                    const tipoOriginal = Object.keys(erroresPorTipo).find(
+                        (t) => normalizarTipoError(t) === tipoNorm
+                    ) || tipoNorm;
+
+                    lineasReporte.push(`*${tipoOriginal}*`);
+
+                    const carpetasAfectadas = Array.from(carpetasPorTipo[tipoOriginal] || []);
+                    carpetasAfectadas.forEach((carp) => {
+                        const r = resultados[carp];
+                        const pkg = r?.tipoPaquete || r?.tipo || "PAQUETE";
+                        const doc = r?.nroDocumento || carp.replace(/^(\d+).*/, "$1") || carp;
+
+                        // Extraer los errores específicos de este documento que corresponden a este tipo
+                        const todosLosErroresCarp = [...(r?.errores || [])];
+                        Object.values(r?.erroresPorServicio || {}).forEach((arr) => {
+                            todosLosErroresCarp.push(...arr);
+                        });
+
+                        const erroresCoincidentes = todosLosErroresCarp.filter((err) => {
+                            const { tipo } = clasificarErrorResumen(err);
+                            return normalizarTipoError(tipo) === tipoNorm;
+                        });
+
+                        const detalleErrorTexto = erroresCoincidentes.length > 0
+                            ? erroresCoincidentes.join(" | ")
+                            : (detallePorTipo[tipoOriginal] || tipoOriginal);
+
+                        // Si existe auditor/subcarpeta superior, incluirlo al inicio
+                        const auditorTexto = r?.auditor ? `${r.auditor} - ` : "";
+
+                        lineasReporte.push(`${auditorTexto}${pkg} - ${doc} - ${detalleErrorTexto}`);
+                    });
+                    lineasReporte.push(""); // línea en blanco entre tipos
+                });
+
+                const textoFinal = lineasReporte.join("\n").trim();
+                try {
+                    await navigator.clipboard.writeText(textoFinal);
+                    const originalHTML = btnCopiar.innerHTML;
+                    btnCopiar.innerHTML = `✓ ¡Copiado al portapapeles!`;
+                    btnCopiar.style.background = "#10b981";
+                    btnCopiar.style.borderColor = "#059669";
+                    setTimeout(() => {
+                        btnCopiar.innerHTML = originalHTML;
+                        btnCopiar.style.background = "#ef4444";
+                        btnCopiar.style.borderColor = "#dc2626";
+                    }, 2000);
+                } catch (err) {
+                    console.error("Error al copiar al portapapeles:", err);
+                    prompt("Copia el texto del reporte:", textoFinal);
+                }
             });
         }
     } else if (resumenErroresDiv) {
