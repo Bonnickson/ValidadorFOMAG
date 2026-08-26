@@ -169,8 +169,6 @@ export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallba
         seleccionarFilaCallback(fila);
     }
 
-    document.addEventListener("keydown", handleEscKey);
-
     currentPdfPage = 1;
     currentPdfScale = 1.0;
     currentPdfRotation = 0;
@@ -214,8 +212,6 @@ export function cerrarModal() {
     if (pagesContainer) {
         pagesContainer.innerHTML = "";
     }
-
-    document.removeEventListener("keydown", handleEscKey);
 }
 
 /**

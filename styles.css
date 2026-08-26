@@ -609,6 +609,7 @@ body {
 
 /* ================= WORKSPACE BODY ================= */
 .workspace-body {
+    position: relative;
     flex: 1;
     padding: 16px 20px;
     overflow-y: auto;
@@ -757,6 +758,7 @@ body {
 
 /* ================= DATA GRID / TABLA ================= */
 .table-wrapper {
+    position: relative;
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
@@ -2171,8 +2173,16 @@ td.fechas {
     background: var(--border-strong);
     border-radius: 2px;
 }
-/* ================= FLOATING POPOVER PARA ARCHIVOS DE LOTE ================= */
-.btn-files-trigger {
+.doc-badge-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+    margin-top: 2px;
+}
+
+.btn-files-trigger,
+.btn-programado-trigger {
     cursor: pointer;
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
@@ -2185,27 +2195,54 @@ td.fechas {
     align-items: center;
     gap: 4px;
     transition: var(--transition);
+    user-select: none;
 }
 
-.btn-files-trigger:hover {
+.btn-files-trigger:hover,
+.btn-programado-trigger:hover {
     border-color: var(--accent-border);
     color: var(--accent-text);
     background: var(--accent-glow);
 }
 
-.archivos-floating-popover {
-    position: fixed;
-    z-index: 1500;
+.btn-programado-trigger:hover {
+    border-color: rgba(16, 124, 65, 0.4);
+    color: #107c41;
+    background: rgba(16, 124, 65, 0.08);
+}
+
+body.theme-dark .btn-programado-trigger:hover {
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #4ade80;
+    background: rgba(34, 197, 94, 0.12);
+}
+
+.floating-popover-movable {
+    position: absolute;
+    z-index: 100;
     background: var(--bg-card);
     border: 1px solid var(--border-strong);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-modal);
-    width: 270px;
-    max-height: 280px;
     display: flex;
     flex-direction: column;
     animation: popoverFadeIn 0.15s ease-out;
+    resize: both;
     overflow: hidden;
+}
+
+.archivos-floating-popover {
+    min-width: 200px;
+    min-height: 120px;
+    width: 240px;
+    max-height: 340px;
+}
+
+.programado-floating-popover {
+    min-width: 280px;
+    min-height: 150px;
+    width: 315px;
+    max-height: 480px;
 }
 
 @keyframes popoverFadeIn {
@@ -2217,12 +2254,46 @@ td.fechas {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 8px 12px;
+    padding: 6px 9px;
     background: var(--bg-subtle);
     border-bottom: 1px solid var(--border-subtle);
     font-size: 11px;
     font-weight: 700;
     color: var(--text-primary);
+    user-select: none;
+    cursor: default;
+    flex-shrink: 0;
+}
+
+.popover-header-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    pointer-events: none;
+}
+
+.popover-header-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+}
+
+.popover-expand-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px 3px;
+    border-radius: 3px;
+    color: var(--text-muted);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+}
+
+.popover-expand-btn:hover {
+    background: var(--bg-card);
+    color: var(--accent);
 }
 
 .popover-close-btn {
@@ -2231,11 +2302,15 @@ td.fechas {
     cursor: pointer;
     font-size: 14px;
     color: var(--text-muted);
+    padding: 0 4px;
     line-height: 1;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
 }
 
 .popover-close-btn:hover {
-    color: var(--text-pure);
+    color: #ef4444;
+    background: var(--bg-card);
 }
 
 .popover-body {
@@ -2316,6 +2391,316 @@ body.theme-dark .badge-no-reconocido {
     color: #f87171;
     background: rgba(239, 68, 68, 0.25);
 }
+
+/* ================= DETALLES DE PROGRAMACIÓN MATRIZ EN POPOVER ================= */
+.prog-popover-body {
+    padding: 7px 9px;
+    font-size: 10.5px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    background: var(--bg-card);
+    overflow-y: auto;
+}
+
+.prog-patient-header {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 4px;
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+}
+
+.prog-patient-name {
+    font-weight: 700;
+    font-size: 11.5px;
+    color: var(--text-pure);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prog-patient-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: nowrap;
+    font-size: 9.5px;
+    color: var(--text-muted);
+}
+
+.prog-meta-badge {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-family: var(--font-mono);
+    white-space: nowrap;
+}
+
+.prog-meta-badge strong {
+    color: var(--text-primary);
+}
+
+.prog-pkg-badge {
+    font-weight: 800;
+    font-size: 9px !important;
+    padding: 1px 5px !important;
+    white-space: nowrap;
+}
+
+.prog-category-block {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5px;
+}
+
+.prog-category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8.5px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+    margin-top: 3px;
+    padding: 0 1px;
+}
+
+.prog-category-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Fila de servicio con columnas perfectamente alineadas */
+.prog-row-item {
+    display: grid;
+    grid-template-columns: 1fr 42px 42px 20px 20px;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 6px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    font-size: 10px;
+    transition: var(--transition);
+}
+
+.prog-row-item.row-active {
+    background: var(--bg-card);
+    border-color: var(--border-subtle);
+}
+
+.prog-row-item.row-muted {
+    opacity: 0.45;
+}
+
+.prog-col-name {
+    color: var(--text-secondary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 10px;
+}
+
+.prog-row-item.row-active .prog-col-name {
+    color: var(--text-pure);
+    font-weight: 600;
+}
+
+.prog-col-prog {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.prog-col-prog b {
+    color: var(--text-pure);
+    font-weight: 700;
+}
+
+.prog-col-sop {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.prog-col-sop b {
+    color: var(--text-pure);
+    font-weight: 700;
+}
+
+.prog-col-sop.sop-ok b {
+    color: #107c41;
+}
+
+body.theme-dark .prog-col-sop.sop-ok b {
+    color: #4ade80;
+}
+
+.prog-col-sop.sop-warn b {
+    color: #d97706;
+}
+
+.prog-col-chip {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Botón sutil y limpio para soporte 4 y 5 (sin recuadros pesados) */
+.btn-pdf-subtle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    font-size: 9px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    border-radius: 3px;
+    border: 1px solid var(--border-subtle);
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    line-height: 1;
+    transition: var(--transition);
+    user-select: none;
+    text-decoration: none;
+}
+
+.btn-pdf-subtle:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--bg-subtle);
+}
+
+.btn-pdf-subtle.modal-btn {
+    width: 22px;
+    height: 22px;
+    font-size: 10px;
+}
+
+.chip-dash {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--text-muted);
+    opacity: 0.35;
+    user-select: none;
+}
+
+.prog-total-terapias-badge {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    padding: 1px 5px;
+    border-radius: 2.5px;
+    background: var(--bg-subtle);
+    color: var(--text-secondary);
+    border: 1px solid var(--border-subtle);
+}
+
+.prog-err-container {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 4px 6px;
+    background: rgba(239, 68, 68, 0.05);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+    border-radius: 3px;
+}
+
+.prog-err-line {
+    font-size: 8.5px;
+    line-height: 1.2;
+}
+
+.prog-err-line.error {
+    color: #ef4444;
+}
+
+.prog-err-line.warning {
+    color: #d97706;
+}
+
+.popover-empty-state {
+    text-align: center;
+    padding: 16px 12px;
+}
+
+/* ================= MODAL DETALLADO DE PROGRAMACIÓN (POP UP GRANDE) ================= */
+.prog-modal-stat-item {
+    display: grid;
+    grid-template-columns: 1fr 70px 70px 54px;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    font-size: 12px;
+    transition: var(--transition);
+}
+
+.prog-modal-stat-item.stat-active {
+    border-color: var(--border-subtle);
+    background: var(--bg-card);
+}
+
+.prog-modal-stat-item.stat-muted {
+    opacity: 0.45;
+}
+
+.prog-modal-stat-label {
+    color: var(--text-pure);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.prog-modal-val-p,
+.prog-modal-val-s {
+    font-family: var(--font-mono);
+    font-size: 11.5px;
+    color: var(--text-muted);
+    text-align: right;
+    white-space: nowrap;
+}
+
+.prog-modal-val-p b,
+.prog-modal-val-s b {
+    color: var(--text-pure);
+    font-weight: 700;
+}
+
+.prog-modal-val-s.sop-ok b {
+    color: #107c41;
+}
+
+body.theme-dark .prog-modal-val-s.sop-ok b {
+    color: #4ade80;
+}
+
+.prog-modal-val-s.sop-warn b {
+    color: #d97706;
+}
+
+.prog-modal-stat-btns {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 4px;
+}
+
 /* ================= ALINEACIÓN DE COLUMNAS Y CELDAS DE TABLA ================= */
 .count-evol-cell {
     font-family: var(--font-mono);

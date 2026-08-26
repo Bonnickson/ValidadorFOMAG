@@ -25,7 +25,11 @@ import {
     mostrarAvisoRevisionFirmas,
     mostrarModalPrevalidacionMatriz,
     mostrarModalAlertaFinalValidacion,
+    mostrarModalProgramadoDetallado,
     verArchivosCarpeta as verArchivosCarpetaUI,
+    verProgramadoCarpeta as verProgramadoCarpetaUI,
+    cerrarTodosLosPopupsYModales,
+    inicializarCierrePorEscape,
 } from "./ui/modalManager.js";
 import {
     aplicarFiltros,
@@ -959,15 +963,21 @@ document.addEventListener("DOMContentLoaded", () => {
     mostrarCondicionesPaquete(tipoPaqueteSelect, paqueteCondicionesContent);
     inicializarControlesPDF();
     initResumenResizer();
+    inicializarCierrePorEscape();
 });
 
 // ================= EXPOSICIÓN GLOBAL PARA COMPATIBILIDAD CON UI =================
 window.abrirPDFModal = (url, titulo, anchorEl) => abrirPDFModal(url, titulo, anchorEl, seleccionarFila);
 window.cerrarModal = cerrarModal;
+window.cerrarTodosLosPopupsYModales = cerrarTodosLosPopupsYModales;
 window.seleccionarCarpeta = seleccionarCarpeta;
 window.seleccionarFila = seleccionarFila;
 window.verArchivosCarpeta = (carpeta, triggerEl) =>
     verArchivosCarpetaUI(carpeta, triggerEl, todosLosResultados, seleccionarCarpeta, abrirPDFModal);
+window.verProgramadoCarpeta = (carpeta, triggerEl) =>
+    verProgramadoCarpetaUI(carpeta, triggerEl, todosLosResultados, datosMatrizGlobal, seleccionarCarpeta);
+window.abrirModalProgramadoDetallado = (carpeta) =>
+    mostrarModalProgramadoDetallado(carpeta, todosLosResultados, datosMatrizGlobal);
 window.copiarNumero = (event, carpeta) => copiarNumero(event, carpeta, seleccionarCarpeta);
 window.copiarFormatoCompleto = (event, paquete, carpeta) =>
     copiarFormatoCompleto(event, paquete, carpeta, seleccionarCarpeta);

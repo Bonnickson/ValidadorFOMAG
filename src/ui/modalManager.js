@@ -214,7 +214,74 @@ export function mostrarAvisoRevisionFirmas() {
 }
 
 /**
- * Popover para ver archivos de la carpeta
+ * Helper para hacer un popover flotante arrastrable y redimensionable
+ */
+function hacerDraggableYResizable(popover, header) {
+    if (!popover || !header) return;
+
+    header.style.cursor = "move";
+    header.style.userSelect = "none";
+
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
+
+    const onMouseDown = (e) => {
+        if (e.button !== 0 || e.target.closest("button") || e.target.closest("a") || e.target.closest("input")) {
+            return;
+        }
+
+        isDragging = true;
+        startX = e.clientX;
+        startY = e.clientY;
+
+        const parent = popover.offsetParent || document.body;
+        const parentRect = parent.getBoundingClientRect();
+        const rect = popover.getBoundingClientRect();
+
+        initialLeft = rect.left - parentRect.left + (parent.scrollLeft || 0);
+        initialTop = rect.top - parentRect.top + (parent.scrollTop || 0);
+
+        popover.style.left = `${initialLeft}px`;
+        popover.style.top = `${initialTop}px`;
+        popover.style.right = "auto";
+        popover.style.bottom = "auto";
+
+        const onMouseMove = (moveEvent) => {
+            if (!isDragging) return;
+            const dx = moveEvent.clientX - startX;
+            const dy = moveEvent.clientY - startY;
+
+            let newLeft = initialLeft + dx;
+            let newTop = initialTop + dy;
+
+            newLeft = Math.max(5, newLeft);
+            newTop = Math.max(5, newTop);
+
+            popover.style.left = `${newLeft}px`;
+            popover.style.top = `${newTop}px`;
+        };
+
+        const onMouseUp = () => {
+            if (isDragging) {
+                isDragging = false;
+                document.removeEventListener("mousemove", onMouseMove);
+                document.removeEventListener("mouseup", onMouseUp);
+            }
+        };
+
+        document.addEventListener("mousemove", onMouseMove);
+        document.addEventListener("mouseup", onMouseUp);
+        e.preventDefault();
+    };
+
+    header.addEventListener("mousedown", onMouseDown);
+}
+
+/**
+ * Popover para ver archivos de la carpeta (Arrastrable, Redimensionable y Anclado al Scroll)
  */
 export function verArchivosCarpeta(
     carpeta,
@@ -238,7 +305,7 @@ export function verArchivosCarpeta(
 
     const popover = document.createElement("div");
     popover.id = "archivosPopoverActivo";
-    popover.className = "archivos-floating-popover";
+    popover.className = "archivos-floating-popover floating-popover-movable";
     popover._trigger = triggerBtn;
 
     const filesListHTML = r.listaArchivos
@@ -273,18 +340,29 @@ export function verArchivosCarpeta(
 
     popover.innerHTML = `
         <div class="popover-header">
-            <span>Soportes (${r.listaArchivos.length})</span>
+            <span class="popover-header-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                Soportes (${r.listaArchivos.length})
+            </span>
             <button type="button" class="popover-close-btn" onclick="document.getElementById('archivosPopoverActivo')?.remove()">&times;</button>
         </div>
         <div class="popover-body">${filesListHTML}</div>
     `;
 
-    document.body.appendChild(popover);
+    const container = document.querySelector(".table-wrapper") || document.querySelector(".workspace-body") || document.body;
+    container.appendChild(popover);
 
     if (triggerBtn) {
-        const rect = triggerBtn.getBoundingClientRect();
-        popover.style.left = `${Math.max(10, rect.left)}px`;
-        popover.style.top = `${rect.bottom + 6}px`;
+        const parent = popover.offsetParent || container;
+        const parentRect = parent.getBoundingClientRect();
+        const btnRect = triggerBtn.getBoundingClientRect();
+
+        const left = btnRect.left - parentRect.left + (parent.scrollLeft || 0);
+        const top = btnRect.bottom - parentRect.top + (parent.scrollTop || 0) + 1;
+        const maxLeft = Math.max(5, parent.clientWidth - (popover.offsetWidth || 270) - 10);
+
+        popover.style.left = `${Math.max(5, Math.min(maxLeft, left))}px`;
+        popover.style.top = `${Math.max(0, top)}px`;
     } else {
         popover.style.left = "260px";
         popover.style.top = "100px";
@@ -297,6 +375,587 @@ export function verArchivosCarpeta(
         }
     };
     setTimeout(() => document.addEventListener("click", closeListener), 50);
+}
+
+/**
+ * Popover para ver la programación de la matriz del paciente (Arrastrable y Redimensionable)
+ */
+export function verProgramadoCarpeta(
+    carpeta,
+    triggerEl,
+    todosLosResultados,
+    datosMatrizGlobal,
+    seleccionarCarpetaCallback
+) {
+    if (typeof seleccionarCarpetaCallback === "function") {
+        seleccionarCarpetaCallback(carpeta);
+    }
+    const triggerBtn = triggerEl ? (triggerEl.closest("button") || triggerEl) : null;
+    
+    // Búsqueda inteligente y robusta del resultado del paciente
+    let r = todosLosResultados ? todosLosResultados[carpeta] : null;
+    if (!r && todosLosResultados) {
+        const cNorm = String(carpeta).replace(/\\/g, "/").trim();
+        for (const [k, v] of Object.entries(todosLosResultados)) {
+            if (k.replace(/\\/g, "/").trim() === cNorm) {
+                r = v;
+                break;
+            }
+        }
+    }
+    if (!r && todosLosResultados) {
+        const docClean = String(carpeta).replace(/\D/g, "");
+        for (const [k, v] of Object.entries(todosLosResultados)) {
+            const kDoc = (v.nroDocumento || k).replace(/\D/g, "");
+            const kLast = k.replace(/\\/g, "/").split("/").pop().trim();
+            if ((docClean && kDoc === docClean) || kLast === carpeta || k.includes(carpeta) || carpeta.includes(k)) {
+                r = v;
+                break;
+            }
+        }
+    }
+
+    const prev = document.getElementById("programadoPopoverActivo");
+    if (prev) {
+        prev.remove();
+        if (prev._trigger === triggerBtn) return;
+    }
+
+    const calcularSoportesServicio = (servicioCod) => {
+        if (!r?.fechasPorServicio) return 0;
+        const cod = servicioCod.toUpperCase().trim();
+
+        // 1. Clave canónica directa
+        if (r.fechasPorServicio[cod] && Array.isArray(r.fechasPorServicio[cod])) {
+            return [...new Set(r.fechasPorServicio[cod])].length;
+        }
+
+        // 2. Succión / TRS
+        if (cod === "TRS" && r.fechasPorServicio["SUCCION"] && Array.isArray(r.fechasPorServicio["SUCCION"])) {
+            return [...new Set(r.fechasPorServicio["SUCCION"])].length;
+        }
+        if (cod === "SUCCION" && r.fechasPorServicio["TRS"] && Array.isArray(r.fechasPorServicio["TRS"])) {
+            return [...new Set(r.fechasPorServicio["TRS"])].length;
+        }
+
+        // 3. Comparación estricta de nombres completos exactos (sin includes parcial)
+        const exactKeysMap = {
+            "VM": ["VM", "MEDICA", "VISITA MEDICA", "VALORACION MEDICA", "VALORACIÓN MÉDICA"],
+            "VENF": ["VENF", "ENFERMERIA PROFESIONAL", "ENF PROF", "ENFERMERA PROFESIONAL", "ENFERMERÍA PROFESIONAL"],
+            "ENF": ["ENF", "AUXILIAR ENFERMERIA", "AUXILIAR DE ENFERMERIA", "AUXILIAR DE ENFERMERÍA", "ENFERMERIA", "AUX ENF"],
+            "TF": ["TF", "TERAPIA FISICA", "FISICA", "TERAPIA FÍSICA", "FÍSICA"],
+            "TR": ["TR", "TERAPIA RESPIRATORIA", "RESPIRATORIA"],
+            "TRS": ["TRS", "SUCCION", "SUC", "SUCCIÓN", "TERAPIA RESPIRATORIA SUCCION", "TERAPIA RESPIRATORIA SUCCIÓN"],
+            "FON": ["FON", "FONOAUDIOLOGIA", "FONO", "FONOAUDIOLOGÍA"],
+            "TO": ["TO", "TERAPIA OCUPACIONAL", "OCUPACIONAL"],
+            "NUT": ["NUT", "NUTRICION", "NUTRICIÓN"],
+            "TS": ["TS", "TRABAJO SOCIAL"],
+            "PSI": ["PSI", "PSICOLOGIA", "PSICOLOGÍA"]
+        };
+
+        const validNames = exactKeysMap[cod] || [cod];
+        for (const [k, fechas] of Object.entries(r.fechasPorServicio)) {
+            if (k === "General") continue;
+            const kNorm = k.toUpperCase().trim();
+            if (validNames.includes(kNorm)) {
+                if (Array.isArray(fechas) && fechas.length > 0) {
+                    return [...new Set(fechas)].length;
+                }
+            }
+        }
+        return 0;
+    };
+
+    const buscarSoporte = (servicioCod, num) => {
+        if (!r?.fileUrls) return null;
+        const cod = servicioCod.toUpperCase().trim();
+        const aliasCod = (cod === "TRS") ? ["TRS", "SUCCION", "SUC"] : [cod];
+
+        for (const [nombre, url] of Object.entries(r.fileUrls)) {
+            const nomUpper = nombre.toUpperCase().trim();
+            for (const al of aliasCod) {
+                const regex = new RegExp(`^${num}[\\s_-]+${al}(\\.[a-z0-9]+|\\s|$)`, "i");
+                if (regex.test(nomUpper) || nomUpper === `${num} ${al}.PDF`.toUpperCase()) {
+                    return { nombre, url };
+                }
+            }
+        }
+        return null;
+    };
+
+    // Buscar datos de la matriz del paciente
+    let mat = r?.datosMatriz;
+    if (!mat && datosMatrizGlobal?.pacientesPorDoc) {
+        const docClean = (r?.nroDocumento || carpeta || "").replace(/\D/g, "");
+        if (docClean && datosMatrizGlobal.pacientesPorDoc.has(docClean)) {
+            mat = datosMatrizGlobal.pacientesPorDoc.get(docClean);
+        } else {
+            for (const [k, v] of datosMatrizGlobal.pacientesPorDoc.entries()) {
+                if (carpeta.includes(k) || (r?.nroDocumento && r.nroDocumento.includes(k))) {
+                    mat = v;
+                    break;
+                }
+            }
+        }
+    }
+
+    const popover = document.createElement("div");
+    popover.id = "programadoPopoverActivo";
+    popover.className = "programado-floating-popover floating-popover-movable";
+    popover._trigger = triggerBtn;
+
+    let contentHTML = "";
+    if (!mat) {
+        contentHTML = `
+            <div class="popover-empty-state">
+                <div style="font-size:18px; margin-bottom:2px;">⚠️</div>
+                <div style="font-weight:700; color:var(--text-pure); font-size:11px;">Sin datos en Matriz</div>
+                <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">No figura en la matriz Excel.</div>
+            </div>
+        `;
+    } else {
+        const s = mat.servicios || {};
+        const pkgCode = mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—";
+        const pkgCls = pkgCode !== "—" ? `pkg-${pkgCode.toLowerCase()}` : "";
+
+        const renderFilaServicio = (item) => {
+            const activo = item.progCount > 0 || item.sopCount > 0;
+            const match = item.progCount === item.sopCount && item.progCount > 0;
+            const diff = item.progCount > 0 && item.sopCount !== item.progCount;
+
+            return `
+                <div class="prog-row-item ${activo ? 'row-active' : 'row-muted'}">
+                    <span class="prog-col-name" title="${item.label}">${item.label}</span>
+                    <span class="prog-col-prog" title="Programado: ${item.progCount}">P:<b>${item.progCount}</b></span>
+                    <span class="prog-col-sop ${match ? 'sop-ok' : (diff ? 'sop-warn' : '')}" title="En soportes: ${item.sopCount}">S:<b>${item.sopCount}</b></span>
+                    <span class="prog-col-chip">
+                        ${item.sop4 
+                            ? `<button type="button" class="btn-pdf-subtle" onclick="abrirPDFModal('${item.sop4.url}', '${item.sop4.nombre}', this); return false;" title="Ver ${item.sop4.nombre} en visor PDF">4</button>` 
+                            : `<span class="chip-dash">—</span>`}
+                    </span>
+                    <span class="prog-col-chip">
+                        ${item.sop5 
+                            ? `<button type="button" class="btn-pdf-subtle" onclick="abrirPDFModal('${item.sop5.url}', '${item.sop5.nombre}', this); return false;" title="Ver ${item.sop5.nombre} en visor PDF">5</button>` 
+                            : `<span class="chip-dash">—</span>`}
+                    </span>
+                </div>
+            `;
+        };
+
+        // 1. Servicios Fijos
+        const grupoFijos = [
+            { id: "VM", label: "Médica (VM)", progCount: s.VM ?? 0 },
+            { id: "VENF", label: "Enf. Profesional (VENF)", progCount: s.VENF ?? 0 },
+            { id: "ENF", label: "Aux. Enfermería (ENF)", progCount: s.ENF ?? 0 },
+        ].map(f => {
+            const cantFechas = calcularSoportesServicio(f.id);
+            const sop4 = buscarSoporte(f.id, "4");
+            const sop5 = buscarSoporte(f.id, "5");
+            const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
+            return { ...f, sopCount, sop4, sop5 };
+        });
+
+        // 2. Terapias
+        const grupoTerapias = [
+            { id: "TF", label: "Terapia Física (TF)", progCount: s.TF || 0 },
+            { id: "TR", label: "Terapia Respiratoria (TR)", progCount: s.TR || 0 },
+            { id: "TRS", label: "T. Resp. Succión (TRS)", progCount: s.TRS || s.SUCCION || 0 },
+            { id: "FON", label: "Fonoaudiología (FON)", progCount: s.FON || 0 },
+            { id: "TO", label: "Terapia Ocupacional (TO)", progCount: s.TO || 0 },
+        ].map(t => {
+            const sopCount = calcularSoportesServicio(t.id);
+            const sop4 = buscarSoporte(t.id, "4");
+            const sop5 = buscarSoporte(t.id, "5");
+            return { ...t, sopCount, sop4, sop5 };
+        });
+
+        // 3. Otros Servicios
+        const grupoOtros = [
+            { id: "PSI", label: "Psicología (PSI)", progCount: s.PSI || 0 },
+            { id: "TS", label: "Trabajo Social (TS)", progCount: s.TS || 0 },
+            { id: "NUT", label: "Nutrición (NUT)", progCount: s.NUT || 0 },
+        ].map(o => {
+            const sopCount = calcularSoportesServicio(o.id);
+            const sop4 = buscarSoporte(o.id, "4");
+            const sop5 = buscarSoporte(o.id, "5");
+            return { ...o, sopCount, sop4, sop5 };
+        });
+
+        const totalTerapiasProg = mat.totalTerapias !== undefined 
+            ? mat.totalTerapias 
+            : ((s.TF || 0) + (s.TR || 0) + (s.TRS || s.SUCCION || 0) + (s.FON || 0) + (s.TO || 0));
+
+        const totalTerapiasSop = ["TF", "TR", "TRS", "FON", "TO"].reduce((acc, tid) => acc + calcularSoportesServicio(tid), 0);
+
+        let avisosHTML = "";
+        if ((mat.errores && mat.errores.length > 0) || (mat.alertas && mat.alertas.length > 0)) {
+            const errs = (mat.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
+            const alts = (mat.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
+            avisosHTML = `
+                <div class="prog-section-title" style="color:#ef4444; margin-top:6px;">Novedades Matriz</div>
+                <div class="prog-err-container">${errs}${alts}</div>
+            `;
+        }
+
+        contentHTML = `
+            <div class="prog-patient-header">
+                <div class="prog-patient-name" title="${mat.nombre || '—'}">${mat.nombre || 'Paciente'}</div>
+                <div class="prog-patient-meta">
+                    <span class="prog-meta-badge">Doc: <strong>${mat.documento || carpeta}</strong></span>
+                    ${mat.filaExcel ? `<span class="prog-meta-badge">Fila: <strong>#${mat.filaExcel}</strong></span>` : ''}
+                    <span class="doc-package-tag ${pkgCls} prog-pkg-badge">${pkgCode}</span>
+                </div>
+            </div>
+
+            <!-- Servicios Fijos -->
+            <div class="prog-category-block">
+                <div class="prog-category-header">
+                    <span>Servicios Fijos</span>
+                </div>
+                <div class="prog-category-list">
+                    ${grupoFijos.map(renderFilaServicio).join("")}
+                </div>
+            </div>
+
+            <!-- Terapias -->
+            <div class="prog-category-block">
+                <div class="prog-category-header">
+                    <span>Terapias</span>
+                    <span class="prog-total-terapias-badge" title="Total Programado: ${totalTerapiasProg} | Total Soportes: ${totalTerapiasSop}">Prog: ${totalTerapiasProg} | Sop: ${totalTerapiasSop}</span>
+                </div>
+                <div class="prog-category-list">
+                    ${grupoTerapias.map(renderFilaServicio).join("")}
+                </div>
+            </div>
+
+            <!-- Otros Servicios -->
+            <div class="prog-category-block">
+                <div class="prog-category-header">
+                    <span>Otros Servicios</span>
+                </div>
+                <div class="prog-category-list">
+                    ${grupoOtros.map(renderFilaServicio).join("")}
+                </div>
+            </div>
+
+            ${avisosHTML}
+        `;
+    }
+
+    popover.innerHTML = `
+        <div class="popover-header">
+            <span class="popover-header-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
+                Programado
+            </span>
+            <div class="popover-header-actions">
+                <button type="button" class="popover-expand-btn" onclick="abrirModalProgramadoDetallado('${carpeta}'); return false;" title="Abrir en ventana grande / Pop up">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;"><path d="M15 3h6v6"></path><path d="M9 21H3v-6"></path><path d="M21 3l-7 7"></path><path d="M3 21l7-7"></path></svg>
+                </button>
+                <button type="button" class="popover-close-btn" onclick="document.getElementById('programadoPopoverActivo')?.remove()">&times;</button>
+            </div>
+        </div>
+        <div class="popover-body prog-popover-body">${contentHTML}</div>
+    `;
+
+    const container = document.querySelector(".table-wrapper") || document.querySelector(".workspace-body") || document.body;
+    container.appendChild(popover);
+
+    if (triggerBtn) {
+        const parent = popover.offsetParent || container;
+        const parentRect = parent.getBoundingClientRect();
+        const btnRect = triggerBtn.getBoundingClientRect();
+
+        const left = btnRect.left - parentRect.left + (parent.scrollLeft || 0);
+        const top = btnRect.bottom - parentRect.top + (parent.scrollTop || 0) + 1;
+        const maxLeft = Math.max(5, parent.clientWidth - (popover.offsetWidth || 250) - 10);
+
+        popover.style.left = `${Math.max(5, Math.min(maxLeft, left))}px`;
+        popover.style.top = `${Math.max(0, top)}px`;
+    } else {
+        popover.style.left = "260px";
+        popover.style.top = "100px";
+    }
+
+    const closeListener = (e) => {
+        if (!popover.contains(e.target) && (!triggerBtn || !triggerBtn.contains(e.target))) {
+            popover.remove();
+            document.removeEventListener("click", closeListener);
+        }
+    };
+    setTimeout(() => document.addEventListener("click", closeListener), 50);
+}
+
+/**
+ * Modal amplio y detallado para ver la programación vs soportes del paciente (Pop Up grande y claro)
+ */
+export function mostrarModalProgramadoDetallado(
+    carpeta,
+    todosLosResultados,
+    datosMatrizGlobal
+) {
+    const prev = document.getElementById("modalProgramadoDetalladoActivo");
+    if (prev) prev.remove();
+
+    // Búsqueda inteligente del resultado
+    let r = todosLosResultados ? todosLosResultados[carpeta] : null;
+    if (!r && todosLosResultados) {
+        const cNorm = String(carpeta).replace(/\\/g, "/").trim();
+        for (const [k, v] of Object.entries(todosLosResultados)) {
+            if (k.replace(/\\/g, "/").trim() === cNorm) {
+                r = v;
+                break;
+            }
+        }
+    }
+    if (!r && todosLosResultados) {
+        const docClean = String(carpeta).replace(/\D/g, "");
+        for (const [k, v] of Object.entries(todosLosResultados)) {
+            const kDoc = (v.nroDocumento || k).replace(/\D/g, "");
+            const kLast = k.replace(/\\/g, "/").split("/").pop().trim();
+            if ((docClean && kDoc === docClean) || kLast === carpeta || k.includes(carpeta) || carpeta.includes(k)) {
+                r = v;
+                break;
+            }
+        }
+    }
+
+    const calcularSoportesServicio = (servicioCod) => {
+        if (!r?.fechasPorServicio) return 0;
+        const cod = servicioCod.toUpperCase().trim();
+
+        // 1. Clave canónica directa
+        if (r.fechasPorServicio[cod] && Array.isArray(r.fechasPorServicio[cod])) {
+            return [...new Set(r.fechasPorServicio[cod])].length;
+        }
+
+        // 2. Succión / TRS
+        if (cod === "TRS" && r.fechasPorServicio["SUCCION"] && Array.isArray(r.fechasPorServicio["SUCCION"])) {
+            return [...new Set(r.fechasPorServicio["SUCCION"])].length;
+        }
+        if (cod === "SUCCION" && r.fechasPorServicio["TRS"] && Array.isArray(r.fechasPorServicio["TRS"])) {
+            return [...new Set(r.fechasPorServicio["TRS"])].length;
+        }
+
+        // 3. Comparación estricta de nombres completos exactos (sin includes parcial)
+        const exactKeysMap = {
+            "VM": ["VM", "MEDICA", "VISITA MEDICA", "VALORACION MEDICA", "VALORACIÓN MÉDICA"],
+            "VENF": ["VENF", "ENFERMERIA PROFESIONAL", "ENF PROF", "ENFERMERA PROFESIONAL", "ENFERMERÍA PROFESIONAL"],
+            "ENF": ["ENF", "AUXILIAR ENFERMERIA", "AUXILIAR DE ENFERMERIA", "AUXILIAR DE ENFERMERÍA", "ENFERMERIA", "AUX ENF"],
+            "TF": ["TF", "TERAPIA FISICA", "FISICA", "TERAPIA FÍSICA", "FÍSICA"],
+            "TR": ["TR", "TERAPIA RESPIRATORIA", "RESPIRATORIA"],
+            "TRS": ["TRS", "SUCCION", "SUC", "SUCCIÓN", "TERAPIA RESPIRATORIA SUCCION", "TERAPIA RESPIRATORIA SUCCIÓN"],
+            "FON": ["FON", "FONOAUDIOLOGIA", "FONO", "FONOAUDIOLOGÍA"],
+            "TO": ["TO", "TERAPIA OCUPACIONAL", "OCUPACIONAL"],
+            "NUT": ["NUT", "NUTRICION", "NUTRICIÓN"],
+            "TS": ["TS", "TRABAJO SOCIAL"],
+            "PSI": ["PSI", "PSICOLOGIA", "PSICOLOGÍA"]
+        };
+
+        const validNames = exactKeysMap[cod] || [cod];
+        for (const [k, fechas] of Object.entries(r.fechasPorServicio)) {
+            if (k === "General") continue;
+            const kNorm = k.toUpperCase().trim();
+            if (validNames.includes(kNorm)) {
+                if (Array.isArray(fechas) && fechas.length > 0) {
+                    return [...new Set(fechas)].length;
+                }
+            }
+        }
+        return 0;
+    };
+
+    const buscarSoporte = (servicioCod, num) => {
+        if (!r?.fileUrls) return null;
+        const cod = servicioCod.toUpperCase().trim();
+        const aliasCod = (cod === "TRS") ? ["TRS", "SUCCION", "SUC"] : [cod];
+
+        for (const [nombre, url] of Object.entries(r.fileUrls)) {
+            const nomUpper = nombre.toUpperCase().trim();
+            for (const al of aliasCod) {
+                const regex = new RegExp(`^${num}[\\s_-]+${al}(\\.[a-z0-9]+|\\s|$)`, "i");
+                if (regex.test(nomUpper) || nomUpper === `${num} ${al}.PDF`.toUpperCase()) {
+                    return { nombre, url };
+                }
+            }
+        }
+        return null;
+    };
+
+    let mat = r?.datosMatriz;
+    if (!mat && datosMatrizGlobal?.pacientesPorDoc) {
+        const docClean = (r?.nroDocumento || carpeta || "").replace(/\D/g, "");
+        if (docClean && datosMatrizGlobal.pacientesPorDoc.has(docClean)) {
+            mat = datosMatrizGlobal.pacientesPorDoc.get(docClean);
+        } else {
+            for (const [k, v] of datosMatrizGlobal.pacientesPorDoc.entries()) {
+                if (carpeta.includes(k) || (r?.nroDocumento && r.nroDocumento.includes(k))) {
+                    mat = v;
+                    break;
+                }
+            }
+        }
+    }
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "modalProgramadoDetalladoActivo";
+    backdrop.className = "modal-rules-backdrop";
+
+    if (!mat) {
+        backdrop.innerHTML = `
+            <div class="modal-rules-card" style="max-width: 440px;" onclick="event.stopPropagation()">
+                <div class="modal-rules-header">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-size:18px;">⚠️</span>
+                        <h3 class="modal-rules-title">Programado en Matriz</h3>
+                    </div>
+                    <button type="button" class="btn-close-rules" onclick="document.getElementById('modalProgramadoDetalladoActivo')?.remove()">&times;</button>
+                </div>
+                <div class="modal-rules-body" style="text-align:center; padding:24px 16px;">
+                    <div style="font-weight:700; font-size:14px; color:var(--text-pure);">Sin datos en la Matriz Excel</div>
+                    <div style="font-size:12px; color:var(--text-muted); margin-top:6px;">El paciente <strong>${carpeta}</strong> no figura en la matriz Excel cargada.</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+        backdrop.addEventListener("click", () => backdrop.remove());
+        return;
+    }
+
+    const s = mat.servicios || {};
+    const pkgCode = mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—";
+    const pkgCls = pkgCode !== "—" ? `pkg-${pkgCode.toLowerCase()}` : "";
+
+    const renderFilaServicioModal = (item) => {
+        const activo = item.progCount > 0 || item.sopCount > 0;
+        const match = item.progCount === item.sopCount && item.progCount > 0;
+        const diff = item.progCount > 0 && item.sopCount !== item.progCount;
+
+        return `
+            <div class="prog-modal-stat-item ${activo ? 'stat-active' : 'stat-muted'}">
+                <span class="prog-modal-stat-label"><strong>${item.label}</strong></span>
+                <span class="prog-modal-val-p" title="Programado: ${item.progCount}">Prog: <b>${item.progCount}</b></span>
+                <span class="prog-modal-val-s ${match ? 'sop-ok' : (diff ? 'sop-warn' : '')}" title="En Soportes: ${item.sopCount}">Sop: <b>${item.sopCount}</b></span>
+                <div class="prog-modal-stat-btns">
+                    ${item.sop4 ? `<button type="button" class="btn-pdf-subtle modal-btn" onclick="abrirPDFModal('${item.sop4.url}', '${item.sop4.nombre}', this); return false;" title="Ver ${item.sop4.nombre}">4</button>` : `<span class="chip-dash">—</span>`}
+                    ${item.sop5 ? `<button type="button" class="btn-pdf-subtle modal-btn" onclick="abrirPDFModal('${item.sop5.url}', '${item.sop5.nombre}', this); return false;" title="Ver ${item.sop5.nombre}">5</button>` : `<span class="chip-dash">—</span>`}
+                </div>
+            </div>
+        `;
+    };
+
+    // 1. Servicios Fijos
+    const grupoFijos = [
+        { id: "VM", label: "Médica (VM)", progCount: s.VM ?? 0 },
+        { id: "VENF", label: "Enf. Profesional (VENF)", progCount: s.VENF ?? 0 },
+        { id: "ENF", label: "Aux. Enfermería (ENF)", progCount: s.ENF ?? 0 },
+    ].map(f => {
+        const cantFechas = calcularSoportesServicio(f.id);
+        const sop4 = buscarSoporte(f.id, "4");
+        const sop5 = buscarSoporte(f.id, "5");
+        const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
+        return { ...f, sopCount, sop4, sop5 };
+    });
+
+    // 2. Terapias
+    const grupoTerapias = [
+        { id: "TF", label: "Terapia Física (TF)", progCount: s.TF || 0 },
+        { id: "TR", label: "Terapia Respiratoria (TR)", progCount: s.TR || 0 },
+        { id: "TRS", label: "T. Resp. Succión (TRS)", progCount: s.TRS || s.SUCCION || 0 },
+        { id: "FON", label: "Fonoaudiología (FON)", progCount: s.FON || 0 },
+        { id: "TO", label: "Terapia Ocupacional (TO)", progCount: s.TO || 0 },
+    ].map(t => {
+        const sopCount = calcularSoportesServicio(t.id);
+        const sop4 = buscarSoporte(t.id, "4");
+        const sop5 = buscarSoporte(t.id, "5");
+        return { ...t, sopCount, sop4, sop5 };
+    });
+
+    // 3. Otros Servicios
+    const grupoOtros = [
+        { id: "PSI", label: "Psicología (PSI)", progCount: s.PSI || 0 },
+        { id: "TS", label: "Trabajo Social (TS)", progCount: s.TS || 0 },
+        { id: "NUT", label: "Nutrición (NUT)", progCount: s.NUT || 0 },
+    ].map(o => {
+        const sopCount = calcularSoportesServicio(o.id);
+        const sop4 = buscarSoporte(o.id, "4");
+        const sop5 = buscarSoporte(o.id, "5");
+        return { ...o, sopCount, sop4, sop5 };
+    });
+
+    const totalTerapiasProg = mat.totalTerapias !== undefined 
+        ? mat.totalTerapias 
+        : ((s.TF || 0) + (s.TR || 0) + (s.TRS || s.SUCCION || 0) + (s.FON || 0) + (s.TO || 0));
+
+    const totalTerapiasSop = ["TF", "TR", "TRS", "FON", "TO"].reduce((acc, tid) => acc + calcularSoportesServicio(tid), 0);
+
+    let avisosModalHTML = "";
+    if ((mat.errores && mat.errores.length > 0) || (mat.alertas && mat.alertas.length > 0)) {
+        const errs = (mat.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
+        const alts = (mat.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
+        avisosModalHTML = `
+            <div style="font-size:12px; font-weight:700; color:#ef4444; margin-top:10px;">Novedades Detectadas en la Matriz</div>
+            <div class="prog-err-container" style="padding:8px 10px; font-size:11.5px;">${errs}${alts}</div>
+        `;
+    }
+
+    backdrop.innerHTML = `
+        <div class="modal-rules-card" style="max-width: 580px; width: 95%; max-height: 85vh; display:flex; flex-direction:column; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
+            <div class="modal-rules-header" style="padding:14px 18px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
+                    <h3 class="modal-rules-title" style="font-size:15px; margin:0;">Programado en Matriz vs Soportes</h3>
+                </div>
+                <button type="button" class="btn-close-rules" onclick="document.getElementById('modalProgramadoDetalladoActivo')?.remove()">&times;</button>
+            </div>
+
+            <div class="modal-rules-body" style="padding:16px 20px; overflow-y:auto; display:flex; flex-direction:column; gap:12px;">
+                <div class="prog-patient-header" style="padding:10px 14px; font-size:12px;">
+                    <div style="font-size:13.5px; font-weight:800; color:var(--text-pure);">${mat.nombre || 'Paciente'}</div>
+                    <div class="prog-patient-meta" style="font-size:11px; margin-top:4px; gap:8px;">
+                        <span class="prog-meta-badge" style="padding:2px 6px;">Doc: <strong>${mat.documento || carpeta}</strong></span>
+                        ${mat.filaExcel ? `<span class="prog-meta-badge" style="padding:2px 6px;">Fila: <strong>#${mat.filaExcel}</strong></span>` : ''}
+                        <span class="doc-package-tag ${pkgCls} prog-pkg-badge" style="font-size:10px !important; padding:2px 8px !important;">${pkgCode}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.4px;">Servicios Fijos</div>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${grupoFijos.map(renderFilaServicioModal).join("")}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                        <span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.4px;">Terapias</span>
+                        <span class="prog-total-terapias-badge" style="font-size:10.5px; padding:2px 8px;">Total Prog: ${totalTerapiasProg} | Total Sop: ${totalTerapiasSop}</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${grupoTerapias.map(renderFilaServicioModal).join("")}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.4px;">Otros Servicios</div>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${grupoOtros.map(renderFilaServicioModal).join("")}
+                    </div>
+                </div>
+
+                ${avisosModalHTML}
+            </div>
+
+            <div style="padding:10px 20px; background:var(--bg-subtle); border-top:1px solid var(--border-subtle); display:flex; justify-content:flex-end;">
+                <button type="button" class="btn-studio btn-studio-primary" style="padding:6px 18px; font-size:12px; font-weight:600;" onclick="document.getElementById('modalProgramadoDetalladoActivo')?.remove()">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", () => backdrop.remove());
 }
 
 /**
@@ -735,5 +1394,87 @@ export function mostrarModalAlertaFinalValidacion(totalCarpetas, totalConErrores
     document.body.appendChild(backdrop);
     backdrop.addEventListener("click", () => backdrop.remove());
 }
+
+/**
+ * Cierra exactamente una ventana o popup activo por pulsación de la tecla Escape (de a una por vez)
+ */
+export function cerrarUnPopupActivoConEscape() {
+    // 1. Modales de pantalla completa con backdrop (Prevalidación, Reglas, Alertas)
+    const backdropModals = document.querySelectorAll(".modal-rules-backdrop, .modal-aviso-firmas-backdrop");
+    if (backdropModals.length > 0) {
+        const topBackdrop = backdropModals[backdropModals.length - 1];
+        if (topBackdrop.id === "modalAvisoFirmasActivo") {
+            const btn = topBackdrop.querySelector("#btnCerrarAvisoFirmas");
+            if (btn && !btn.disabled) {
+                btn.click();
+                return true;
+            }
+        } else {
+            topBackdrop.remove();
+            return true;
+        }
+    }
+
+    // 2. Visor de PDF si está abierto en pantalla
+    const pdfModal = document.getElementById("pdfModal");
+    if (pdfModal && pdfModal.style.display !== "none" && !pdfModal.classList.contains("oculto")) {
+        if (typeof window.cerrarModal === "function") {
+            window.cerrarModal();
+        } else {
+            pdfModal.style.display = "none";
+        }
+        return true;
+    }
+
+    // 3. Popovers flotantes individuales (Programado y Soportes)
+    const progPopover = document.getElementById("programadoPopoverActivo");
+    if (progPopover) {
+        progPopover.remove();
+        return true;
+    }
+
+    const archPopover = document.getElementById("archivosPopoverActivo");
+    if (archPopover) {
+        archPopover.remove();
+        return true;
+    }
+
+    // 4. Modal Wiki / Ayuda
+    const wikiContainer = document.getElementById("wikiContainer");
+    if (wikiContainer && !wikiContainer.classList.contains("oculto")) {
+        wikiContainer.classList.add("oculto");
+        return true;
+    }
+
+    // 5. Cualquier otro popup genérico
+    const otro = document.querySelector(".floating-popover-movable, .modal-rules-backdrop, .modal-aviso-firmas-backdrop");
+    if (otro) {
+        otro.remove();
+        return true;
+    }
+
+    return false;
+}
+
+// Alias para compatibilidad
+export const cerrarTodosLosPopupsYModales = cerrarUnPopupActivoConEscape;
+
+/**
+ * Inicializa el listener global para cerrar de a una ventana con la tecla Escape
+ */
+export function inicializarCierrePorEscape() {
+    if (window._escapeListenerInit) return;
+    window._escapeListenerInit = true;
+
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" || e.keyCode === 27) {
+            cerrarUnPopupActivoConEscape();
+        }
+    });
+}
+
+// Auto-inicializar el listener al importar
+inicializarCierrePorEscape();
+
 
 

@@ -417,10 +417,16 @@ function renderPaqueteFilas(
                     <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Responsable - Documento - Paquete - Servicio - Archivo - Error">📝</button>
                     <span class="carpeta-nombre">${carpeta}</span>
                 </div>
-                <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                    <span>${totalArchivos} soportes</span>
-                </button>
+                <div class="doc-badge-actions">
+                    <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)" title="Ver soportes cargados (${totalArchivos})">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        <span>${totalArchivos} soportes</span>
+                    </button>
+                    <button type="button" class="carpeta-files-badge btn-programado-trigger" onclick="verProgramadoCarpeta('${carpeta}', this)" title="Ver programación de este paciente según la matriz Excel">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
+                        <span>Programado</span>
+                    </button>
+                </div>
             </div>
         </td>
         <td class="servicio-nombre">📦 Paquete</td>
