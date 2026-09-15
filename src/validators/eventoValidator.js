@@ -136,7 +136,7 @@ export async function validarPDF(
         // Detectar si el archivo es por servicio (FOMAG) ej: "2 tf.pdf"
         const nombreLower = file.name.toLowerCase();
         const matchServicio = nombreLower.match(
-            /^([2-5])\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
+            /^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
         );
         let servicioUpper = null;
         let numeroArchivo = null;

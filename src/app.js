@@ -59,6 +59,7 @@ import {
     leerArchivoMatriz,
     parsearMatriz,
     normalizarDocumentoMatriz,
+    buscarPacienteEnMatriz,
 } from "./services/matrixService.js";
 
 // Configurar worker de PDF.js
@@ -343,7 +344,7 @@ async function procesarValidacionEvento(
             const match5 = nombre
                 .toLowerCase()
                 .match(
-                    /^5\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
+                    /^5\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
                 );
             if (match5) {
                 let serv = match5[1];
@@ -361,7 +362,7 @@ async function procesarValidacionEvento(
 
         const serviciosDetectados = new Set();
         const regexServicioValidacion =
-            /^([245])\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
+            /^([245])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
 
         for (const nombre of nombres) {
             const match = nombre.match(regexServicioValidacion);
@@ -486,12 +487,19 @@ async function procesarLoteArchivos(archivosLista) {
             // Extracción del número de documento (solo dígitos numéricos, ignorando prefijos como TI, CC, RC, etc.)
             const nroDocumento = (carpeta.match(/\d+/)?.[0] || carpeta).trim();
 
-            // Cruce con la matriz si existe
+            // Cruce con la matriz si existe (buscando coincidencia por documento y paquete)
             let datosMatrizPaciente = null;
-            if (datosMatrizGlobal && datosMatrizGlobal.pacientesPorDoc) {
-                if (claveBusquedaMatriz && datosMatrizGlobal.pacientesPorDoc.has(claveBusquedaMatriz)) {
-                    datosMatrizPaciente = datosMatrizGlobal.pacientesPorDoc.get(claveBusquedaMatriz);
-                    documentosProcesadosSet.add(claveBusquedaMatriz);
+            if (datosMatrizGlobal) {
+                datosMatrizPaciente = buscarPacienteEnMatriz(
+                    datosMatrizGlobal,
+                    claveBusquedaMatriz || nroDocumento,
+                    paqueteParaCarpeta
+                );
+                if (datosMatrizPaciente) {
+                    const paqAsoc = datosMatrizPaciente.paquete || paqueteParaCarpeta || "SIN_PAQUETE";
+                    documentosProcesadosSet.add(`${claveBusquedaMatriz}_${paqAsoc}`);
+                    documentosProcesadosSet.add(`${nroDocumento}_${paqAsoc}`);
+
                     // Si la carpeta no tenía paquete explícito en disco, tomar el de la matriz
                     if (!infoCarpeta.tipoPaquete || infoCarpeta.tipoPaquete === "auto" || infoCarpeta.tipoPaquete === "CPF1108") {
                         if (datosMatrizPaciente.paquete) {
@@ -611,15 +619,32 @@ async function procesarLoteArchivos(archivosLista) {
 
         // VALIDACIÓN BIDIRECCIONAL: Pacientes de la matriz que no tienen carpeta de soportes
         if (datosMatrizGlobal && tipoValidacion === "paquete") {
-            for (const [doc, pac] of datosMatrizGlobal.pacientesPorDoc.entries()) {
+            const listaPacientes = datosMatrizGlobal.pacientesList || [];
+            const virtualesRegistradas = new Set();
+
+            for (const pac of listaPacientes) {
                 // Omitir si es un paciente que factura por evento y no tiene paquete
                 if (pac.esFacturarEvento && !pac.paquete) {
                     continue;
                 }
 
-                if (!documentosProcesadosSet.has(doc)) {
-                    const carpetaVirtual = `${doc}`.trim();
-                    const paqueteAsignado = pac.paquete || "SIN_PAQUETE";
+                const doc = pac.documento;
+                if (!doc) continue;
+
+                const paqueteAsignado = pac.paquete || "SIN_PAQUETE";
+                const claveDocPaq = `${doc}_${paqueteAsignado}`;
+
+                // Si no se procesó este documento con este paquete específico
+                if (!documentosProcesadosSet.has(claveDocPaq)) {
+                    let carpetaVirtual = `${doc}`;
+                    if (paqueteAsignado && paqueteAsignado !== "SIN_PAQUETE") {
+                        carpetaVirtual = `${doc} (${paqueteAsignado})`;
+                    }
+                    if (virtualesRegistradas.has(carpetaVirtual) || resultados[carpetaVirtual]) {
+                        carpetaVirtual = `${carpetaVirtual} [Fila ${pac.filaExcel}]`;
+                    }
+                    virtualesRegistradas.add(carpetaVirtual);
+
                     resultados[carpetaVirtual] = inicializarResultado(
                         "paquete",
                         paqueteAsignado,
@@ -992,6 +1017,30 @@ document.addEventListener("DOMContentLoaded", () => {
 
 // ================= EXPOSICIÓN GLOBAL PARA COMPATIBILIDAD CON UI =================
 window.abrirPDFModal = (url, titulo, anchorEl) => abrirPDFModal(url, titulo, anchorEl, seleccionarFila);
+window.abrirPDFModalPorNombre = (event, nombreArchivo, element) => {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const row = element ? element.closest("tr[data-carpeta]") : null;
+    const carpeta = row ? row.getAttribute("data-carpeta") : null;
+    const r = (carpeta && todosLosResultados) ? todosLosResultados[carpeta] : null;
+    if (r && r.fileUrls) {
+        const norm = (nombreArchivo || "").toLowerCase().trim();
+        for (const [nombre, url] of Object.entries(r.fileUrls)) {
+            if (nombre.toLowerCase() === norm) {
+                abrirPDFModal(url, nombre, element, seleccionarFila);
+                return;
+            }
+        }
+        for (const [nombre, url] of Object.entries(r.fileUrls)) {
+            if (nombre.toLowerCase().includes(norm) || norm.includes(nombre.toLowerCase())) {
+                abrirPDFModal(url, nombre, element, seleccionarFila);
+                return;
+            }
+        }
+    }
+};
 window.cerrarModal = cerrarModal;
 window.cerrarTodosLosPopupsYModales = cerrarTodosLosPopupsYModales;
 window.seleccionarCarpeta = seleccionarCarpeta;

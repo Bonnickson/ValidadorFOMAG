@@ -102,12 +102,14 @@ export function normalizarDocumentoMatriz(doc) {
  */
 export function parsearMatriz(rawRows) {
     const pacientesPorDoc = new Map();
+    const pacientesPorDocYPaquete = new Map();
     const pacientesList = [];
     const erroresGlobales = [];
 
     if (!rawRows || rawRows.length < 3) {
         return {
             pacientesPorDoc,
+            pacientesPorDocYPaquete,
             pacientesList,
             diagnosticoGlobal: {
                 valida: false,
@@ -144,9 +146,9 @@ export function parsearMatriz(rawRows) {
             erroresFila.push(`Fila ${filaExcel}: Documento vacío.`);
         }
 
-        // Determinar código de paquete normalizado (ej. CPF1108, CPF1109...)
+        // Determinar código de paquete normalizado (ej. CPF1105, CPF1107, CPF1111, CPF1112, etc.)
         let paquete = paqueteRaw;
-        const matchPaq = paqueteRaw.match(/(CPF\s*110[5689]|CPF\s*1110)/i);
+        const matchPaq = paqueteRaw.match(/(CPF\s*\d+)/i) || paqueteRaw.match(/(CPF[A-Za-z0-9]+)/i);
         if (matchPaq) {
             paquete = matchPaq[1].replace(/\s+/g, "").toUpperCase();
         }
@@ -275,11 +277,18 @@ export function parsearMatriz(rawRows) {
         };
 
         if (documento) {
-            if (pacientesPorDoc.has(documento)) {
-                const previo = pacientesPorDoc.get(documento);
-                pacienteObj.errores.push(`Documento duplicado (ya presente en Fila ${previo.filaExcel}).`);
-                pacienteObj.valido = false;
+            const claveDocPaq = `${documento}_${paquete || (esFacturarEventoSi ? "EVENTO" : "SIN_PAQUETE")}`;
+            if (!pacientesPorDocYPaquete.has(claveDocPaq)) {
+                pacientesPorDocYPaquete.set(claveDocPaq, pacienteObj);
             } else {
+                const previo = pacientesPorDocYPaquete.get(claveDocPaq);
+                pacienteObj.errores.push(
+                    `Fila duplicada para el mismo documento y paquete (ya presente en Fila ${previo.filaExcel}).`
+                );
+                pacienteObj.valido = false;
+            }
+
+            if (!pacientesPorDoc.has(documento)) {
                 pacientesPorDoc.set(documento, pacienteObj);
             }
         }
@@ -291,6 +300,7 @@ export function parsearMatriz(rawRows) {
 
     return {
         pacientesPorDoc,
+        pacientesPorDocYPaquete,
         pacientesList,
         diagnosticoGlobal: {
             valida: totalConErrores === 0 && pacientesList.length > 0,
@@ -301,4 +311,63 @@ export function parsearMatriz(rawRows) {
             conteoPorPaquete,
         },
     };
+}
+
+/**
+ * Busca un paciente en los datos procesados de la matriz por documento y opcionalmente por paquete.
+ * @param {Object} datosMatriz Objeto devuelto por parsearMatriz
+ * @param {string} documento Número o clave de documento
+ * @param {string} [paquete] Código de paquete (ej. CPF1105)
+ * @returns {Object|null}
+ */
+export function buscarPacienteEnMatriz(datosMatriz, documento, paquete) {
+    if (!datosMatriz || !documento) return null;
+    const docNorm = normalizarDocumentoMatriz(documento);
+    if (!docNorm) return null;
+
+    const tienePaqueteEspecifico = paquete && paquete !== "auto" && paquete !== "SIN_PAQUETE";
+
+    // 1. Si se especificó un paquete concreto, buscar coincidencia exacta doc + paquete
+    if (tienePaqueteEspecifico && datosMatriz.pacientesPorDocYPaquete) {
+        const paqNorm = String(paquete).trim().toUpperCase();
+        const clave = `${docNorm}_${paqNorm}`;
+        if (datosMatriz.pacientesPorDocYPaquete.has(clave)) {
+            return datosMatriz.pacientesPorDocYPaquete.get(clave);
+        }
+
+        // Búsqueda flexible por dígitos pero manteniendo el paquete estricto
+        if (datosMatriz.pacientesList) {
+            const docSoloDigitos = docNorm.replace(/\D/g, "");
+            if (docSoloDigitos) {
+                const matchConPaq = datosMatriz.pacientesList.find(
+                    (p) =>
+                        p.documento &&
+                        p.documento.replace(/\D/g, "") === docSoloDigitos &&
+                        p.paquete === paqNorm
+                );
+                if (matchConPaq) return matchConPaq;
+            }
+        }
+
+        // Si se especificó un paquete y no coincide con ninguno en la matriz para ese paquete, retornar null (no mezclar con otro paquete)
+        return null;
+    }
+
+    // 2. Si no se especificó paquete (o es "auto"), buscar por documento
+    if (datosMatriz.pacientesPorDoc && datosMatriz.pacientesPorDoc.has(docNorm)) {
+        return datosMatriz.pacientesPorDoc.get(docNorm);
+    }
+
+    // 3. Búsqueda flexible por subcadena de documento en la lista
+    if (datosMatriz.pacientesList) {
+        const docSoloDigitos = docNorm.replace(/\D/g, "");
+        if (docSoloDigitos) {
+            const match = datosMatriz.pacientesList.find(
+                (p) => p.documento && p.documento.replace(/\D/g, "") === docSoloDigitos
+            );
+            if (match) return match;
+        }
+    }
+
+    return null;
 }

@@ -67,7 +67,8 @@ export function formatearErrorConIconosPDF(texto) {
     return texto.replace(
         /\b([1-5](?:\s+[a-zA-Z0-9]+)?)\.pdf\b/gi,
         (match, nombreBase) => {
-            return `<span class="pdf-file-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pdf-file-badge-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>${nombreBase}</span>`;
+            const fileName = `${nombreBase}.pdf`;
+            return `<button type="button" class="pdf-file-badge pdf-file-badge-clickable" onclick="window.abrirPDFModalPorNombre && window.abrirPDFModalPorNombre(event, '${fileName}', this); return false;" title="Clic para abrir y revisar ${fileName}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="pdf-file-badge-icon"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>${nombreBase}</button>`;
         }
     );
 }

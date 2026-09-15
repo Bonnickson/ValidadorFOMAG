@@ -405,6 +405,11 @@ function renderPaqueteFilas(
         ? `<div class="auditor-tag" style="font-size:9.5px; font-weight:700; color:var(--text-muted); background:var(--bg-subtle); border:1px solid var(--border-subtle); padding:1px 5px; border-radius:3px; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="Auditor / Carpeta raíz: ${r.auditor}">👤 ${r.auditor}</div>`
         : "";
 
+    const nombreLimpio = (r.carpetaNombre || carpeta)
+        .replace(/\s*\([^)]*CPF\w*[^)]*\)/gi, "")
+        .replace(/\s*\(CPF\w*\)/gi, "")
+        .trim();
+
     trHeader.innerHTML = `
         <td rowspan="${totalFilasLote}" class="carpeta-cell doc-header-grouped">
             <div class="doc-badge-stack">
@@ -417,10 +422,10 @@ function renderPaqueteFilas(
                     </button>
                 </div>
                 <div class="doc-title-line">
-                    <button class="copy-inline-btn" onclick="copiarNumero(event,'${carpeta}')" title="Copiar sólo documento/carpeta">📋</button>
-                    <button class="copy-inline-btn copy-full-btn" onclick="copiarFormatoCompleto(event,'${paqueteCodigo}','${carpeta}')" title="Copiar '${paqueteCodigo} - ${carpeta} - '">🏷️</button>
+                    <button class="copy-inline-btn" onclick="copiarNumero(event,'${nombreLimpio}')" title="Copiar sólo documento/carpeta">📋</button>
+                    <button class="copy-inline-btn copy-full-btn" onclick="copiarFormatoCompleto(event,'${paqueteCodigo}','${nombreLimpio}')" title="Copiar '${paqueteCodigo} - ${nombreLimpio} - '">🏷️</button>
                     <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Responsable - Documento - Paquete - Servicio - Archivo - Error">📝</button>
-                    <span class="carpeta-nombre">${carpeta}</span>
+                    <span class="carpeta-nombre">${nombreLimpio}</span>
                 </div>
                 <div class="doc-badge-actions">
                     <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)" title="Ver soportes cargados (${totalArchivos})">
@@ -593,7 +598,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const match = archivo
             .toLowerCase()
             .match(
-                /^([2-5])\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
+                /^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
             );
         if (match) {
             let serv = match[2];

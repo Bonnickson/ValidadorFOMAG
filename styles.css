@@ -806,32 +806,32 @@ tbody tr:hover td {
 /* ================= SOMBREADO DE REGISTRO SELECCIONADO / ACTIVO ================= */
 tbody tr.selected-folder td,
 tbody tr.selected td {
-    background: rgba(37, 99, 235, 0.16) !important;
+    background: rgba(37, 99, 235, 0.24) !important;
 }
 
 tbody tr.selected-folder td.carpeta-cell,
 tbody tr.selected td.carpeta-cell {
-    border-left: 5px solid var(--accent, #2563eb) !important;
-    background: rgba(37, 99, 235, 0.22) !important;
+    border-left: 5px solid #1d4ed8 !important;
+    background: rgba(37, 99, 235, 0.32) !important;
 }
 
 tbody tr.selected td {
-    background: rgba(37, 99, 235, 0.24) !important;
+    background: rgba(37, 99, 235, 0.34) !important;
 }
 
 body.theme-dark tbody tr.selected-folder td,
 body.theme-dark tbody tr.selected td {
-    background: rgba(59, 130, 246, 0.28) !important;
+    background: rgba(59, 130, 246, 0.38) !important;
 }
 
 body.theme-dark tbody tr.selected-folder td.carpeta-cell,
 body.theme-dark tbody tr.selected td.carpeta-cell {
     border-left: 5px solid #60a5fa !important;
-    background: rgba(59, 130, 246, 0.38) !important;
+    background: rgba(59, 130, 246, 0.48) !important;
 }
 
 body.theme-dark tbody tr.selected td {
-    background: rgba(59, 130, 246, 0.42) !important;
+    background: rgba(59, 130, 246, 0.52) !important;
 }
 
 /* Paquete Row Groups */
@@ -2239,10 +2239,10 @@ body.theme-dark .btn-programado-trigger:hover {
 }
 
 .programado-floating-popover {
-    min-width: 280px;
+    min-width: 350px;
     min-height: 150px;
-    width: 315px;
-    max-height: 480px;
+    width: 390px;
+    max-height: 520px;
 }
 
 @keyframes popoverFadeIn {
@@ -2321,75 +2321,143 @@ body.theme-dark .btn-programado-trigger:hover {
     gap: 4px;
 }
 
+.archivos-floating-popover {
+    min-width: 290px;
+    max-width: 380px;
+    width: 310px;
+    max-height: 480px;
+    box-shadow: 0 12px 30px -6px rgba(0, 0, 0, 0.22), 0 4px 12px -2px rgba(0, 0, 0, 0.12);
+    border-radius: var(--radius-md, 8px);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+}
+
+.popover-count-pill {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 6px;
+    border-radius: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
+    margin-left: 2px;
+}
+
 .popover-file-link,
 .popover-file-item {
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 9px;
     padding: 5px 8px;
-    border-radius: 4px;
-    font-size: 11px;
-    font-family: var(--font-mono);
-    color: var(--text-secondary);
+    border-radius: 6px;
+    font-size: 11.5px;
+    font-family: var(--font-sans);
+    color: var(--text-primary);
     text-decoration: none;
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
-    transition: var(--transition);
-}
-
-.popover-file-name {
-    flex: 1;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    transition: all 0.15s ease-in-out;
 }
 
 .popover-file-link:hover {
-    background: var(--accent-glow);
+    background: var(--bg-card);
     color: var(--accent-text);
-    border-color: var(--accent-border);
+    border-color: var(--accent-border, #cbd5e1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
 }
 
-.soporte-icon {
-    font-size: 13px;
-    display: inline-flex;
+.popover-file-text-col {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.popover-file-name {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.popover-file-link:hover .popover-file-name {
+    color: var(--accent-text);
+}
+
+/* Iconos SVG profesionales para archivos de soporte */
+.soporte-file-svg-tag {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    border-radius: 5px;
+    display: flex;
     align-items: center;
     justify-content: center;
-    width: 18px;
+    border: 1px solid;
     flex-shrink: 0;
 }
 
-.soporte-icon.error-x {
-    font-size: 11px;
-    font-weight: 800;
+.soporte-file-svg {
+    width: 14px;
+    height: 14px;
+}
+
+.soporte-num-badge {
+    position: absolute;
+    bottom: -2px;
+    right: -3px;
+    font-size: 8px;
+    font-weight: 900;
+    line-height: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: 3px;
+    padding: 1px 2px;
+}
+
+.soporte-file-svg-tag.soporte-err-tag {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+}
+
+.badge-soporte-tipo {
+    font-size: 9.5px;
+    font-weight: 500;
+    color: var(--text-muted);
+    white-space: nowrap;
+    margin-left: auto;
+    font-family: var(--font-sans);
 }
 
 .popover-file-link.soporte-no-reconocido,
 .popover-file-item.soporte-no-reconocido {
-    border-color: rgba(239, 68, 68, 0.35) !important;
-    background: rgba(239, 68, 68, 0.06) !important;
-    color: var(--danger-text) !important;
+    border-color: rgba(239, 68, 68, 0.3) !important;
+    background: rgba(239, 68, 68, 0.04) !important;
 }
 
 .popover-file-link.soporte-no-reconocido:hover {
-    background: rgba(239, 68, 68, 0.12) !important;
-    border-color: rgba(239, 68, 68, 0.6) !important;
+    background: rgba(239, 68, 68, 0.08) !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
 }
 
 .badge-no-reconocido {
     font-size: 9px;
     padding: 1px 5px;
     border-radius: 3px;
-    background: rgba(239, 68, 68, 0.18);
-    color: #dc2626;
-    font-weight: 700;
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    font-weight: 600;
     font-family: var(--font-sans);
     flex-shrink: 0;
+    margin-left: auto;
 }
 
 body.theme-dark .badge-no-reconocido {
     color: #f87171;
-    background: rgba(239, 68, 68, 0.25);
+    background: rgba(239, 68, 68, 0.2);
 }
 
 /* ================= DETALLES DE PROGRAMACIÓN MATRIZ EN POPOVER ================= */
@@ -2407,10 +2475,10 @@ body.theme-dark .badge-no-reconocido {
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
     border-radius: 4px;
-    padding: 5px 8px;
+    padding: 6px 8px;
     display: flex;
     flex-direction: column;
-    gap: 2.5px;
+    gap: 3px;
 }
 
 .prog-patient-name {
@@ -2426,7 +2494,7 @@ body.theme-dark .badge-no-reconocido {
     display: flex;
     align-items: center;
     gap: 6px;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     font-size: 9.5px;
     color: var(--text-muted);
 }
@@ -2479,9 +2547,9 @@ body.theme-dark .badge-no-reconocido {
 /* Fila de servicio con columnas perfectamente alineadas */
 .prog-row-item {
     display: grid;
-    grid-template-columns: 1fr 42px 42px 20px 20px;
+    grid-template-columns: 1fr 76px 82px 20px 20px;
     align-items: center;
-    gap: 4px;
+    gap: 5px;
     padding: 3px 6px;
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
@@ -2512,27 +2580,25 @@ body.theme-dark .badge-no-reconocido {
     font-weight: 600;
 }
 
-.prog-col-prog {
-    font-family: var(--font-mono);
-    font-size: 9px;
-    color: var(--text-muted);
-    text-align: right;
-    white-space: nowrap;
-}
-
-.prog-col-prog b {
-    color: var(--text-pure);
-    font-weight: 700;
-}
-
+.prog-col-prog,
 .prog-col-sop {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 3px;
     font-family: var(--font-mono);
-    font-size: 9px;
+    font-size: 9.5px;
     color: var(--text-muted);
-    text-align: right;
     white-space: nowrap;
 }
 
+.prog-txt-label {
+    font-size: 8.5px;
+    color: var(--text-muted);
+    letter-spacing: 0.1px;
+}
+
+.prog-col-prog b,
 .prog-col-sop b {
     color: var(--text-pure);
     font-weight: 700;
@@ -2550,10 +2616,58 @@ body.theme-dark .prog-col-sop.sop-ok b {
     color: #d97706;
 }
 
+/* Resaltado rojo discreto y limpio para 0 o faltantes */
+.prog-pulse-red {
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 3px !important;
+    padding: 1px 4px !important;
+    border-radius: 3px !important;
+    background-color: rgba(239, 68, 68, 0.08) !important;
+    border: 1px solid rgba(239, 68, 68, 0.22) !important;
+    color: #dc2626 !important;
+}
+
+.prog-pulse-red .prog-txt-label {
+    color: #dc2626 !important;
+    opacity: 0.85;
+}
+
+.prog-pulse-red b {
+    color: #dc2626 !important;
+    font-weight: 700 !important;
+}
+
+body.theme-dark .prog-pulse-red {
+    background-color: rgba(239, 68, 68, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.28) !important;
+    color: #f87171 !important;
+}
+
+body.theme-dark .prog-pulse-red .prog-txt-label,
+body.theme-dark .prog-pulse-red b {
+    color: #f87171 !important;
+}
+
 .prog-col-chip {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* Badge interactivo de soportes PDF en mensajes de error */
+.pdf-file-badge-clickable {
+    cursor: pointer;
+    border: 1px solid var(--border-subtle);
+    transition: all 0.15s ease-in-out;
+    background: var(--bg-subtle);
+}
+
+.pdf-file-badge-clickable:hover {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+    transform: scale(1.05);
 }
 
 /* Botón sutil y limpio para soporte 4 y 5 (sin recuadros pesados) */
@@ -2640,7 +2754,7 @@ body.theme-dark .prog-col-sop.sop-ok b {
 /* ================= MODAL DETALLADO DE PROGRAMACIÓN (POP UP GRANDE) ================= */
 .prog-modal-stat-item {
     display: grid;
-    grid-template-columns: 1fr 70px 70px 54px;
+    grid-template-columns: 1fr 100px 110px 54px;
     align-items: center;
     gap: 8px;
     padding: 6px 12px;
@@ -2669,10 +2783,13 @@ body.theme-dark .prog-col-sop.sop-ok b {
 
 .prog-modal-val-p,
 .prog-modal-val-s {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 4px;
     font-family: var(--font-mono);
     font-size: 11.5px;
     color: var(--text-muted);
-    text-align: right;
     white-space: nowrap;
 }
 

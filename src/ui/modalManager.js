@@ -10,6 +10,7 @@ import {
     mostrarToastCopia,
 } from "../utils/clipboardUtils.js";
 import { formatearErrorConIconosPDF } from "../utils/textUtils.js";
+import { buscarPacienteEnMatriz } from "../services/matrixService.js";
 
 /**
  * Muestra el resumen de condiciones del paquete seleccionado en el panel lateral
@@ -313,6 +314,35 @@ export function verArchivosCarpeta(
     popover.className = "archivos-floating-popover floating-popover-movable";
     popover._trigger = triggerBtn;
 
+    const renderPdfIcon = (num, srv) => {
+        // Icono SVG profesional de PDF con color según tipo (2: azul/doc, 4: ambar/firma, 5: esmeralda/evolución)
+        let strokeColor = "#6366f1";
+        let fillBg = "rgba(99, 102, 241, 0.08)";
+        let badgeColor = "#4f46e5";
+        let numLabel = num || "";
+
+        if (num === "2") {
+            strokeColor = "#0284c7";
+            fillBg = "rgba(2, 132, 199, 0.09)";
+            badgeColor = "#0369a1";
+        } else if (num === "4") {
+            strokeColor = "#d97706";
+            fillBg = "rgba(217, 119, 6, 0.09)";
+            badgeColor = "#b45309";
+        } else if (num === "5") {
+            strokeColor = "#059669";
+            fillBg = "rgba(5, 150, 105, 0.09)";
+            badgeColor = "#047857";
+        }
+
+        return `
+            <div class="soporte-file-svg-tag" style="background:${fillBg}; border-color:${strokeColor}33; color:${strokeColor};">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="soporte-file-svg"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                ${numLabel ? `<span class="soporte-num-badge" style="color:${badgeColor}">${numLabel}</span>` : ""}
+            </div>
+        `;
+    };
+
     const filesListHTML = r.listaArchivos
         .map((archivo) => {
             const info = obtenerInfoSoporte(archivo);
@@ -321,23 +351,31 @@ export function verArchivosCarpeta(
             );
             const url = urlKey ? r.fileUrls[urlKey] : null;
             const extraCls = info.reconocido ? "soporte-valido" : "soporte-no-reconocido";
+            
+            const numMatch = archivo.match(/^([2-5])/);
+            const num = numMatch ? numMatch[1] : "";
             const iconHTML = info.reconocido
-                ? `<span class="soporte-icon">${info.icono}</span>`
-                : `<span class="soporte-icon error-x">❌</span>`;
+                ? renderPdfIcon(num, archivo)
+                : `<div class="soporte-file-svg-tag soporte-err-tag"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2" class="soporte-file-svg"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg></div>`;
+
             const badgeTexto = info.reconocido
-                ? ""
+                ? `<span class="badge-soporte-tipo">${info.tipo.replace(/\s*\([^\)]*\)/g, "")}</span>`
                 : `<span class="badge-no-reconocido" title="Soporte no reconocido">No reconocido</span>`;
 
             if (url) {
                 return `<a href="#" onclick="abrirPDFModal('${url}', '${archivo}', this); return false;" class="popover-file-link ${extraCls}" title="${info.tipo}: ${archivo}">
                     ${iconHTML}
-                    <span class="popover-file-name">${archivo}</span>
+                    <div class="popover-file-text-col">
+                        <span class="popover-file-name">${archivo}</span>
+                    </div>
                     ${badgeTexto}
                 </a>`;
             }
             return `<div class="popover-file-item ${extraCls}" title="${info.tipo}: ${archivo}">
                 ${iconHTML}
-                <span class="popover-file-name">${archivo}</span>
+                <div class="popover-file-text-col">
+                    <span class="popover-file-name">${archivo}</span>
+                </div>
                 ${badgeTexto}
             </div>`;
         })
@@ -346,10 +384,11 @@ export function verArchivosCarpeta(
     popover.innerHTML = `
         <div class="popover-header">
             <span class="popover-header-title">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
-                Soportes (${r.listaArchivos.length})
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;display:inline-block;vertical-align:middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                <span>Soportes</span>
+                <span class="popover-count-pill">${r.listaArchivos.length}</span>
             </span>
-            <button type="button" class="popover-close-btn" onclick="document.getElementById('archivosPopoverActivo')?.remove()">&times;</button>
+            <button type="button" class="popover-close-btn" onclick="document.getElementById('archivosPopoverActivo')?.remove()" title="Cerrar">&times;</button>
         </div>
         <div class="popover-body">${filesListHTML}</div>
     `;
@@ -490,18 +529,8 @@ export function verProgramadoCarpeta(
 
     // Buscar datos de la matriz del paciente
     let mat = r?.datosMatriz;
-    if (!mat && datosMatrizGlobal?.pacientesPorDoc) {
-        const docClean = (r?.nroDocumento || carpeta || "").replace(/\D/g, "");
-        if (docClean && datosMatrizGlobal.pacientesPorDoc.has(docClean)) {
-            mat = datosMatrizGlobal.pacientesPorDoc.get(docClean);
-        } else {
-            for (const [k, v] of datosMatrizGlobal.pacientesPorDoc.entries()) {
-                if (carpeta.includes(k) || (r?.nroDocumento && r.nroDocumento.includes(k))) {
-                    mat = v;
-                    break;
-                }
-            }
-        }
+    if (!mat && datosMatrizGlobal) {
+        mat = buscarPacienteEnMatriz(datosMatrizGlobal, r?.nroDocumento || carpeta, r?.tipoPaquete);
     }
 
     const popover = document.createElement("div");
@@ -520,19 +549,30 @@ export function verProgramadoCarpeta(
         `;
     } else {
         const s = mat.servicios || {};
+        const pkgCarpeta = r?.tipoPaquete || "—";
+        const pkgMatriz = mat.paquete || mat.paqueteRaw || "—";
+        const paqueteMismatch = pkgCarpeta !== "—" && pkgMatriz !== "—" && pkgCarpeta !== "auto" && pkgCarpeta.toUpperCase() !== pkgMatriz.toUpperCase();
         const pkgCode = mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—";
         const pkgCls = pkgCode !== "—" ? `pkg-${pkgCode.toLowerCase()}` : "";
 
         const renderFilaServicio = (item) => {
-            const activo = item.progCount > 0 || item.sopCount > 0;
-            const match = item.progCount === item.sopCount && item.progCount > 0;
-            const diff = item.progCount > 0 && item.sopCount !== item.progCount;
+            const matCount = item.progCount || 0;
+            const sopCount = item.sopCount || 0;
+            const activo = matCount > 0 || sopCount > 0;
+            const isMatFaltante = (matCount === 0 && sopCount > 0);
+            const isSopFaltante = (sopCount === 0 && matCount > 0);
+            const match = matCount === sopCount && matCount > 0;
+            const diff = matCount > 0 && sopCount > 0 && matCount !== sopCount;
 
             return `
                 <div class="prog-row-item ${activo ? 'row-active' : 'row-muted'}">
                     <span class="prog-col-name" title="${item.label}">${item.label}</span>
-                    <span class="prog-col-prog" title="Programado: ${item.progCount}">P:<b>${item.progCount}</b></span>
-                    <span class="prog-col-sop ${match ? 'sop-ok' : (diff ? 'sop-warn' : '')}" title="En soportes: ${item.sopCount}">S:<b>${item.sopCount}</b></span>
+                    <span class="prog-col-prog ${isMatFaltante ? 'prog-pulse-red' : ''}" title="Matriz: ${matCount}">
+                        <span class="prog-txt-label">Matriz:</span> <b>${matCount}</b>
+                    </span>
+                    <span class="prog-col-sop ${isSopFaltante ? 'prog-pulse-red' : (match ? 'sop-ok' : (diff ? 'sop-warn' : ''))}" title="Soporte: ${sopCount}">
+                        <span class="prog-txt-label">Soporte:</span> <b>${sopCount}</b>
+                    </span>
                     <span class="prog-col-chip">
                         ${item.sop4 
                             ? `<button type="button" class="btn-pdf-subtle" onclick="abrirPDFModal('${item.sop4.url}', '${item.sop4.nombre}', this); return false;" title="Ver ${item.sop4.nombre} en visor PDF">4</button>` 
@@ -593,14 +633,26 @@ export function verProgramadoCarpeta(
         const totalTerapiasSop = ["TF", "TR", "TRS", "FON", "TO"].reduce((acc, tid) => acc + calcularSoportesServicio(tid), 0);
 
         let avisosHTML = "";
+        if (paqueteMismatch) {
+            avisosHTML += `
+                <div class="prog-err-line warning" style="margin-top:6px;">⚠️ <strong>Discrepancia de Paquete:</strong> Carpeta tiene <b>${pkgCarpeta}</b> y en matriz está <b>${pkgMatriz}</b>.</div>
+            `;
+        }
         if ((mat.errores && mat.errores.length > 0) || (mat.alertas && mat.alertas.length > 0)) {
             const errs = (mat.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
             const alts = (mat.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
-            avisosHTML = `
+            avisosHTML += `
                 <div class="prog-section-title" style="color:#ef4444; margin-top:6px;">Novedades Matriz</div>
                 <div class="prog-err-container">${errs}${alts}</div>
             `;
         }
+
+        const metaPaqueteHTML = paqueteMismatch
+            ? `<div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
+                    <span class="doc-package-tag pkg-${pkgCarpeta.toLowerCase()} prog-pkg-badge" title="Paquete en Carpeta de soportes">📁 ${pkgCarpeta}</span>
+                    <span class="doc-package-tag pkg-${pkgMatriz.toLowerCase()} prog-pkg-badge" title="Paquete en Matriz Excel">📊 ${pkgMatriz}</span>
+               </div>`
+            : `<span class="doc-package-tag ${pkgCls} prog-pkg-badge">${pkgCode}</span>`;
 
         contentHTML = `
             <div class="prog-patient-header">
@@ -608,7 +660,7 @@ export function verProgramadoCarpeta(
                 <div class="prog-patient-meta">
                     <span class="prog-meta-badge">Doc: <strong>${mat.documento || carpeta}</strong></span>
                     ${mat.filaExcel ? `<span class="prog-meta-badge">Fila: <strong>#${mat.filaExcel}</strong></span>` : ''}
-                    <span class="doc-package-tag ${pkgCls} prog-pkg-badge">${pkgCode}</span>
+                    ${metaPaqueteHTML}
                 </div>
             </div>
 
@@ -626,7 +678,7 @@ export function verProgramadoCarpeta(
             <div class="prog-category-block">
                 <div class="prog-category-header">
                     <span>Terapias</span>
-                    <span class="prog-total-terapias-badge" title="Total Programado: ${totalTerapiasProg} | Total Soportes: ${totalTerapiasSop}">Prog: ${totalTerapiasProg} | Sop: ${totalTerapiasSop}</span>
+                    <span class="prog-total-terapias-badge" title="Total Matriz: ${totalTerapiasProg} | Total Soporte: ${totalTerapiasSop}">Matriz: ${totalTerapiasProg} | Soporte: ${totalTerapiasSop}</span>
                 </div>
                 <div class="prog-category-list">
                     ${grupoTerapias.map(renderFilaServicio).join("")}
@@ -788,18 +840,8 @@ export function mostrarModalProgramadoDetallado(
     };
 
     let mat = r?.datosMatriz;
-    if (!mat && datosMatrizGlobal?.pacientesPorDoc) {
-        const docClean = (r?.nroDocumento || carpeta || "").replace(/\D/g, "");
-        if (docClean && datosMatrizGlobal.pacientesPorDoc.has(docClean)) {
-            mat = datosMatrizGlobal.pacientesPorDoc.get(docClean);
-        } else {
-            for (const [k, v] of datosMatrizGlobal.pacientesPorDoc.entries()) {
-                if (carpeta.includes(k) || (r?.nroDocumento && r.nroDocumento.includes(k))) {
-                    mat = v;
-                    break;
-                }
-            }
-        }
+    if (!mat && datosMatrizGlobal) {
+        mat = buscarPacienteEnMatriz(datosMatrizGlobal, r?.nroDocumento || carpeta, r?.tipoPaquete);
     }
 
     const backdrop = document.createElement("div");
@@ -828,19 +870,30 @@ export function mostrarModalProgramadoDetallado(
     }
 
     const s = mat.servicios || {};
+    const pkgCarpeta = r?.tipoPaquete || "—";
+    const pkgMatriz = mat.paquete || mat.paqueteRaw || "—";
+    const paqueteMismatch = pkgCarpeta !== "—" && pkgMatriz !== "—" && pkgCarpeta !== "auto" && pkgCarpeta.toUpperCase() !== pkgMatriz.toUpperCase();
     const pkgCode = mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—";
     const pkgCls = pkgCode !== "—" ? `pkg-${pkgCode.toLowerCase()}` : "";
 
     const renderFilaServicioModal = (item) => {
-        const activo = item.progCount > 0 || item.sopCount > 0;
-        const match = item.progCount === item.sopCount && item.progCount > 0;
-        const diff = item.progCount > 0 && item.sopCount !== item.progCount;
+        const matCount = item.progCount || 0;
+        const sopCount = item.sopCount || 0;
+        const activo = matCount > 0 || sopCount > 0;
+        const isMatFaltante = (matCount === 0 && sopCount > 0);
+        const isSopFaltante = (sopCount === 0 && matCount > 0);
+        const match = matCount === sopCount && matCount > 0;
+        const diff = matCount > 0 && sopCount > 0 && matCount !== sopCount;
 
         return `
             <div class="prog-modal-stat-item ${activo ? 'stat-active' : 'stat-muted'}">
                 <span class="prog-modal-stat-label"><strong>${item.label}</strong></span>
-                <span class="prog-modal-val-p" title="Programado: ${item.progCount}">Prog: <b>${item.progCount}</b></span>
-                <span class="prog-modal-val-s ${match ? 'sop-ok' : (diff ? 'sop-warn' : '')}" title="En Soportes: ${item.sopCount}">Sop: <b>${item.sopCount}</b></span>
+                <span class="prog-modal-val-p ${isMatFaltante ? 'prog-pulse-red' : ''}" title="Matriz: ${matCount}">
+                    <span class="prog-txt-label">Matriz:</span> <b>${matCount}</b>
+                </span>
+                <span class="prog-modal-val-s ${isSopFaltante ? 'prog-pulse-red' : (match ? 'sop-ok' : (diff ? 'sop-warn' : ''))}" title="En Soportes: ${sopCount}">
+                    <span class="prog-txt-label">Soporte:</span> <b>${sopCount}</b>
+                </span>
                 <div class="prog-modal-stat-btns">
                     ${item.sop4 ? `<button type="button" class="btn-pdf-subtle modal-btn" onclick="abrirPDFModal('${item.sop4.url}', '${item.sop4.nombre}', this); return false;" title="Ver ${item.sop4.nombre}">4</button>` : `<span class="chip-dash">—</span>`}
                     ${item.sop5 ? `<button type="button" class="btn-pdf-subtle modal-btn" onclick="abrirPDFModal('${item.sop5.url}', '${item.sop5.nombre}', this); return false;" title="Ver ${item.sop5.nombre}">5</button>` : `<span class="chip-dash">—</span>`}
@@ -895,17 +948,29 @@ export function mostrarModalProgramadoDetallado(
     const totalTerapiasSop = ["TF", "TR", "TRS", "FON", "TO"].reduce((acc, tid) => acc + calcularSoportesServicio(tid), 0);
 
     let avisosModalHTML = "";
+    if (paqueteMismatch) {
+        avisosModalHTML += `
+            <div class="prog-err-line warning" style="margin-top:10px; padding:8px 12px; font-size:12px;">⚠️ <strong>Discrepancia de Paquete:</strong> La carpeta de soportes corresponde a <b>${pkgCarpeta}</b> pero en la matriz Excel fue programado con <b>${pkgMatriz}</b>.</div>
+        `;
+    }
     if ((mat.errores && mat.errores.length > 0) || (mat.alertas && mat.alertas.length > 0)) {
         const errs = (mat.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
         const alts = (mat.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
-        avisosModalHTML = `
+        avisosModalHTML += `
             <div style="font-size:12px; font-weight:700; color:#ef4444; margin-top:10px;">Novedades Detectadas en la Matriz</div>
             <div class="prog-err-container" style="padding:8px 10px; font-size:11.5px;">${errs}${alts}</div>
         `;
     }
 
+    const metaPaqueteModalHTML = paqueteMismatch
+        ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                <span class="doc-package-tag pkg-${pkgCarpeta.toLowerCase()} prog-pkg-badge" style="font-size:10.5px !important; padding:2px 8px !important;" title="Paquete en Carpeta de soportes">📁 Carpeta: ${pkgCarpeta}</span>
+                <span class="doc-package-tag pkg-${pkgMatriz.toLowerCase()} prog-pkg-badge" style="font-size:10.5px !important; padding:2px 8px !important;" title="Paquete en Matriz Excel">📊 Matriz: ${pkgMatriz}</span>
+           </div>`
+        : `<span class="doc-package-tag ${pkgCls} prog-pkg-badge" style="font-size:10px !important; padding:2px 8px !important;">${pkgCode}</span>`;
+
     backdrop.innerHTML = `
-        <div class="modal-rules-card" style="max-width: 580px; width: 95%; max-height: 85vh; display:flex; flex-direction:column; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
+        <div class="modal-rules-card" style="max-width: 640px; width: 95%; max-height: 85vh; display:flex; flex-direction:column; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
             <div class="modal-rules-header" style="padding:14px 18px;">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
@@ -920,7 +985,7 @@ export function mostrarModalProgramadoDetallado(
                     <div class="prog-patient-meta" style="font-size:11px; margin-top:4px; gap:8px;">
                         <span class="prog-meta-badge" style="padding:2px 6px;">Doc: <strong>${mat.documento || carpeta}</strong></span>
                         ${mat.filaExcel ? `<span class="prog-meta-badge" style="padding:2px 6px;">Fila: <strong>#${mat.filaExcel}</strong></span>` : ''}
-                        <span class="doc-package-tag ${pkgCls} prog-pkg-badge" style="font-size:10px !important; padding:2px 8px !important;">${pkgCode}</span>
+                        ${metaPaqueteModalHTML}
                     </div>
                 </div>
 
@@ -934,7 +999,7 @@ export function mostrarModalProgramadoDetallado(
                 <div>
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                         <span style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-muted); letter-spacing:0.4px;">Terapias</span>
-                        <span class="prog-total-terapias-badge" style="font-size:10.5px; padding:2px 8px;">Total Prog: ${totalTerapiasProg} | Total Sop: ${totalTerapiasSop}</span>
+                        <span class="prog-total-terapias-badge" style="font-size:10.5px; padding:2px 8px;">Matriz: ${totalTerapiasProg} | Soporte: ${totalTerapiasSop}</span>
                     </div>
                     <div style="display:flex; flex-direction:column; gap:4px;">
                         ${grupoTerapias.map(renderFilaServicioModal).join("")}

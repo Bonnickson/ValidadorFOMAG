@@ -6,6 +6,7 @@ export const ALLOWED_TYPES = [
     "VM",
     "ENF",
     "ENF12",
+    "CH",
     "TF",
     "TR",
     "SUCCION",
@@ -25,17 +26,25 @@ export const TERAPIAS_CONTABLES = new Set(["TF", "TR", "FON", "TO", "TRS"]);
 export const PAQUETES_SOPORTADOS = [
     "CPF1105",
     "CPF1106",
+    "CPF1107",
     "CPF1108",
     "CPF1109",
     "CPF1110",
+    "CPF1111",
+    "CPF1112",
+    "CPF1113",
+    "CPF1114",
 ];
 
 export const PAQUETES_INFO = {
+    CPF1105: { nombre: "CPF1105 - Neurológico Agudo", descripcion: "Neurológico Agudo" },
+    CPF1106: { nombre: "CPF1106 - Traqueostomía Domiciliaria", descripcion: "Traqueostomía Domiciliaria" },
+    CPF1107: { nombre: "CPF1107 - Curaciones / Cuidados Básicos", descripcion: "Curaciones / Cuidados Básicos" },
     CPF1108: { nombre: "CPF1108 - Crónico Estándar", descripcion: "Crónico Estándar" },
     CPF1109: { nombre: "CPF1109 - Crónico con Terapias", descripcion: "Crónico con Terapias" },
     CPF1110: { nombre: "CPF1110 - Paquete Intermedio", descripcion: "Paquete Intermedio" },
-    CPF1105: { nombre: "CPF1105 - Neurológico Agudo", descripcion: "Neurológico Agudo" },
-    CPF1106: { nombre: "CPF1106 - Traqueostomía Domiciliaria", descripcion: "Traqueostomía Domiciliaria" },
+    CPF1111: { nombre: "CPF1111 - Atención Integral Heridas de Alto Costo", descripcion: "Heridas de Alto Costo" },
+    CPF1112: { nombre: "CPF1112 - Manejo Integral de Heridas Complejas", descripcion: "Heridas Complejas" },
 };
 
 export const REGLAS_TERAPIAS_PAQUETES = {
@@ -43,7 +52,10 @@ export const REGLAS_TERAPIAS_PAQUETES = {
     CPF1110: { min: 12, max: 20, descripcion: "Entre 12 y 20 evoluciones sumadas en total." },
     CPF1105: { min: 12, max: 30, descripcion: "Entre 12 y 30 evoluciones sumadas en total." },
     CPF1106: { min: 12, max: 30, descripcion: "Entre 12 y 30 evoluciones sumadas en total." },
-    CPF1108: { min: 0, max: 0, descripcion: "Sin requisitos específicos de cantidad." },
+    CPF1107: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
+    CPF1108: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
+    CPF1111: { min: 0, max: 0, descripcion: "Atención Integral Heridas." },
+    CPF1112: { min: 0, max: 0, descripcion: "Heridas Complejas." },
     auto: { min: 0, max: 0, descripcion: "Detección automática por carpeta para cada paciente." },
 };
 
@@ -52,6 +64,7 @@ export const ORDEN_SERVICIOS_CLINICOS = [
     "VM",
     "ENF",
     "ENF12",
+    "CH",
     "NUT",
     "TR",
     "TF",
@@ -72,6 +85,7 @@ export const TEXTOS_SERVICIOS_FOMAG = {
     VM: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
     ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
     ENF12: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
+    CH: "CURACION DE HERIDAS",
     PSI: "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
     TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
     TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
@@ -90,7 +104,7 @@ export function obtenerTextoServicioFomag(servicio) {
 export const IGNORAR_ARCHIVOS = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 
 export const REGEX_SERVICIO_ARCHIVO =
-    /^[2-5]\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
+    /^[2-5]\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
 
 /**
  * Obtiene el icono, tipo y estado de reconocimiento de un archivo de soporte
@@ -111,7 +125,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
     if (/^5\.pdf$/i.test(nombre)) return { icono: "📑", tipo: "Evolución Clínica (5.pdf)", reconocido: true };
 
     // Archivos con servicio: [2-5] [servicio].pdf
-    const match = nombre.match(/^([2-5])\s+(vm|enf12|enf|venf|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i);
+    const match = nombre.match(/^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i);
     if (match) {
         const num = match[1];
         let s = match[2].toUpperCase();
@@ -127,6 +141,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
             VENF: "🩺",
             ENF: "💉",
             ENF12: "💉",
+            CH: "🩹",
             TF: "🏃",
             TR: "🫁",
             TRS: "🫁",
@@ -138,7 +153,8 @@ export function obtenerInfoSoporte(nombreArchivo) {
             NUT: "🥗",
         };
         const icono = iconosServicios[s] || "📑";
-        return { icono, tipo: `Evolución ${s}`, reconocido: true };
+        const tipoDesc = s === "CH" ? "Curación de Heridas (CH)" : s;
+        return { icono, tipo: `Evolución ${tipoDesc}`, reconocido: true };
     }
 
     return { icono: "❌", tipo: "Soporte no reconocido", reconocido: false };
@@ -150,6 +166,7 @@ export const SERVICIOS_NOMBRES = {
     VENF: "🩺 Enfermería Profesional (1)",
     ENF: "💉 Auxiliar de Enfermería (1)",
     ENF12: "💉 Enfermería 12h",
+    CH: "🩹 Curación de Heridas",
     TF: "🏃 Terapia Física",
     TR: "🫁 Terapia Respiratoria",
     SUCCION: "🌬️ Succión",

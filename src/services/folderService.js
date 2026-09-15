@@ -27,11 +27,13 @@ export function agruparArchivosInteligente(
     fallbackTipoPaquete,
     tipoValidacion
 ) {
-    const carpetas = {};
     const fallbackSeguro =
         !fallbackTipoPaquete || fallbackTipoPaquete === "auto"
             ? "CPF1108"
             : fallbackTipoPaquete;
+
+    // 1. Agrupar primero por directorio físico exacto (evita fragmentación por orden de lectura)
+    const carpetasPorDir = new Map();
 
     for (const f of archivosLista) {
         if (IGNORAR_ARCHIVOS.has(f.name.toLowerCase())) {
@@ -52,13 +54,14 @@ export function agruparArchivosInteligente(
             continue; // Archivo suelto en raíz sin carpeta de paciente
         }
 
+        const dirPath = p.slice(0, -1).join("/");
         const carpetaPaciente = p[p.length - 2];
         let paqueteDetectado = fallbackSeguro;
         let errorPaquete = null;
 
         if (tipoValidacion === "paquete") {
             if (p.length >= 4) {
-                // 3+ niveles: [Raíz] / [Paquete] / [Paciente] / [PDFs]
+                // [Raíz] / [Auditor] / [Paquete] / [Paciente] / [PDFs] o [Raíz] / [Paquete] / [Paciente] / [PDFs]
                 const carpetaPaquete = p[p.length - 3];
                 const codigo = extraerCodigoPaquete(carpetaPaquete);
                 if (codigo) {
@@ -92,49 +95,75 @@ export function agruparArchivosInteligente(
         }
 
         // Detectar si hay nivel de auditor/subcarpeta superior
-        // Ejemplos:
-        // p.length = 5: [Raiz, Auditor, Paquete, Paciente, Archivo.pdf] -> Auditor = p[1], Paquete = p[2]
-        // p.length = 4: [Raiz, Paquete, Paciente, Archivo.pdf] o [Auditor, Paquete, Paciente, Archivo.pdf]
         let auditorDetectado = "";
         if (p.length >= 5) {
-            auditorDetectado = p[1];
+            // Si el nivel anterior al paciente es paquete, el previo es el auditor
+            if (extraerCodigoPaquete(p[p.length - 3])) {
+                auditorDetectado = p[p.length - 4];
+            } else {
+                auditorDetectado = p[1];
+            }
         } else if (p.length === 4) {
-            const primerNivel = p[0];
-            const segundoNivel = p[1];
-            // Si el segundo nivel es paquete, el primer nivel es auditor
-            if (extraerCodigoPaquete(segundoNivel)) {
-                auditorDetectado = primerNivel;
+            // [Auditor, Paquete, Paciente, Archivo.pdf]
+            if (extraerCodigoPaquete(p[1])) {
+                auditorDetectado = p[0];
             }
         }
 
-        let key = carpetaPaciente;
-        if (carpetas[key]) {
-            if (carpetas[key].tipoPaquete !== paqueteDetectado) {
-                // Si ya existe otra carpeta con este mismo paciente pero diferente paquete, separar en filas independientes
-                const keyExistente = `${carpetas[key].carpetaNombre} (${carpetas[key].tipoPaquete})`;
-                carpetas[keyExistente] = carpetas[key];
-                delete carpetas[key];
-                key = `${carpetaPaciente} (${paqueteDetectado})`;
-            }
-        }
-
-        if (!carpetas[key]) {
-            carpetas[key] = {
+        if (!carpetasPorDir.has(dirPath)) {
+            carpetasPorDir.set(dirPath, {
+                dirPath,
                 carpetaNombre: carpetaPaciente,
                 tipoPaquete: paqueteDetectado,
                 errorPaquete: errorPaquete,
                 auditor: auditorDetectado,
                 rutaRelativa: pathNormalizado,
                 archivos: [],
-            };
+            });
         }
-        if (errorPaquete && !carpetas[key].errorPaquete) {
-            carpetas[key].errorPaquete = errorPaquete;
+
+        const grupo = carpetasPorDir.get(dirPath);
+        grupo.archivos.push(f);
+        if (errorPaquete && !grupo.errorPaquete) {
+            grupo.errorPaquete = errorPaquete;
         }
-        if (auditorDetectado && !carpetas[key].auditor) {
-            carpetas[key].auditor = auditorDetectado;
+        if (auditorDetectado && !grupo.auditor) {
+            grupo.auditor = auditorDetectado;
         }
-        carpetas[key].archivos.push(f);
+    }
+
+    // 2. Contar apariciones de cada carpeta de paciente para desambiguar solo cuando sea necesario
+    const conteoPorPaciente = new Map();
+    for (const grupo of carpetasPorDir.values()) {
+        const nombre = grupo.carpetaNombre;
+        conteoPorPaciente.set(nombre, (conteoPorPaciente.get(nombre) || 0) + 1);
+    }
+
+    // 3. Generar el diccionario final con nombres limpios y claves unívocas
+    const carpetas = {};
+    for (const grupo of carpetasPorDir.values()) {
+        const nombre = grupo.carpetaNombre;
+        const tieneMultiples = (conteoPorPaciente.get(nombre) || 0) > 1;
+
+        let key = nombre;
+        if (tieneMultiples) {
+            if (grupo.tipoPaquete) {
+                key = `${nombre} (${grupo.tipoPaquete})`;
+            }
+            if (carpetas[key]) {
+                if (grupo.auditor) {
+                    key = `${nombre} (${grupo.tipoPaquete}) [${grupo.auditor}]`;
+                } else {
+                    let idx = 2;
+                    while (carpetas[`${key} (${idx})`]) {
+                        idx++;
+                    }
+                    key = `${key} (${idx})`;
+                }
+            }
+        }
+
+        carpetas[key] = grupo;
     }
 
     return carpetas;

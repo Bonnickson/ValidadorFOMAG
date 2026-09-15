@@ -233,6 +233,13 @@ export async function validarPorPaquete(
         const mat = resultados[carpeta].datosMatriz;
         const servMatriz = mat.servicios || {};
 
+        // Validar si el paquete de la carpeta coincide con el de la matriz
+        if (mat.paquete && tipoPaquete && tipoPaquete !== "auto" && mat.paquete !== tipoPaquete) {
+            resultados[carpeta].erroresPorServicio["General"].push(
+                `Discrepancia de Paquete: La carpeta física es ${tipoPaquete}, pero en la matriz está programado como ${mat.paquete}.`
+            );
+        }
+
         // Validar todos los servicios conocidos
         const todosServicios = ["VM", "VENF", "ENF", "TF", "TR", "TRS", "FON", "TO", "NUT", "TS", "PSI"];
 
@@ -247,26 +254,30 @@ export async function validarPorPaquete(
                 (s === "TRS" && resultados[carpeta].servicios?.has("SUCCION")) ||
                 (s === "SUCCION" && resultados[carpeta].servicios?.has("TRS"));
 
+            const nombreSoporte = `5 ${s.toLowerCase()}.pdf`;
+
             if (cantEsperada > 0) {
                 if (!tieneArchivo) {
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `${s}: Falta soporte 5 ${s.toLowerCase()}.pdf (programadas: ${cantEsperada})`
+                        `${s}: En la matriz está programado ${cantEsperada} atención(es), pero falta el soporte ${nombreSoporte}`
                     );
                 } else if (cantEncontrada !== cantEsperada) {
-                    const nombreSoporte = `5 ${s.toLowerCase()}.pdf`;
+                    const detalleDiff = cantEncontrada > cantEsperada 
+                        ? `(sobran ${cantEncontrada - cantEsperada})`
+                        : `(faltan ${cantEsperada - cantEncontrada})`;
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `${s}: Matriz espera ${cantEsperada}, pero hay ${cantEncontrada} en ${nombreSoporte}`
+                        `${s}: En la matriz está programado ${cantEsperada} atención(es), pero en el soporte ${nombreSoporte} se registraron ${cantEncontrada} ${detalleDiff}`
                     );
                 } else {
                     resultados[carpeta].exitosPorServicio["General"].push(
-                        `${s}: ${cantEncontrada} evoluciones (coincide con matriz) ✓`
+                        `${s}: ${cantEncontrada} evoluciones en ${nombreSoporte} (coincide con matriz: ${cantEsperada}) ✓`
                     );
                 }
             } else {
                 // cantEsperada === 0
                 if (tieneArchivo && cantEncontrada > 0) {
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `${s}: Soporte no programado (${cantEncontrada} evoluciones en 5 ${s.toLowerCase()}.pdf)`
+                        `${s}: El soporte ${nombreSoporte} registra ${cantEncontrada} atención(es), pero en la matriz figura 0 programadas`
                     );
                 }
             }
@@ -380,7 +391,7 @@ function detectarServicios(nombres) {
     for (const nombre of nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
-            /\d+\s+(VM|VENF|ENF12|ENF|TF|TRS|TR|TS|PSI|FON|TO|NUT)/
+            /\d+\s+(VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT)/
         );
         if (match) {
             let servicio = match[1];

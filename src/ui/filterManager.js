@@ -158,6 +158,77 @@ export function aplicarFiltros(elements = {}, state = {}) {
             mostrarCarpeta = false;
         }
 
+        const tieneNovedadesCarpeta = filasCarpeta.some(
+            (f) => f.getAttribute("data-estado") !== "sin-errores"
+        );
+        const tieneErroresCarpeta = filasCarpeta.some(
+            (f) => f.getAttribute("data-estado") === "con-errores"
+        );
+        const tieneAlertasCarpeta = filasCarpeta.some(
+            (f) => f.getAttribute("data-estado") === "con-alertas"
+        );
+        const esMatrizVirtualCarpeta = filasCarpeta.some(
+            (f) =>
+                f.hasAttribute("data-es-matriz") ||
+                (carpeta &&
+                    carpeta in (window.__todosLosResultados || {}) &&
+                    window.__todosLosResultados[carpeta]?.esDesdeMatriz) ||
+                (f.querySelector(".pkg-cpf1109 svg, .doc-package-tag svg path") &&
+                    f.querySelector(".carpeta-files-badge")?.textContent?.includes("0 soportes"))
+        );
+
+        if (filtroEst && mostrarCarpeta) {
+            if (filtroEst === "con-novedades") {
+                if (!tieneNovedadesCarpeta) {
+                    mostrarCarpeta = false;
+                }
+            } else if (filtroEst === "con-errores") {
+                if (!tieneErroresCarpeta) {
+                    mostrarCarpeta = false;
+                }
+            } else if (filtroEst === "con-alertas") {
+                if (!tieneAlertasCarpeta) {
+                    mostrarCarpeta = false;
+                }
+            } else if (filtroEst === "sin-errores") {
+                if (tieneNovedadesCarpeta) {
+                    mostrarCarpeta = false;
+                }
+            } else if (filtroEst === "carpetas-vs-matriz") {
+                // Carpetas cargadas que tienen novedades o errores
+                if (!tieneNovedadesCarpeta || esMatrizVirtualCarpeta) {
+                    mostrarCarpeta = false;
+                }
+            } else if (filtroEst === "matriz-vs-carpetas") {
+                // Pacientes de la matriz que no tienen carpeta
+                if (!esMatrizVirtualCarpeta) {
+                    mostrarCarpeta = false;
+                }
+            } else {
+                const coincideEstado = filasCarpeta.some(
+                    (f) => f.getAttribute("data-estado") === filtroEst
+                );
+                if (!coincideEstado) {
+                    mostrarCarpeta = false;
+                }
+            }
+        }
+
+        if (tiposErroresActivos.size > 0 && mostrarCarpeta) {
+            const tieneErrorActivo = filasCarpeta.some((f) => {
+                const erroresFila = f.querySelectorAll(".error-item[data-error-type]");
+                return Array.from(erroresFila).some((err) => {
+                    const tNorm =
+                        err.getAttribute("data-error-type-normalized") ||
+                        normalizarTipoError(err.getAttribute("data-error-type") || "");
+                    return tiposErroresActivos.has(tNorm);
+                });
+            });
+            if (!tieneErrorActivo) {
+                mostrarCarpeta = false;
+            }
+        }
+
         const filasVisibles = [];
         filasCarpeta.forEach((fila) => {
             let mostrarFila = mostrarCarpeta;
@@ -172,49 +243,6 @@ export function aplicarFiltros(elements = {}, state = {}) {
                     if (!coincide) {
                         mostrarFila = false;
                     }
-                }
-            }
-
-            if (filtroEst && mostrarFila) {
-                const estadoFila = fila.getAttribute("data-estado");
-                const esMatrizVirtual = fila.hasAttribute("data-es-matriz") || 
-                    (carpeta && carpeta in (window.__todosLosResultados || {}) && window.__todosLosResultados[carpeta]?.esDesdeMatriz) ||
-                    (fila.querySelector(".pkg-cpf1109 svg, .doc-package-tag svg path") && fila.querySelector(".carpeta-files-badge")?.textContent?.includes("0 soportes"));
-
-                if (filtroEst === "con-novedades") {
-                    if (estadoFila === "sin-errores") {
-                        mostrarFila = false;
-                    }
-                } else if (filtroEst === "carpetas-vs-matriz") {
-                    // Carpetas cargadas que tienen novedades o errores
-                    const tieneNovedades = estadoFila !== "sin-errores";
-                    if (!tieneNovedades || esMatrizVirtual) {
-                        mostrarFila = false;
-                    }
-                } else if (filtroEst === "matriz-vs-carpetas") {
-                    // Pacientes de la matriz que no tienen carpeta
-                    if (!esMatrizVirtual) {
-                        mostrarFila = false;
-                    }
-                } else if (estadoFila !== filtroEst) {
-                    mostrarFila = false;
-                }
-            }
-
-            if (tiposErroresActivos.size > 0 && mostrarFila) {
-                const erroresFila = fila.querySelectorAll(
-                    ".error-item[data-error-type]"
-                );
-                const coincide = Array.from(erroresFila).some((err) => {
-                    const tNorm =
-                        err.getAttribute("data-error-type-normalized") ||
-                        normalizarTipoError(
-                            err.getAttribute("data-error-type") || ""
-                        );
-                    return tiposErroresActivos.has(tNorm);
-                });
-                if (!coincide) {
-                    mostrarFila = false;
                 }
             }
 
