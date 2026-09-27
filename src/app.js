@@ -143,12 +143,17 @@ const cederHiloPrincipal = () => new Promise((resolve) => setTimeout(resolve, 0)
 export function seleccionarCarpeta(carpeta, filaEspecifica = null) {
     if (!tablaBody) return;
 
-    tablaBody.querySelectorAll("tr.selected, tr.selected-folder").forEach((tr) => {
-        tr.classList.remove("selected", "selected-folder");
+    tablaBody.querySelectorAll("tr.selected, tr.selected-folder, tr.selected-service").forEach((tr) => {
+        tr.classList.remove("selected", "selected-folder", "selected-service");
     });
 
     if (!carpeta) {
-        if (filaEspecifica) filaEspecifica.classList.add("selected");
+        if (filaEspecifica) {
+            filaEspecifica.classList.add("selected");
+            if (filaEspecifica.getAttribute("data-servicio")) {
+                filaEspecifica.classList.add("selected-service");
+            }
+        }
         return;
     }
 
@@ -160,6 +165,9 @@ export function seleccionarCarpeta(carpeta, filaEspecifica = null) {
 
     if (filaEspecifica) {
         filaEspecifica.classList.add("selected");
+        if (filaEspecifica.getAttribute("data-servicio")) {
+            filaEspecifica.classList.add("selected-service");
+        }
     } else if (filas.length > 0) {
         filas[0].classList.add("selected");
     }
@@ -1016,7 +1024,55 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 // ================= EXPOSICIÓN GLOBAL PARA COMPATIBILIDAD CON UI =================
-window.abrirPDFModal = (url, titulo, anchorEl) => abrirPDFModal(url, titulo, anchorEl, seleccionarFila);
+function resolverFechas5Para4(titulo, anchorEl) {
+    if (!titulo || !/^4(\.pdf|\s)/i.test(titulo.trim())) {
+        return null;
+    }
+
+    const row = anchorEl ? anchorEl.closest("tr[data-carpeta]") : null;
+    const carpeta = row ? row.getAttribute("data-carpeta") : null;
+    if (!carpeta || !todosLosResultados || !todosLosResultados[carpeta]) {
+        return null;
+    }
+
+    const r = todosLosResultados[carpeta];
+    const servRow = row.getAttribute("data-servicio");
+
+    // Extraer servicio del título si coincide con "4 <servicio>.pdf"
+    let servicio = null;
+    const matchServ = titulo.trim().match(/^4\s+([a-zA-Z0-9]+)\.pdf$/i);
+    if (matchServ) {
+        servicio = matchServ[1].toUpperCase();
+        if (servicio === "SUC") servicio = "SUCCION";
+    } else if (servRow) {
+        servicio = servRow.toUpperCase();
+    }
+
+    let fechas = [];
+    if (servicio && r.fechasPorServicio && r.fechasPorServicio[servicio]) {
+        fechas = r.fechasPorServicio[servicio];
+    } else if (r.fechas && r.fechas.length > 0) {
+        fechas = r.fechas;
+    } else if (r.fechasPorServicio) {
+        // Si hay una sola lista de fechas en fechasPorServicio, usarla
+        const keys = Object.keys(r.fechasPorServicio);
+        if (keys.length === 1) {
+            fechas = r.fechasPorServicio[keys[0]];
+            servicio = servicio || keys[0];
+        }
+    }
+
+    return {
+        servicio: servicio || "",
+        fechas: fechas || []
+    };
+}
+
+window.abrirPDFModal = (url, titulo, anchorEl) => {
+    const infoFechas5 = resolverFechas5Para4(titulo, anchorEl);
+    abrirPDFModal(url, titulo, anchorEl, seleccionarFila, infoFechas5);
+};
+
 window.abrirPDFModalPorNombre = (event, nombreArchivo, element) => {
     if (event) {
         event.stopPropagation();
@@ -1029,13 +1085,15 @@ window.abrirPDFModalPorNombre = (event, nombreArchivo, element) => {
         const norm = (nombreArchivo || "").toLowerCase().trim();
         for (const [nombre, url] of Object.entries(r.fileUrls)) {
             if (nombre.toLowerCase() === norm) {
-                abrirPDFModal(url, nombre, element, seleccionarFila);
+                const infoFechas5 = resolverFechas5Para4(nombre, element);
+                abrirPDFModal(url, nombre, element, seleccionarFila, infoFechas5);
                 return;
             }
         }
         for (const [nombre, url] of Object.entries(r.fileUrls)) {
             if (nombre.toLowerCase().includes(norm) || norm.includes(nombre.toLowerCase())) {
-                abrirPDFModal(url, nombre, element, seleccionarFila);
+                const infoFechas5 = resolverFechas5Para4(nombre, element);
+                abrirPDFModal(url, nombre, element, seleccionarFila, infoFechas5);
                 return;
             }
         }

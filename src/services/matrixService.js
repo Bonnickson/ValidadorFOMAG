@@ -207,16 +207,16 @@ export function parsearMatriz(rawRows) {
         if (paquete && paquete.startsWith("CPF")) {
             // 1. Validar Fijos Obligatorios: exactamente 1 VM, y al menos 1 servicio de enfermería (VENF, ENF o ambos)
             if (vm !== 1) {
-                erroresFila.push(`VM: requiere 1 (tiene ${vm})`);
+                erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
             }
             if (venf === 0 && enf === 0) {
-                erroresFila.push(`Enfermería: Requiere al menos 1 servicio (VENF o ENF)`);
+                erroresFila.push(`VENF o ENF: Requiere al menos 1 servicio`);
             } else {
                 if (venf !== 0 && venf !== 1) {
-                    erroresFila.push(`VENF (Enf. Prof.): requiere 1 si está presente (tiene ${venf})`);
+                    erroresFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
                 }
                 if (enf !== 0 && enf !== 1) {
-                    erroresFila.push(`ENF (Aux. Enf.): requiere 1 si está presente (tiene ${enf})`);
+                    erroresFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
                 }
             }
 

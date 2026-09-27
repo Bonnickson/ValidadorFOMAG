@@ -1253,11 +1253,11 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <table class="preval-table" id="prevalTableMain">
                         <thead>
                             <tr>
-                                <th style="width: 36px;">Fila</th>
-                                <th style="width: 120px;">Documento</th>
-                                <th style="width: 180px;">Nombre Paciente</th>
-                                <th style="width: 320px;">Programación Matriz</th>
-                                <th style="width: 95px;">Estado</th>
+                                <th style="width: 42px; text-align: center;">Fila</th>
+                                <th style="width: 110px;">Documento</th>
+                                <th style="width: 170px;">Nombre Paciente</th>
+                                <th style="width: 290px;">Programación Matriz</th>
+                                <th style="width: 115px; text-align: center;">Estado</th>
                                 <th>Hallazgos / Reglas</th>
                             </tr>
                         </thead>

@@ -156,9 +156,115 @@ function handleEscKey(e) {
 }
 
 /**
+ * Renderiza o remueve el widget flotante de fechas del archivo 5
+ */
+function renderizarWidgetFechas5(infoFechas5) {
+    const modal = document.getElementById("pdfModal");
+    if (!modal) return;
+
+    let badge = document.getElementById("pdfFloatingFechasBadge");
+
+    if (!infoFechas5) {
+        if (badge) badge.remove();
+        return;
+    }
+
+    const { servicio, fechas } = infoFechas5;
+    const fechasUnicas = [...new Set(fechas || [])];
+    const totalFechas = fechasUnicas.length;
+
+    if (!badge) {
+        badge = document.createElement("div");
+        badge.id = "pdfFloatingFechasBadge";
+        badge.className = "pdf-floating-fechas-card";
+        modal.appendChild(badge);
+    }
+
+    const formatearFechaSimple = (f) => {
+        const m = String(f).match(/(\d{4})-?(\d{2})-?(\d{2})/);
+        return m ? `${m[1]}-${m[2]}-${m[3]}` : f;
+    };
+
+    const countClass = totalFechas === 0 ? "has-none" : "";
+    const listHTML = totalFechas > 0
+        ? fechasUnicas
+              .map((f) => `<span class="pdf-floating-fecha-pill">${formatearFechaSimple(f)}</span>`)
+              .join("")
+        : `<span class="pdf-floating-empty">Sin fechas registradas en 5</span>`;
+
+    const tituloServicio = servicio ? ` (${servicio})` : "";
+
+    badge.innerHTML = `
+        <div class="pdf-floating-header" style="cursor: grab;" title="Arrastrar para mover">
+            <div class="pdf-floating-title-box">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><circle cx="9" cy="5" r="1"></circle><circle cx="9" cy="12" r="1"></circle><circle cx="9" cy="19" r="1"></circle><circle cx="15" cy="5" r="1"></circle><circle cx="15" cy="12" r="1"></circle><circle cx="15" cy="19" r="1"></circle></svg>
+                <span class="pdf-floating-title">Fechas en 5${tituloServicio}</span>
+            </div>
+            <span class="pdf-floating-count ${countClass}">${totalFechas} ${totalFechas === 1 ? "fecha" : "fechas"}</span>
+        </div>
+        <div class="pdf-floating-fechas-list">
+            ${listHTML}
+        </div>
+    `;
+
+    // Hacer arrastrable
+    if (!badge._dragInit) {
+        badge._dragInit = true;
+        const header = badge.querySelector(".pdf-floating-header");
+        let isDragging = false;
+        let startX, startY, startLeft, startTop;
+
+        const onMouseDown = (e) => {
+            if (e.target.closest("button, a, input, select")) return;
+            isDragging = true;
+            header.style.cursor = "grabbing";
+            const rect = badge.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = rect.left;
+            startTop = rect.top;
+
+            // Fijar posiciones exactas en px
+            badge.style.position = "fixed";
+            badge.style.left = `${startLeft}px`;
+            badge.style.top = `${startTop}px`;
+            badge.style.right = "auto";
+            badge.style.margin = "0";
+
+            document.addEventListener("mousemove", onMouseMove);
+            document.addEventListener("mouseup", onMouseUp);
+            e.preventDefault();
+        };
+
+        const onMouseMove = (e) => {
+            if (!isDragging) return;
+            const deltaX = e.clientX - startX;
+            const deltaY = e.clientY - startY;
+            const maxX = window.innerWidth - badge.offsetWidth - 10;
+            const maxY = window.innerHeight - badge.offsetHeight - 10;
+            const newLeft = Math.min(Math.max(10, startLeft + deltaX), Math.max(10, maxX));
+            const newTop = Math.min(Math.max(10, startTop + deltaY), Math.max(10, maxY));
+            badge.style.left = `${newLeft}px`;
+            badge.style.top = `${newTop}px`;
+        };
+
+        const onMouseUp = () => {
+            isDragging = false;
+            if (header) header.style.cursor = "grab";
+            document.removeEventListener("mousemove", onMouseMove);
+            document.removeEventListener("mouseup", onMouseUp);
+        };
+
+        if (header) {
+            header.addEventListener("mousedown", onMouseDown);
+        }
+    }
+}
+
+/**
  * Abre el modal y carga el PDF indicado
  */
-export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallback) {
+export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallback, infoFechas5 = null) {
     const modal = document.getElementById("pdfModal");
     const tituloElement = document.getElementById("pdfModalTitle");
     if (tituloElement) tituloElement.textContent = titulo;
@@ -168,6 +274,9 @@ export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallba
         const fila = anchorEl.closest("tr");
         seleccionarFilaCallback(fila);
     }
+
+    // Gestionar widget flotante de fechas del 5 al abrir un archivo 4
+    renderizarWidgetFechas5(infoFechas5);
 
     currentPdfPage = 1;
     currentPdfScale = 1.0;
@@ -200,6 +309,10 @@ export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallba
 export function cerrarModal() {
     const modal = document.getElementById("pdfModal");
     if (modal) modal.style.display = "none";
+
+    // Remover badge flotante de fechas al cerrar
+    const badge = document.getElementById("pdfFloatingFechasBadge");
+    if (badge) badge.remove();
 
     if (currentPdfDoc) {
         try {

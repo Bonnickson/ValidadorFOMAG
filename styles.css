@@ -804,44 +804,78 @@ tbody tr:hover td {
 }
 
 /* ================= SOMBREADO DE REGISTRO SELECCIONADO / ACTIVO ================= */
-tbody tr.selected-folder td,
-tbody tr.selected td {
-    background: rgba(37, 99, 235, 0.24) !important;
+/* Grupo de lote/carpeta seleccionado: Azul Acero Corporativo suave */
+tbody tr.selected-folder td {
+    background: #e8eef8 !important; /* Azul acero corporativo sutil y profesional */
+    color: #0f2444 !important;
 }
 
-tbody tr.selected-folder td.carpeta-cell,
-tbody tr.selected td.carpeta-cell {
-    border-left: 5px solid #1d4ed8 !important;
-    background: rgba(37, 99, 235, 0.32) !important;
+tbody tr.selected-folder td.carpeta-cell {
+    border-left: 3px solid #1e3a8a !important; /* Borde azul marino institucional */
+    background: #d4e2f7 !important;
+    color: #1e3a8a !important;
+    font-weight: 700 !important;
 }
 
-tbody tr.selected td {
-    background: rgba(37, 99, 235, 0.34) !important;
+/* Fila de servicio específica seleccionada: Resaltado contrastante y letra azul */
+tbody tr.selected td,
+tbody tr.selected-service td {
+    background: #dbeafe !important; /* Azul cielo empresarial marcado */
+    color: #1d4ed8 !important; /* Letra en azul */
 }
 
-body.theme-dark tbody tr.selected-folder td,
-body.theme-dark tbody tr.selected td {
-    background: rgba(59, 130, 246, 0.38) !important;
+tbody tr.selected td .carpeta-nombre,
+tbody tr.selected-service td.servicio-nombre {
+    font-weight: 700 !important;
+    color: #1d4ed8 !important;
 }
 
-body.theme-dark tbody tr.selected-folder td.carpeta-cell,
-body.theme-dark tbody tr.selected td.carpeta-cell {
-    border-left: 5px solid #60a5fa !important;
-    background: rgba(59, 130, 246, 0.48) !important;
+/* Modo oscuro */
+body.theme-dark tbody tr.selected-folder td {
+    background: #132238 !important; /* Azul noche empresarial profundo */
+    color: #e2e8f0 !important;
 }
 
-body.theme-dark tbody tr.selected td {
-    background: rgba(59, 130, 246, 0.52) !important;
+body.theme-dark tbody tr.selected-folder td.carpeta-cell {
+    border-left: 3px solid #3b82f6 !important;
+    background: #1c3558 !important;
+    color: #93c5fd !important;
+    font-weight: 700 !important;
 }
 
-/* Paquete Row Groups */
+body.theme-dark tbody tr.selected td,
+body.theme-dark tbody tr.selected-service td {
+    background: #1e3a5f !important; /* Azul eléctrico sobrio para la fila activa */
+    color: #60a5fa !important; /* Letra en azul para modo oscuro */
+}
+
+body.theme-dark tbody tr.selected td .carpeta-nombre,
+body.theme-dark tbody tr.selected-service td.servicio-nombre {
+    font-weight: 700 !important;
+    color: #93c5fd !important;
+}
+
+/* ================= BORDE GENERAL DE PAQUETE (REGISTRO COMPLETO Y SUBSERVICIOS) ================= */
+.paquete-row td {
+    border-bottom: none;
+}
+
 .paquete-row.grupo-inicio td {
     border-top: 1.5px solid var(--border-strong);
 }
 
-.paquete-row.grupo-par td:first-child,
-.paquete-row.grupo-impar td:first-child {
-    border-left: none !important;
+.paquete-row.grupo-fin td,
+.paquete-row td.carpeta-cell {
+    border-bottom: 1.5px solid var(--border-strong);
+}
+
+.paquete-row td:first-child,
+.paquete-row td.carpeta-cell {
+    border-left: 1.5px solid var(--border-strong);
+}
+
+.paquete-row td:last-child {
+    border-right: 1.5px solid var(--border-strong);
 }
 
 /* Status & Files Pills */
@@ -884,10 +918,11 @@ td.missing {
 .fecha-text {
     background: var(--bg-subtle);
     color: var(--accent-text);
-    padding: 2px 6px;
+    padding: 2.5px 7px;
     border-radius: 4px;
-    font-size: 11px;
+    font-size: 12px;
     font-family: var(--font-mono);
+    font-weight: 500;
     border: 1px solid var(--accent-border);
 }
 
@@ -1184,6 +1219,135 @@ td.missing {
 .pdf-page-canvas {
     display: block;
     border-radius: 4px;
+}
+
+/* ================= BADGE FLOTANTE DE FECHAS DEL 5 EN VISOR PDF ================= */
+.pdf-floating-fechas-card {
+    position: fixed;
+    top: 240px; /* Más abajo, alineado con el cuerpo del documento */
+    left: max(16px, calc((100vw - 1100px) / 2 - 275px)); /* Pegado exactamente a la izquierda del visor modal */
+    z-index: 1005;
+    background: rgba(15, 23, 42, 0.92);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1.5px solid rgba(99, 102, 241, 0.5); /* Borde índigo empresarial */
+    border-radius: var(--radius-lg);
+    box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6), 0 0 12px rgba(99, 102, 241, 0.2);
+    color: #f8fafc;
+    padding: 11px 14px;
+    width: 260px;
+    pointer-events: auto;
+    animation: pdfCardSlideInLeft 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (max-width: 1400px) {
+    .pdf-floating-fechas-card {
+        left: 20px;
+        top: 180px;
+    }
+}
+
+.pdf-floating-fechas-card:hover {
+    box-shadow: 0 18px 42px rgba(0, 0, 0, 0.7), 0 0 16px rgba(99, 102, 241, 0.35);
+}
+
+@keyframes pdfCardSlideInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-12px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0) scale(1);
+    }
+}
+
+.pdf-floating-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.pdf-floating-title-box {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.pdf-floating-title-box svg {
+    color: #818cf8;
+    flex-shrink: 0;
+}
+
+.pdf-floating-title {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    color: #c7d2fe;
+}
+
+.pdf-floating-count {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    background: rgba(99, 102, 241, 0.25);
+    border: 1px solid rgba(129, 140, 248, 0.45);
+    color: #e0e7ff;
+}
+
+.pdf-floating-count.has-none {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+}
+
+.pdf-floating-fechas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    max-height: 140px;
+    overflow-y: auto;
+    padding-right: 2px;
+}
+
+.pdf-floating-fechas-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.pdf-floating-fechas-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.pdf-floating-fecha-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2.5px 7px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 4px;
+    font-size: 11.5px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    color: #e2e8f0;
+    letter-spacing: 0.2px;
+}
+
+.pdf-floating-empty {
+    font-size: 11.5px;
+    color: #94a3b8;
+    font-style: italic;
 }
 
 /* ================= WIKI / GUÍA MODAL ================= */
@@ -4484,9 +4648,9 @@ body.theme-dark .matriz-card-loaded {
     background: var(--bg-card, #ffffff);
     border: 1px solid var(--border-subtle, #dbe1ec);
     border-radius: var(--radius-lg, 12px);
-    width: 95%;
-    max-width: 980px;
-    max-height: 86vh;
+    width: 96%;
+    max-width: 1180px;
+    max-height: 88vh;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-modal);
@@ -4936,13 +5100,18 @@ body.theme-dark .pserv-ter-item.zero {
 }
 
 .preval-badge {
-    display: inline-block;
-    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 3px 8px;
     border-radius: 4px;
-    font-size: 10px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.2px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: none;
+    white-space: nowrap;
+    letter-spacing: 0.1px;
+    line-height: 1.2;
 }
 
 .preval-badge.success {
@@ -4982,34 +5151,40 @@ body.theme-dark .pserv-ter-item.zero {
     transform: scale(0.96);
 }
 
+.preval-cell-diag {
+    white-space: normal;
+}
+
 .preval-item-error {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--danger-text, #dc2626);
     font-size: 11px;
-    margin-bottom: 3px;
+    margin: 1px 0;
     line-height: 1.35;
+    white-space: nowrap;
 }
 
 .preval-item-warning {
-    display: flex;
-    align-items: baseline;
-    gap: 5px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--warning-text, #d97706);
     font-size: 11px;
-    margin-bottom: 3px;
+    margin: 1px 0;
     line-height: 1.35;
+    white-space: nowrap;
 }
 
 .preval-err-tag {
     background: rgba(239, 68, 68, 0.12);
     color: #ef4444;
     border: 1px solid rgba(239, 68, 68, 0.25);
-    font-size: 9.5px;
-    font-weight: 800;
+    font-size: 10px;
+    font-weight: 700;
     font-family: var(--font-mono);
-    padding: 1px 5px;
+    padding: 1px 6px;
     border-radius: 3px;
     white-space: nowrap;
     flex-shrink: 0;
