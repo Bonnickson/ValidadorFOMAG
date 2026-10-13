@@ -4015,7 +4015,14 @@ tr.processing td {
     word-break: break-word !important;
     line-height: 1.2 !important;
 }
-/* ================= TAG DE PAQUETE ENCIMA DEL DOCUMENTO ================= */
+.doc-package-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    width: 100%;
+}
+
 .doc-package-tag {
     display: inline-flex;
     align-items: center;
@@ -4026,6 +4033,17 @@ tr.processing td {
     border-radius: 4px;
     padding: 1px 6px;
     width: fit-content;
+}
+
+.doc-package-desc {
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--text-muted);
+    letter-spacing: 0.1px;
+    line-height: 1.2;
+    white-space: normal;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 .doc-package-tag .package-name {
@@ -4208,6 +4226,17 @@ tr.processing td {
 .doc-package-tag.pkg-cpf1106:hover {
     background: rgba(244, 63, 94, 0.22) !important;
     border-color: #f43f5e !important;
+}
+
+/* EVENTO: Estilo distintivo para filas sin paquete (validación por evento) */
+.doc-package-tag.pkg-evento {
+    background: rgba(99, 102, 241, 0.12) !important;
+    color: #4f46e5 !important;
+    border-color: rgba(99, 102, 241, 0.35) !important;
+}
+.doc-package-tag.pkg-evento:hover {
+    background: rgba(99, 102, 241, 0.22) !important;
+    border-color: #6366f1 !important;
 }
 
 /* Modo oscuro para los paquetes */
@@ -4716,17 +4745,18 @@ body.theme-dark .preval-modal-header {
     gap: 10px;
 }
 
-/* Top Toolbar con Stats Cluster y Chips */
+/* Top Toolbar con Stats Cluster y Chips - Versión Ultra Compacta en 1 Sola Línea */
 .preval-top-toolbar {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 8px 12px;
+    justify-content: flex-start;
+    gap: 10px;
+    padding: 3px 8px;
     background: var(--bg-subtle, #f8fafc);
     border: 1px solid var(--border-subtle, #dbe1ec);
-    border-radius: var(--radius-md, 8px);
+    border-radius: 6px;
     flex-wrap: wrap;
+    min-height: 28px;
 }
 
 body.theme-dark .preval-top-toolbar {
@@ -4734,24 +4764,99 @@ body.theme-dark .preval-top-toolbar {
     border-color: var(--border-subtle, #232f46);
 }
 
+.preval-kpi-compact {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+}
+
+.kpi-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 9.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.2px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    background: var(--bg-card);
+}
+
+.kpi-tag strong {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.kpi-tag.total {
+    border-color: var(--border-subtle);
+    color: var(--text-primary);
+}
+
+.kpi-tag.ok {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.25);
+    color: #059669;
+}
+.kpi-tag.ok strong { color: #059669; }
+
+.kpi-tag.err {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: rgba(239, 68, 68, 0.25);
+    color: #dc2626;
+}
+.kpi-tag.err strong { color: #dc2626; }
+
+.btn-copy-kpi {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #dc2626;
+    border-radius: 3px;
+    padding: 0 4px;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-left: 2px;
+    line-height: 1.4;
+    transition: var(--transition);
+}
+
+.btn-copy-kpi:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
+.preval-divider-vertical {
+    width: 1px;
+    height: 16px;
+    background: var(--border-subtle, #dbe1ec);
+    flex-shrink: 0;
+}
+
 .preval-pkg-section {
     display: flex;
     align-items: center;
-    gap: 8px;
+    gap: 5px;
     flex-wrap: wrap;
+    flex: 1;
 }
 
 .preval-pkg-section-label {
-    font-size: 11px;
-    font-weight: 700;
+    font-size: 9px;
+    font-weight: 800;
     color: var(--text-muted);
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.4px;
+    flex-shrink: 0;
 }
 
 .preval-pkg-cluster {
     display: flex;
-    gap: 6px;
+    gap: 3px;
     flex-wrap: wrap;
     align-items: center;
 }
@@ -4759,17 +4864,23 @@ body.theme-dark .preval-top-toolbar {
 .preval-pkg-chip {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 5px !important;
-    padding: 2px 6px !important;
-    font-size: 10.5px !important;
-    border-radius: 4px !important;
+    gap: 3px !important;
+    padding: 0px 4px !important;
+    font-size: 9px !important;
+    border-radius: 3px !important;
     font-family: var(--font-mono);
+    line-height: 1.3 !important;
+}
+
+.preval-pkg-chip .package-name {
+    font-size: 9px !important;
 }
 
 .preval-pkg-count {
     font-weight: 800;
-    opacity: 0.9;
-    padding-left: 2px;
+    font-size: 9px;
+    opacity: 0.95;
+    padding-left: 1px;
 }
 
 /* Barra de Filtros y Búsqueda del Modal Moderna y Limpia */

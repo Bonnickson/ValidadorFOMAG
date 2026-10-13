@@ -58,7 +58,11 @@ export function mostrarCondicionesPaquete(tipoPaqueteSelect, paqueteCondicionesC
  */
 export function mostrarModalReglasPaquete(paquete) {
     const pkg = paquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
-    const regla = REGLAS_TERAPIAS_PAQUETES[pkg] || { descripcion: "Requisitos según paquete." };
+    const estaParametrizado = Boolean(PAQUETES_INFO[pkg]);
+    const infoPaquete = estaParametrizado
+        ? PAQUETES_INFO[pkg]
+        : { nombre: `${pkg} - No parametrizado`, descripcion: "No parametrizado" };
+    const regla = REGLAS_TERAPIAS_PAQUETES[pkg] || { descripcion: "Sin reglas específicas parametrizadas." };
     const terapias = regla.descripcion;
 
     const prev = document.getElementById("modalReglasPaqueteActivo");
@@ -68,17 +72,31 @@ export function mostrarModalReglasPaquete(paquete) {
     backdrop.id = "modalReglasPaqueteActivo";
     backdrop.className = "modal-rules-backdrop";
 
+    const estadoParametrizacionHTML = !estaParametrizado
+        ? `<div class="alerta-item" style="margin-bottom: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 8px 12px; color: #ef4444; font-size: 12px;">
+            ⚠️ <strong>Este código de paquete no se encuentra parametrizado en el sistema.</strong>
+           </div>`
+        : "";
+
     backdrop.innerHTML = `
         <div class="modal-rules-card" onclick="event.stopPropagation()">
             <div class="modal-rules-header">
                 <div class="modal-rules-title">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
-                    <span>Reglas de Validación: <strong>${pkg}</strong></span>
+                    <div>
+                        <div style="font-size:14px; font-weight:700;">${pkg} — ${infoPaquete.descripcion || infoPaquete.nombre}</div>
+                        <div style="font-size:11px; font-weight:500; color:var(--text-muted);">${estaParametrizado ? infoPaquete.nombre : "No parametrizado"}</div>
+                    </div>
                 </div>
                 <button type="button" class="modal-rules-close" onclick="document.getElementById('modalReglasPaqueteActivo')?.remove()">&times;</button>
             </div>
             <div class="modal-rules-body">
+                ${estadoParametrizacionHTML}
                 <div class="paquete-rules-card">
+                    <div class="rule-group">
+                        <span class="rule-label">Nombre del Paquete:</span>
+                        <span class="rule-value"><strong style="${estaParametrizado ? '' : 'color:#ef4444;'}">${estaParametrizado ? infoPaquete.nombre : 'No parametrizado'}</strong></span>
+                    </div>
                     <div class="rule-group">
                         <span class="rule-label">Archivo Base:</span>
                         <span class="rule-value">Código del paquete dentro de <code>2 PAQ.pdf</code></span>
@@ -1159,11 +1177,14 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                 <td class="preval-cell-num">${p.filaExcel}</td>
                 <td class="preval-cell-doc">
                     <div class="doc-badge-stack preval-doc-badge-stack">
-                        <div class="doc-package-tag ${pkgCls}">
-                            <span class="package-name">${pkgCode}</span>
-                            <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${pkgCode}')" title="Ver reglas de ${pkgCode}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                            </button>
+                        <div class="doc-package-container">
+                            <div class="doc-package-tag ${pkgCls}">
+                                <span class="package-name">${pkgCode}</span>
+                                <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${pkgCode}')" title="Ver reglas y detalles de ${pkgCode}">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                                </button>
+                            </div>
+                            <div class="doc-package-desc" style="${PAQUETES_INFO[pkgCode] ? '' : 'color:#ef4444; font-weight:700;'}" title="${(PAQUETES_INFO[pkgCode] || {}).nombre || 'No parametrizado'}">${(PAQUETES_INFO[pkgCode] || {}).descripcion || 'No parametrizado'}</div>
                         </div>
                         <div class="doc-title-line preval-doc-title-line">
                             <span class="carpeta-nombre preval-doc-num">${p.documento || "—"}</span>
@@ -1203,28 +1224,18 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
 
             <!-- Modal Content Body -->
             <div class="preval-modal-body">
-                <!-- Ribbon Stats y Chips de Paquete -->
+                <!-- Ribbon Stats y Chips de Paquete Ultra Compactos en 1 Sola Línea -->
                 <div class="preval-top-toolbar">
-                    <div class="stats-cluster">
-                        <div class="stat-pill">
-                            <span class="stat-pill-label">Total</span>
-                            <span class="stat-pill-value" id="prevalKpiTotal">${totalPacientes}</span>
-                        </div>
-                        <div class="stat-pill success">
-                            <span class="stat-pill-label">Conformes</span>
-                            <span class="stat-pill-value" id="prevalKpiConformes">${conformes}</span>
-                        </div>
-                        <div class="stat-pill ${conErrores > 0 ? 'error' : ''}" style="display: flex; align-items: center; gap: 8px;">
-                            <div>
-                                <span class="stat-pill-label">Novedades</span>
-                                <span class="stat-pill-value" id="prevalKpiNovedades">${conErrores}</span>
-                            </div>
-                            <button type="button" id="btnCopiarTodasNovedadesMatriz" class="btn-copy-pill" title="Copiar todas las novedades visibles de la matriz (Documento - Paquete - Novedad)">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                                <span>Copiar</span>
-                            </button>
-                        </div>
+                    <div class="preval-kpi-compact">
+                        <span class="kpi-tag total">Total <strong>${totalPacientes}</strong></span>
+                        <span class="kpi-tag ok">Conformes <strong>${conformes}</strong></span>
+                        <span class="kpi-tag ${conErrores > 0 ? 'err' : 'ok'}">
+                            Novedades <strong>${conErrores}</strong>
+                            <button type="button" id="btnCopiarTodasNovedadesMatriz" class="btn-copy-kpi" title="Copiar todas las novedades visibles de la matriz">📋 Copiar</button>
+                        </span>
                     </div>
+
+                    <div class="preval-divider-vertical"></div>
 
                     <div class="preval-pkg-section">
                         <span class="preval-pkg-section-label">Paquetes:</span>

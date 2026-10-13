@@ -389,7 +389,10 @@ function renderPaqueteFilas(
     ].filter(Boolean).join("") || "";
 
     const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
-    const paqueteInfo = PAQUETES_INFO[paqueteCodigo] || { nombre: `Paquete ${paqueteCodigo}` };
+    const estaParametrizado = Boolean(PAQUETES_INFO[paqueteCodigo]);
+    const paqueteInfo = estaParametrizado
+        ? PAQUETES_INFO[paqueteCodigo]
+        : { nombre: `${paqueteCodigo} - No parametrizado`, descripcion: "No parametrizado" };
     const paqueteClase = `pkg-${paqueteCodigo.toLowerCase()}`;
 
     const esMatrizVirtual = Boolean(r.esDesdeMatriz || (r.datosMatriz && totalArchivos === 0));
@@ -410,16 +413,22 @@ function renderPaqueteFilas(
         .replace(/\s*\(CPF\w*\)/gi, "")
         .trim();
 
+    const descTexto = estaParametrizado ? (paqueteInfo.descripcion || paqueteInfo.nombre) : "No parametrizado";
+    const descStyle = estaParametrizado ? "" : "color: #ef4444; font-weight: 700;";
+
     trHeader.innerHTML = `
         <td rowspan="${totalFilasLote}" class="carpeta-cell doc-header-grouped">
             <div class="doc-badge-stack">
                 ${auditorBadgeHTML}
-                <div class="doc-package-tag ${paqueteClase}" title="${paqueteInfo.nombre} (${esMatrizVirtual ? 'Origen: Matriz Excel' : 'Origen: Carpeta de soportes'})">
-                    ${iconoBadgeSVG}
-                    <span class="package-name" title="${paqueteInfo.nombre}">${paqueteCodigo}</span>
-                    <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${paqueteCodigo}')" title="Ver reglas de ${paqueteInfo.nombre}">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-                    </button>
+                <div class="doc-package-container">
+                    <div class="doc-package-tag ${paqueteClase}" title="${paqueteInfo.nombre} (${esMatrizVirtual ? 'Origen: Matriz Excel' : 'Origen: Carpeta de soportes'})">
+                        ${iconoBadgeSVG}
+                        <span class="package-name" title="${paqueteInfo.nombre}">${paqueteCodigo}</span>
+                        <button type="button" class="btn-package-rules" onclick="mostrarModalReglasPaquete('${paqueteCodigo}')" title="Ver reglas y detalles de ${paqueteInfo.nombre}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        </button>
+                    </div>
+                    <div class="doc-package-desc" style="${descStyle}" title="${paqueteInfo.nombre}">${descTexto}</div>
                 </div>
                 <div class="doc-title-line">
                     <button class="copy-inline-btn" onclick="copiarNumero(event,'${nombreLimpio}')" title="Copiar sólo documento/carpeta">📋</button>

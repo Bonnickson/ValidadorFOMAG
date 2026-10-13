@@ -160,15 +160,10 @@ export function parsearMatriz(rawRows) {
         if (paquete) {
             conteoPorPaquete[paquete] = (conteoPorPaquete[paquete] || 0) + 1;
         } else {
-            if (esFacturarEventoNo || !facturarEventoRaw) {
-                // Sin paquete y Facturar por evento = No (o vacío): Error de diligenciamiento en la matriz
-                erroresFila.push(`Fila ${filaExcel}: Falta asignar código de paquete en la matriz (Facturar por evento: ${facturarEventoRaw || "No"}).`);
-            } else if (esFacturarEventoSi) {
-                // Facturar por evento = Sí: Es por evento, no aplica validación de paquete
-                alertasFila.push(`Fila ${filaExcel}: Facturación por evento (omitido de validación por paquete).`);
-            } else {
-                alertasFila.push(`Fila ${filaExcel}: Sin código de paquete asignado.`);
-            }
+            // Si la fila no tiene nombre de paquete, se cataloga para validación por EVENTO (solo tag informativo por ahora)
+            paquete = "EVENTO";
+            conteoPorPaquete["EVENTO"] = (conteoPorPaquete["EVENTO"] || 0) + 1;
+            alertasFila.push(`Fila ${filaExcel}: Sin paquete asignado en la matriz. Se cataloga como EVENTO.`);
         }
 
         // Parsear servicios
