@@ -39,7 +39,7 @@ Validador FOMAG/
 ## 🔧 Módulos y Arquitectura
 
 ### `src/services/`
-- **`matrixService.js`**: Lectura con SheetJS de la matriz de programación (`.xlsx`, `.xls`, `.csv`). Valida reglas de negocio por paciente (fijos obligatorios, opcionales a elección y total de terapias) y genera el diagnóstico global.
+- **`matrixService.js`**: Lectura con SheetJS de la matriz de programación (`.xlsx`, `.xls`, `.csv`). Descarta automáticamente filas sin número de documento (filas vacías o residuales), valida reglas de negocio por paciente (fijos obligatorios, opcionales a elección y total de terapias) y genera el diagnóstico global.
 - **`folderService.js`**: Gestión de lectura recursiva de directorios y archivos PDF mediante File System Access API o el selector tradicional.
 - **`excelExportService.js`**: Exportación avanzada de resultados de auditoría y reportes consolidados a formato `.xlsx`.
 

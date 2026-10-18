@@ -223,15 +223,11 @@ export function parsearMatriz(rawRows) {
         const paqueteRaw = String(fila[columnasDetectadas.PAQUETE] || "").trim().toUpperCase();
         const facturarEventoRaw = String(fila[columnasDetectadas.FACTURAR_EVENTO] || "").trim().toUpperCase();
 
-        // Si la fila está completamente vacía, ignorar
-        if (!documento && !nombre && !paqueteRaw && !facturarEventoRaw) continue;
+        // Si el número de documento está vacío, ignorar completamente la fila (no procesar ni validar)
+        if (!documento) continue;
 
         const erroresFila = [];
         const alertasFila = [];
-
-        if (!documento) {
-            erroresFila.push(`Fila ${filaExcel}: Documento vacío.`);
-        }
 
         // Determinar código de paquete normalizado (ej. CPF1102, CPF1103, CPF1104, CPF1105, etc.)
         let paquete = paqueteRaw;

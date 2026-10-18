@@ -603,6 +603,7 @@
                     <h2>🔍 Modal de pre-validación de matriz (Diagnóstico)</h2>
                     <p>Apenas cargas la matriz (o cuando pulsas el botón <strong>Diagnóstico</strong> en el panel izquierdo), se abre una ventana de auditoría previa que revisa fila por fila:</p>
                     <ul class="wiki-list">
+                        <li><strong>Filtrado de filas vacías:</strong> Si una fila no tiene número de documento (vacío), se descarta de forma automática y no se valida ni genera errores.</li>
                         <li><strong>Filas duplicadas:</strong> Alerta si un mismo número de documento aparece dos veces con el mismo paquete.</li>
                         <li><strong>Cumplimiento de reglas CPF en la matriz:</strong> Verifica que la fila tenga <code>VM = 1</code>, al menos un servicio de enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>), exactamente un opcional (<code>PSI</code>, <code>NUT</code> o <code>TS</code> = <code>1</code>) y que la suma de terapias cumpla el rango del paquete.</li>
                         <li><strong>Herramientas del modal:</strong> Puedes filtrar por <em>Todos</em>, <em>Conformes</em> o <em>Con novedades</em>, buscar por documento o nombre, copiar novedades individuales o masivas y arrastrar directamente allí la carpeta de soportes PDF.</li>
