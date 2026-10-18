@@ -134,8 +134,108 @@ export function extraerFechas(texto) {
 }
 
 /**
+ * Detecta los índices de las fechas que rompen el orden cronológico no decreciente (LNDS).
+ * @param {string[]} fechas 
+ * @returns {Set<number>} Conjunto de índices desordenados
+ */
+export function obtenerIndicesDesordenados(fechas) {
+    if (!fechas || fechas.length <= 1) return new Set();
+
+    const n = fechas.length;
+    let yaOrdenada = true;
+    for (let i = 1; i < n; i++) {
+        if (fechas[i] < fechas[i - 1]) {
+            yaOrdenada = false;
+            break;
+        }
+    }
+    if (yaOrdenada) return new Set();
+
+    const timestamps = fechas.map((f) => {
+        const t = new Date(f).getTime();
+        return isNaN(t) ? f : t;
+    });
+
+    const dp = new Array(n).fill(1);
+    const parent = new Array(n).fill(-1);
+
+    for (let i = 0; i < n; i++) {
+        for (let j = 0; j < i; j++) {
+            if (fechas[j] <= fechas[i]) {
+                if (dp[j] + 1 > dp[i]) {
+                    dp[i] = dp[j] + 1;
+                    parent[i] = j;
+                } else if (dp[j] + 1 === dp[i]) {
+                    const saltoActual =
+                        typeof timestamps[i] === "number" &&
+                        typeof timestamps[parent[i]] === "number"
+                            ? Math.abs(timestamps[i] - timestamps[parent[i]])
+                            : 0;
+                    const saltoNuevo =
+                        typeof timestamps[i] === "number" &&
+                        typeof timestamps[j] === "number"
+                            ? Math.abs(timestamps[i] - timestamps[j])
+                            : 0;
+                    if (saltoNuevo < saltoActual) {
+                        parent[i] = j;
+                    }
+                }
+            }
+        }
+    }
+
+    let maxLen = 0;
+    let bestEnd = -1;
+    for (let i = 0; i < n; i++) {
+        if (dp[i] > maxLen) {
+            maxLen = dp[i];
+            bestEnd = i;
+        }
+    }
+
+    const indicesEnOrden = new Set();
+    let curr = bestEnd;
+    while (curr !== -1) {
+        indicesEnOrden.add(curr);
+        curr = parent[curr];
+    }
+
+    const indicesDesordenados = new Set();
+    for (let i = 0; i < n; i++) {
+        if (!indicesEnOrden.has(i)) {
+            indicesDesordenados.add(i);
+        }
+    }
+
+    return indicesDesordenados;
+}
+
+/**
+ * Detecta los índices de las fechas que se encuentran duplicadas en la lista.
+ * @param {string[]} fechas 
+ * @returns {Set<number>} Conjunto de índices que tienen fecha duplicada
+ */
+export function obtenerIndicesDuplicados(fechas) {
+    if (!fechas || fechas.length <= 1) return new Set();
+
+    const conteo = {};
+    for (const f of fechas) {
+        conteo[f] = (conteo[f] || 0) + 1;
+    }
+
+    const indicesDuplicados = new Set();
+    fechas.forEach((f, idx) => {
+        if (conteo[f] > 1) {
+            indicesDuplicados.add(idx);
+        }
+    });
+
+    return indicesDuplicados;
+}
+
+/**
  * Valida que las fechas no estén duplicadas y estén en orden cronológico
- * @returns {Object} { duplicadas: string[], desordenadas: boolean, fechasOrdenadas: string[] }
+ * @returns {Object} { duplicadas: string[], desordenadas: boolean, fechasOrdenadas: string[], fechasDesordenadas: string[], indicesDesordenados: number[], indicesDuplicados: number[] }
  */
 export function validarOrdenFechas(fechas) {
     const duplicadas = [];
@@ -156,7 +256,20 @@ export function validarOrdenFechas(fechas) {
     const desordenadas =
         JSON.stringify(fechas) !== JSON.stringify(fechasOrdenadas);
 
-    return { duplicadas, desordenadas, fechasOrdenadas };
+    const indicesDesordenadosSet = obtenerIndicesDesordenados(fechas);
+    const indicesDuplicadosSet = obtenerIndicesDuplicados(fechas);
+    const fechasDesordenadas = [
+        ...new Set([...indicesDesordenadosSet].map((idx) => fechas[idx])),
+    ];
+
+    return {
+        duplicadas,
+        desordenadas,
+        fechasOrdenadas,
+        fechasDesordenadas,
+        indicesDesordenados: Array.from(indicesDesordenadosSet),
+        indicesDuplicados: Array.from(indicesDuplicadosSet),
+    };
 }
 
 /**

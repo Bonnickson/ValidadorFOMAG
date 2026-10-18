@@ -1,4 +1,8 @@
 import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs";
+import {
+    obtenerIndicesDesordenados,
+    obtenerIndicesDuplicados,
+} from "../utils/pdfUtils.js";
 
 let currentPdfDoc = null;
 let currentPdfPage = 1;
@@ -170,8 +174,10 @@ function renderizarWidgetFechas5(infoFechas5) {
     }
 
     const { servicio, fechas } = infoFechas5;
-    const fechasUnicas = [...new Set(fechas || [])];
-    const totalFechas = fechasUnicas.length;
+    const listaFechas = fechas || [];
+    const totalFechas = listaFechas.length;
+    const indicesDesordenados = obtenerIndicesDesordenados(listaFechas);
+    const indicesDuplicados = obtenerIndicesDuplicados(listaFechas);
 
     if (!badge) {
         badge = document.createElement("div");
@@ -187,8 +193,24 @@ function renderizarWidgetFechas5(infoFechas5) {
 
     const countClass = totalFechas === 0 ? "has-none" : "";
     const listHTML = totalFechas > 0
-        ? fechasUnicas
-              .map((f) => `<span class="pdf-floating-fecha-pill">${formatearFechaSimple(f)}</span>`)
+        ? listaFechas
+              .map((f, i) => {
+                  const esDesordenada = indicesDesordenados.has(i);
+                  const esDuplicada = indicesDuplicados.has(i);
+                  let extraCls = "";
+                  let title = "";
+                  if (esDesordenada && esDuplicada) {
+                      extraCls = " fecha-desordenada fecha-duplicada";
+                      title = "⚠️ Fecha duplicada y fuera de orden cronológico";
+                  } else if (esDesordenada) {
+                      extraCls = " fecha-desordenada";
+                      title = "⚠️ Fecha fuera de orden cronológico";
+                  } else if (esDuplicada) {
+                      extraCls = " fecha-duplicada";
+                      title = "⚠️ Fecha duplicada";
+                  }
+                  return `<span class="pdf-floating-fecha-pill${extraCls}" title="${title}">${formatearFechaSimple(f)}</span>`;
+              })
               .join("")
         : `<span class="pdf-floating-empty">Sin fechas registradas en 5</span>`;
 

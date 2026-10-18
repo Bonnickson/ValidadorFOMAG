@@ -69,11 +69,18 @@ Validador FOMAG/
 ### 3. Validación Por Paquete (Familia CPF)
 Diseñado para la validación de paquetes integrales con documento maestro `2 PAQ.pdf`:
 - **Documento Maestro**: `2 PAQ.pdf` es la fuente única de autorizaciones. No se permiten archivos `2 [servicio].pdf` individuales.
-- **Servicios Obligatorios**: Exige exactamente 1 evolución en `VM` (Valoración Médica), `ENF` (Enfermería) y `VENF` (Auxiliar de Enfermería).
+- **Servicios Obligatorios**:
+  - Estándar: Exige exactamente 1 evolución en `VM` (Valoración Médica) y al menos 1 servicio de enfermería (`ENF` o `VENF`).
+  - **`CPF1107`**: Exige exactamente **2 VM** y **4 ENF** (auxiliar de enfermería; VENF en 0).
+  - **`CPF1225`**: Exige exactamente **2 VM**.
 - **Servicio Opcional Único**: Debe contener **exactamente 1** de los siguientes servicios: `PSI` (Psicología), `NUT` (Nutrición) o `TS` (Trabajo Social), con 1 sola evolución.
 - **Archivos de Firma**: Valida que los archivos `4 [servicio].pdf` tengan 1 sola página y correspondan a formatos de firmas.
-- **Regla de Sumatoria de Terapias**: Suma el total de evoluciones de las 5 terapias (`TF`, `TO`, `TR`, `FON`, `TRS`) y valida contra los rangos del paquete:
-  - **CPF1108** (Atención Domiciliaria Crónico): No requiere terapias.
+- **Regla de Sumatoria de Terapias y Prohibiciones Estrictas**:
+  - **CPF1102, CPF1103, CPF1104** (Medicamento diario): Solo 1 VM, 1 ENF y APL (según dosis). **Prohibidas las terapias y los opcionales**.
+  - **CPF1108** (Atención Domiciliaria Crónico): **Prohibidas las terapias** (0 terapias; marca error si tiene alguna).
+  - **CPF1111, CPF1112, CPF1113** (Heridas): **Prohibidas las terapias** (0 terapias; marca error si tiene alguna).
+  - **CPF1107** (Crónico Paliativo): Terapias opcionales pero **únicamente TF, TR y TRS/Succión** (prohibidas FON y TO).
+  - **CPF1225** (Ventilación Mecánica): Contempla todas las terapias según programación.
   - **CPF1109** (Crónico con Terapias): **6 a 12** terapias en total.
   - **CPF1110** (Paquete Intermedio): **12 a 20** terapias en total.
   - **CPF1105** (Rehabilitación Neurológico Agudo) & **CPF1106** (Traqueostomía): **12 a 30** terapias en total.
@@ -97,6 +104,12 @@ Valida cada servicio de manera individual mediante pares de archivos (`2 [servic
 
 ## 📊 Características Destacadas
 
+- 📅 **Rango de Periodos Permitidos y Auditoría Temporal**:
+  - Al cargar soportes o desde el sidebar, permite seleccionar el rango de periodos autorizados (Desde `YYYY-MM` hasta `YYYY-MM`).
+  - Cualquier evolución clínica fuera del rango permitido se marca como **error estricto** (`5 ✗`), resaltando las fechas en rojo brillante con tooltips descriptivos.
+- 🕒 **Marcado Visual y Auditoría Inteligente de Fechas (LNDS)**:
+  - Detección algorítmica de fechas desordenadas que rompen la secuencia temporal y fechas duplicadas en historias clínicas (`5.pdf`).
+  - Presentación limpia y profesional en la columna de fechas y en el visor PDF: resaltado semántico por colores y tooltips interactivos sin sobrecargar con símbolos innecesarios.
 - ⚡ **Lectura Masiva**: Soporte para *File System Access API* (`btnAbrirFS`) y selector estándar por carpetas.
 - 📐 **Panel de Incidencias Redimensionable**: Panel de resumen de errores interactivo con ajuste de altura fluido mediante `requestAnimationFrame`.
 - 🔍 **Filtros Dinámicos**: Filtrado en vivo por texto/cédula, tipo de servicio, estado y selección múltiple de tarjetas de error.
@@ -104,3 +117,4 @@ Valida cada servicio de manera individual mediante pares de archivos (`2 [servic
 - 📥 **Exportación a Excel**:
   - **Descargar XLSX**: Reporte detallado de auditoría carpeta por carpeta con observaciones y estados.
   - **Reporte Matriz**: Resumen consolidado para control de facturación y auditoría médica.
+

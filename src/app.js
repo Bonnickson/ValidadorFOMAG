@@ -30,7 +30,9 @@ import {
     verProgramadoCarpeta as verProgramadoCarpetaUI,
     cerrarTodosLosPopupsYModales,
     inicializarCierrePorEscape,
+    solicitarPeriodoPermitidoModal,
 } from "./ui/modalManager.js";
+import { formatearPeriodoLegible } from "./utils/textUtils.js";
 import {
     aplicarFiltros,
     reiniciarFiltros,
@@ -43,6 +45,8 @@ import {
     copiarNumero,
     copiarFormatoCompleto,
     copiarHallazgosCompletos,
+    copiarTextoSimple,
+    copiarErrorMatriz,
 } from "./utils/clipboardUtils.js";
 import {
     agruparArchivosInteligente,
@@ -125,6 +129,10 @@ const domElements = {
     progresoDetalle,
 };
 
+const periodoSidebarCard = document.getElementById("periodoSidebarCard");
+const periodoSidebarTexto = document.getElementById("periodoSidebarTexto");
+const btnCambiarPeriodoSidebar = document.getElementById("btnCambiarPeriodoSidebar");
+
 // Estado global de la aplicación
 let todosLosResultados = {};
 let todasLasCarpetas = [];
@@ -132,7 +140,20 @@ let datosMatrizGlobal = null; // Almacena { pacientesPorDoc, pacientesList, diag
 const appState = {
     estadoFiltroActivo: "",
     erroresSeleccionados: new Set(),
+    periodoPermitido: { desde: "", hasta: "" },
 };
+
+function actualizarBadgePeriodoUI() {
+    if (!periodoSidebarCard || !periodoSidebarTexto) return;
+    const { desde, hasta } = appState.periodoPermitido || {};
+    if (desde || hasta) {
+        periodoSidebarTexto.textContent = formatearPeriodoLegible(desde, hasta);
+        periodoSidebarCard.classList.remove("oculto");
+    } else {
+        periodoSidebarTexto.textContent = "Sin restricción";
+        periodoSidebarCard.classList.remove("oculto");
+    }
+}
 
 // Ceder ejecución al hilo principal para mantener la UI responsiva
 const cederHiloPrincipal = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -256,6 +277,7 @@ function inicializarResultado(tipoValidacion, tipoPaquete, convenio = "capital-s
         buscarEn2Paq: new Set(),
         numerosPorServicio: {},
         numeroFomag: null,
+        periodoPermitido: appState.periodoPermitido ? { ...appState.periodoPermitido } : null,
     };
 }
 
@@ -420,7 +442,7 @@ async function procesarValidacionEvento(
                 domElements
             );
         }
-        await validarPDF(file, carpeta, nroDocumento, resultados, convenio);
+        await validarPDF(file, carpeta, nroDocumento, resultados, convenio, appState.periodoPermitido);
         updateRow(
             tablaBody,
             carpeta,
@@ -596,7 +618,8 @@ async function procesarLoteArchivos(archivosLista) {
                             nombreArchivo,
                             domElements
                         );
-                    }
+                    },
+                    appState.periodoPermitido
                 );
             } else {
                 await procesarValidacionEvento(
@@ -722,6 +745,10 @@ async function procesarLoteArchivos(archivosLista) {
 
 // Input file selector de Matriz
 if (inputMatriz) {
+    inputMatriz.addEventListener("click", () => {
+        inputMatriz.value = "";
+    });
+
     inputMatriz.addEventListener("change", async (e) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -780,6 +807,21 @@ if (btnVerPrevalidacion) {
 // Input file selector de soportes
 input.addEventListener("change", async () => {
     if (!input.files || input.files.length === 0) return;
+
+    // Solicitar el/los periodos permitidos antes de iniciar la validación
+    const seleccionPeriodo = await solicitarPeriodoPermitidoModal({
+        desdeInicial: appState.periodoPermitido?.desde || "",
+        hastaInicial: appState.periodoPermitido?.hasta || "",
+    });
+
+    if (seleccionPeriodo === null) {
+        input.value = "";
+        return; // Cancelado por el usuario
+    }
+
+    appState.periodoPermitido = seleccionPeriodo;
+    actualizarBadgePeriodoUI();
+
     estado.classList.remove("oculto");
     estado.textContent = "📂 Cargando y organizando soportes seleccionados...";
     barraProgresoDiv.classList.remove("oculto");
@@ -799,6 +841,20 @@ if (btnAbrirFS) {
         }
         try {
             const dirHandle = await window.showDirectoryPicker();
+
+            // Solicitar el/los periodos permitidos antes de escanear y validar
+            const seleccionPeriodo = await solicitarPeriodoPermitidoModal({
+                desdeInicial: appState.periodoPermitido?.desde || "",
+                hastaInicial: appState.periodoPermitido?.hasta || "",
+            });
+
+            if (seleccionPeriodo === null) {
+                return; // Cancelado por el usuario
+            }
+
+            appState.periodoPermitido = seleccionPeriodo;
+            actualizarBadgePeriodoUI();
+
             estado.classList.remove("oculto");
             estado.textContent = "🔍 Escaneando carpetas...";
 
@@ -813,6 +869,36 @@ if (btnAbrirFS) {
                 console.error("Error al abrir carpeta:", error);
                 estado.classList.remove("oculto");
                 estado.textContent = `❌ Error: ${error.message}`;
+            }
+        }
+    });
+}
+
+// Botón para editar el periodo permitido desde el sidebar
+if (btnCambiarPeriodoSidebar) {
+    btnCambiarPeriodoSidebar.addEventListener("click", async () => {
+        const seleccion = await solicitarPeriodoPermitidoModal({
+            desdeInicial: appState.periodoPermitido?.desde || "",
+            hastaInicial: appState.periodoPermitido?.hasta || "",
+        });
+
+        if (seleccion !== null) {
+            appState.periodoPermitido = seleccion;
+            actualizarBadgePeriodoUI();
+
+            // Actualizar resultados cargados en la tabla si ya hay carpetas procesadas
+            if (todosLosResultados && Object.keys(todosLosResultados).length > 0) {
+                Object.keys(todosLosResultados).forEach((k) => {
+                    todosLosResultados[k].periodoPermitido = { ...seleccion };
+                    updateRow(
+                        tablaBody,
+                        k,
+                        todosLosResultados[k],
+                        Boolean(mostrarExitosCheckbox?.checked)
+                    );
+                });
+                actualizarResumen(todosLosResultados, domElements, appState, true, exportarResumenErroresXLSX);
+                aplicarFiltros(domElements, appState);
             }
         }
     });

@@ -147,6 +147,20 @@
                         <span class="dropzone-subtitle">Click o arrastra la carpeta aquí</span>
                         <input type="file" id="inputFolder" webkitdirectory directory multiple />
                     </label>
+
+                    <!-- Periodo Permitido Card -->
+                    <div id="periodoSidebarCard" class="periodo-sidebar-card oculto">
+                        <div class="periodo-card-header">
+                            <span class="periodo-card-icon">📅</span>
+                            <div class="periodo-card-info">
+                                <span class="periodo-card-label">Periodo Permitido</span>
+                                <span class="periodo-card-val" id="periodoSidebarTexto">Todos los periodos</span>
+                            </div>
+                        </div>
+                        <button type="button" id="btnCambiarPeriodoSidebar" class="btn-periodo-edit" title="Modificar rango de meses permitido">
+                            ✏️ Cambiar
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Sidebar Actions / Exports -->
@@ -238,6 +252,7 @@
                             <option value="TS">🤝 TS - Trabajo Social</option>
                             <option value="FON">🗣️ FON - Fonoaudiología</option>
                             <option value="NUT">🥗 NUT - Nutrición</option>
+                            <option value="APL">💊 APL - Aplicación Medicamento</option>
                         </select>
                     </div>
 
@@ -365,898 +380,1168 @@
     <!-- Wiki Section -->
     <div id="wikiContainer" class="wiki-container oculto">
         <div class="wiki-modal-wrapper">
-            <div class="wiki-sidebar">
-                <div class="wiki-sidebar-header">
-                    <h3>📚 Documentación</h3>
-                    <button class="wiki-close" onclick="toggleWiki()">&times;</button>
+            <!-- Barra Superior Unificada del Modal Wiki -->
+            <div class="wiki-modal-header">
+                <div class="wiki-modal-header-left">
+                    <button type="button" class="btn-wiki-action" id="wikiBtnToggleSidebar" onclick="toggleWikiSidebar()" title="Mostrar u ocultar menú lateral">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" style="width:16px;height:16px;"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <span class="wiki-modal-title">📚 Guía Oficial y Wiki de Auditoría</span>
                 </div>
-                <nav class="wiki-nav">
-                    <a href="#wiki-inicio" class="wiki-nav-item active" onclick="showWikiSection('inicio')">🏠
-                        Inicio</a>
-                    <div class="wiki-nav-section">Conceptos básicos</div>
-                    <a href="#wiki-estructura" class="wiki-nav-item" onclick="showWikiSection('estructura')">📁
-                        Estructura de carpetas</a>
-                    <a href="#wiki-servicios" class="wiki-nav-item" onclick="showWikiSection('servicios')">🏥
-                        Servicios</a>
-                    <div class="wiki-nav-section">Por convenio</div>
-                    <a href="#wiki-capital" class="wiki-nav-item" onclick="showWikiSection('capital')">📑 Capital
-                        Salud</a>
-                    <a href="#wiki-fomag-evento" class="wiki-nav-item" onclick="showWikiSection('fomag-evento')">📋
-                        FOMAG Evento</a>
-                    <a href="#wiki-fomag-paquete" class="wiki-nav-item" onclick="showWikiSection('fomag-paquete')">📦
-                        FOMAG Paquete</a>
-                    <div class="wiki-nav-section">Validación por archivo</div>
-                    <a href="#wiki-archivo2" class="wiki-nav-item" onclick="showWikiSection('archivo2')">📄 Archivo
-                        2.pdf</a>
-                    <a href="#wiki-archivo3" class="wiki-nav-item" onclick="showWikiSection('archivo3')">📄 Archivo
-                        3.pdf</a>
-                    <a href="#wiki-archivo4" class="wiki-nav-item" onclick="showWikiSection('archivo4')">📄 Archivo
-                        4.pdf</a>
-                    <a href="#wiki-archivo5" class="wiki-nav-item" onclick="showWikiSection('archivo5')">📄 Archivo
-                        5.pdf</a>
-                    <div class="wiki-nav-section">Referencia</div>
-                    <a href="#wiki-errores" class="wiki-nav-item" onclick="showWikiSection('errores')">⚠️ Tipos de
-                        errores</a>
-                </nav>
+                <button type="button" class="wiki-close" onclick="toggleWiki()" title="Cerrar guía (ESC)">&times;</button>
             </div>
-            <div class="wiki-content">
-                <!-- Inicio -->
-                <article id="wiki-inicio" class="wiki-article">
-                    <h1>📚 Guía de validación de PDFs</h1>
-                    <p class="wiki-intro">Bienvenido a la documentación del validador. Esta herramienta verifica que los
-                        PDFs cumplan con los requisitos según el convenio y tipo de validación.</p>
+
+            <!-- Contenedor Principal: Sidebar + Contenido -->
+            <div class="wiki-modal-main">
+                <div class="wiki-sidebar" id="wikiSidebar">
+                    <nav class="wiki-nav">
+                        <a href="#wiki-inicio" class="wiki-nav-item active" onclick="showWikiSection('inicio')" title="Inicio y Flujo General">
+                            <span class="wiki-nav-icon">🏠</span><span class="wiki-nav-text">Inicio y Flujo General</span>
+                        </a>
+
+                        <div class="wiki-nav-section">Auditoría por Paquete</div>
+                        <a href="#wiki-matriz" class="wiki-nav-item" onclick="showWikiSection('matriz')" title="1. Matriz y Pre-validación">
+                            <span class="wiki-nav-icon">📊</span><span class="wiki-nav-text">1. Matriz y Pre-validación</span>
+                        </a>
+                        <a href="#wiki-fomag-paquete" class="wiki-nav-item" onclick="showWikiSection('fomag-paquete')" title="2. Paquetes FOMAG (CPF)">
+                            <span class="wiki-nav-icon">📦</span><span class="wiki-nav-text">2. Paquetes FOMAG (CPF)</span>
+                        </a>
+                        <a href="#wiki-estructura" class="wiki-nav-item" onclick="showWikiSection('estructura')" title="3. Estructura de Carpetas">
+                            <span class="wiki-nav-icon">📁</span><span class="wiki-nav-text">3. Estructura de Carpetas</span>
+                        </a>
+
+                        <div class="wiki-nav-section">Reglas Clínicas y Soportes</div>
+                        <a href="#wiki-servicios" class="wiki-nav-item" onclick="showWikiSection('servicios')" title="4. Servicios y Textos Regla">
+                            <span class="wiki-nav-icon">🏥</span><span class="wiki-nav-text">4. Servicios y Textos Regla</span>
+                        </a>
+                        <a href="#wiki-archivo2" class="wiki-nav-item" onclick="showWikiSection('archivo2')" title="Soporte 2 (Autorización / PAQ)">
+                            <span class="wiki-nav-icon">📄</span><span class="wiki-nav-text">Soporte 2 (Autorización / PAQ)</span>
+                        </a>
+                        <a href="#wiki-archivo3" class="wiki-nav-item" onclick="showWikiSection('archivo3')" title="Soporte 3 (ADRES)">
+                            <span class="wiki-nav-icon">📋</span><span class="wiki-nav-text">Soporte 3 (ADRES)</span>
+                        </a>
+                        <a href="#wiki-archivo4" class="wiki-nav-item" onclick="showWikiSection('archivo4')" title="Soporte 4 (Planilla Firmas)">
+                            <span class="wiki-nav-icon">✍️</span><span class="wiki-nav-text">Soporte 4 (Planilla Firmas)</span>
+                        </a>
+                        <a href="#wiki-archivo5" class="wiki-nav-item" onclick="showWikiSection('archivo5')" title="Soporte 5 (Evoluciones y Fechas)">
+                            <span class="wiki-nav-icon">📑</span><span class="wiki-nav-text">Soporte 5 (Evoluciones y Fechas)</span>
+                        </a>
+
+                        <div class="wiki-nav-section">Auditoría por Evento</div>
+                        <a href="#wiki-fomag-evento" class="wiki-nav-item" onclick="showWikiSection('fomag-evento')" title="FOMAG Evento">
+                            <span class="wiki-nav-icon">📋</span><span class="wiki-nav-text">FOMAG Evento</span>
+                        </a>
+                        <a href="#wiki-capital" class="wiki-nav-item" onclick="showWikiSection('capital')" title="Capital Salud Evento">
+                            <span class="wiki-nav-icon">📑</span><span class="wiki-nav-text">Capital Salud Evento</span>
+                        </a>
+
+                        <div class="wiki-nav-section">Interfaz y Solución</div>
+                        <a href="#wiki-herramientas" class="wiki-nav-item" onclick="showWikiSection('herramientas')" title="Herramientas, Filtros y Excel">
+                            <span class="wiki-nav-icon">🛠️</span><span class="wiki-nav-text">Herramientas, Filtros y Excel</span>
+                        </a>
+                        <a href="#wiki-errores" class="wiki-nav-item" onclick="showWikiSection('errores')" title="Diccionario de Errores">
+                            <span class="wiki-nav-icon">⚠️</span><span class="wiki-nav-text">Diccionario de Errores</span>
+                        </a>
+                    </nav>
+                </div>
+                <div class="wiki-content">
+                    <!-- ==================== 0. INICIO ==================== -->
+                    <article id="wiki-inicio" class="wiki-article">
+                    <h1>🏠 Guía Oficial del Validador de Soportes</h1>
+                    <p class="wiki-intro">
+                        Esta herramienta automatiza la auditoría documental y clínica de soportes PDF para atención domiciliaria (<strong>FOMAG Magisterio</strong> y <strong>Capital Salud EPS</strong>), cruzando la programación en Excel contra las historias clínicas, autorizaciones y firmas de cada paciente.
+                    </p>
+
+                    <div class="wiki-note info">
+                        <strong>💡 Motor Híbrido PDF + OCR Inteligente:</strong> El sistema extrae primero el texto digital del PDF de forma instantánea. Si un soporte viene escaneado como imagen y no detecta el documento, código de paquete o leyenda del servicio, activa automáticamente reconocimiento óptico (<strong>OCR Tesseract</strong>) sobre las primeras páginas.
+                    </div>
 
                     <div class="wiki-quick-links">
                         <div class="wiki-card">
-                            <h3>🚀 Inicio rápido</h3>
+                            <h3>📦 Flujo Modo Paquete (Predeterminado)</h3>
                             <ol>
-                                <li>Selecciona el tipo de validación (Evento o Paquete)</li>
-                                <li>Elige el convenio (Capital Salud o FOMAG)</li>
-                                <li>Carga la carpeta con los documentos</li>
-                                <li>Revisa los resultados en la tabla</li>
+                                <li><strong>Configura parámetros:</strong> Modo <em>Por Paquete (Integral)</em>, Tipo de Paquete (<em>Automático</em> o un código <code>CPF</code> específico) y Entidad.</li>
+                                <li><strong>Paso 1 — Adjunta la Matriz (Obligatorio):</strong> Sube el archivo <code>.xlsx</code>, <code>.xls</code> o <code>.csv</code> de programación.</li>
+                                <li><strong>Revisa la Pre-validación:</strong> Se abrirá el diagnóstico automático de la matriz verificando reglas de cada paciente antes de subir PDFs.</li>
+                                <li><strong>Paso 2 — Carga los Soportes:</strong> Arrastra o selecciona la carpeta raíz con los PDFs de los pacientes.</li>
+                                <li><strong>Audita y Exporta:</strong> Filtra hallazgos, inspecciona con el visor PDF integrado, copia novedades o exporta a Excel.</li>
                             </ol>
                         </div>
                         <div class="wiki-card">
-                            <h3>📖 Secciones principales</h3>
-                            <ul>
-                                <li><a href="#wiki-estructura" onclick="showWikiSection('estructura')">Estructura de
-                                        carpetas</a></li>
-                                <li><a href="#wiki-capital" onclick="showWikiSection('capital')">Capital Salud</a></li>
-                                <li><a href="#wiki-fomag-evento" onclick="showWikiSection('fomag-evento')">FOMAG
-                                        Evento</a></li>
-                                <li><a href="#wiki-fomag-paquete" onclick="showWikiSection('fomag-paquete')">FOMAG
-                                        Paquete</a></li>
-                            </ul>
+                            <h3>📋 Flujo Modo Evento (Individual)</h3>
+                            <ol>
+                                <li><strong>Configura parámetros:</strong> Cambia el modo a <em>Por Evento (Individual)</em> y elige <em>FOMAG Magisterio</em> o <em>Capital Salud EPS</em>.</li>
+                                <li><strong>Carga los Soportes:</strong> Selecciona la carpeta con los expedientes individuales (no requiere matriz previa).</li>
+                                <li><strong>Validación automática:</strong> Verifica presencia de soportes, documento del paciente, textos obligatorios y (en FOMAG) compara <em>Autorizaciones vs Evoluciones</em>.</li>
+                                <li><strong>Descarga de reportes:</strong> Exporta el consolidado XLSX o el <em>Reporte Matriz</em> oficial de eventos FOMAG.</li>
+                            </ol>
                         </div>
                     </div>
-                </article>
 
-                <!-- Estructura -->
-                <article id="wiki-estructura" class="wiki-article oculto">
-                    <h1>📁 Estructura de carpetas</h1>
-                    <p>La organización de las carpetas es fundamental para que el validador funcione correctamente.</p>
-
-                    <h2>Reglas generales</h2>
-                    <ul class="wiki-list">
-                        <li>Cada carpeta representa un documento único</li>
-                        <li>El nombre de la carpeta debe contener el número de documento</li>
-                    </ul>
-
-                    <h2>Por Evento</h2>
-                    <div class="wiki-note info">
-                        <strong>Formato:</strong> <code>[número_documento] [TIPO]</code>
-                    </div>
-                    <div class="wiki-example">
-                        <strong>Ejemplo:</strong> <code>123456789 ENF</code>
-                    </div>
-                    <p>El tipo debe ser uno de: VM, ENF, TF, TR, SUCCION, PSI, TS, FON</p>
-
-                    <h2>Por Paquete</h2>
-                    <div class="wiki-note info">
-                        <strong>Formato:</strong> <code>[número_documento]</code>
-                    </div>
-                    <div class="wiki-example">
-                        <strong>Ejemplo:</strong> <code>123456789</code>
-                    </div>
-                    <p>Solo el número de documento, sin tipo de servicio.</p>
-                </article>
-
-                <!-- Servicios -->
-                <article id="wiki-servicios" class="wiki-article oculto">
-                    <h1>🏥 Servicios y textos</h1>
-                    <p>Cada servicio tiene textos específicos que deben aparecer en los PDFs.</p>
-
-                    <h2>Lista de servicios</h2>
+                    <h2>🧭 Mapa rápido de la documentación</h2>
                     <div class="wiki-table">
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Código</th>
-                                    <th>Descripción</th>
+                                    <th>Sección</th>
+                                    <th>¿Qué encontrarás ahí?</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><a href="#wiki-matriz" onclick="showWikiSection('matriz')">📊 1. Matriz y Pre-validación</a></td>
+                                    <td>Estructura exacta del Excel (columnas A–Q), diagnóstico previo de la matriz y cruce bidireccional (<code>📁 vs 📊</code> y <code>📊 vs 📁</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#wiki-fomag-paquete" onclick="showWikiSection('fomag-paquete')">📦 2. Paquetes FOMAG (CPF)</a></td>
+                                    <td>Qué servicios son obligatorios u opcionales y la cantidad mínima y máxima exigida para cada paquete (<code>CPF1102</code> a <code>CPF1225</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#wiki-estructura" onclick="showWikiSection('estructura')">📁 3. Estructura de Carpetas</a></td>
+                                    <td>Organización jerárquica por Auditor/Responsable, Paquete y Paciente, y cómo nombrar cada archivo PDF.</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#wiki-servicios" onclick="showWikiSection('servicios')">🏥 4. Servicios y Textos Regla</a></td>
+                                    <td>Los 13 servicios clínicos soportados y las frases exactas que el validador exige en <code>5.pdf</code> y <code>2.pdf</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#wiki-archivo2" onclick="showWikiSection('archivo2')">📄 Soportes 2, 3, 4 y 5</a></td>
+                                    <td>Reglas detalladas por cada número de PDF (Autorización/PAQ, ADRES, Planilla de Firmas y Evoluciones).</td>
+                                </tr>
+                                <tr>
+                                    <td><a href="#wiki-herramientas" onclick="showWikiSection('herramientas')">🛠️ Herramientas, Filtros y Excel</a></td>
+                                    <td>Visor PDF con rotación, comparador <em>Programado</em>, tarjetas de hallazgos, botones de copia rápida y exportaciones XLSX.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <!-- ==================== 1. MATRIZ Y PREVALIDACIÓN ==================== -->
+                <article id="wiki-matriz" class="wiki-article oculto">
+                    <h1>📊 1. Carga de Matriz y Pre-validación</h1>
+                    <p class="wiki-intro">
+                        En el modo <strong>Por Paquete (Integral)</strong>, la carga de la matriz de programación (<code>.xlsx</code>, <code>.xls</code> o <code>.csv</code>) es el primer paso obligatorio. Permite auditar primero si la programación está bien armada y luego cruzar cada carpeta de PDFs contra lo programado.
+                    </p>
+
+                    <h2>📐 Estructura esperada del archivo Excel / CSV</h2>
+                    <ul class="wiki-list">
+                        <li><strong>Fila 1:</strong> Título general del documento.</li>
+                        <li><strong>Fila 2:</strong> Encabezados de columnas.</li>
+                        <li><strong>Fila 3 en adelante:</strong> Registros de pacientes (el sistema lee desde la fila 3).</li>
+                    </ul>
+
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Columna</th>
+                                    <th>Campo en matriz</th>
+                                    <th>Uso en el validador</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>Col A</code></td>
+                                    <td class="wiki-nowrap">Tipo de documento</td>
+                                    <td>Informativo (CC, TI, RC, CE, etc.).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col B</code></td>
+                                    <td class="wiki-nowrap">Documento</td>
+                                    <td>Clave principal para cruzar con la carpeta del paciente y validar dentro de los PDFs.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col C</code></td>
+                                    <td class="wiki-nowrap">Nombre del paciente</td>
+                                    <td>Se muestra en el diagnóstico, comparador <em>Programado</em> y reportes.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col D</code></td>
+                                    <td class="wiki-nowrap">Paquete</td>
+                                    <td>Código del paquete (ej. <code>CPF1105</code>, <code>CPF1108</code>, <code>CPF1109</code>). Si está vacío, se cataloga como Evento.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col E</code></td>
+                                    <td class="wiki-nowrap">Facturar evento</td>
+                                    <td>Indica Sí / No. Los pacientes marcados para facturar por evento sin paquete se omiten del reclamo de carpetas faltantes de paquete.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col F</code></td>
+                                    <td class="wiki-nowrap">Geriatría</td>
+                                    <td>Omitido en la validación de paquetes domiciliarios.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col G</code></td>
+                                    <td class="wiki-nowrap">Médica general (<code>VM</code>)</td>
+                                    <td>Servicio fijo obligatorio (debe ser <code>1</code> en paquetes CPF).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col H</code></td>
+                                    <td class="wiki-nowrap">Enf. profesional (<code>VENF</code>)</td>
+                                    <td>Servicio de enfermería (junto con Col I, al menos uno debe ser <code>1</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col I</code></td>
+                                    <td class="wiki-nowrap">Aux. enfermería (<code>ENF</code>)</td>
+                                    <td>Servicio de enfermería (junto con Col H, al menos uno debe ser <code>1</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col J – N</code></td>
+                                    <td class="wiki-nowrap">Terapias (<code>TF</code>, <code>TR</code>, <code>TRS</code>, <code>FON</code>, <code>TO</code>)</td>
+                                    <td>Se suman todas para validar el rango total de terapias del paquete y se comparan individualmente contra cada <code>5 [terapia].pdf</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Col O – Q</code></td>
+                                    <td class="wiki-nowrap">Opcionales (<code>NUT</code>, <code>TS</code>, <code>PSI</code>)</td>
+                                    <td>Servicios a elección: en paquetes CPF debe programarse únicamente 1 de los tres con cantidad <code>1</code>.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>🔍 Modal de pre-validación de matriz (Diagnóstico)</h2>
+                    <p>Apenas cargas la matriz (o cuando pulsas el botón <strong>Diagnóstico</strong> en el panel izquierdo), se abre una ventana de auditoría previa que revisa fila por fila:</p>
+                    <ul class="wiki-list">
+                        <li><strong>Filas duplicadas:</strong> Alerta si un mismo número de documento aparece dos veces con el mismo paquete.</li>
+                        <li><strong>Cumplimiento de reglas CPF en la matriz:</strong> Verifica que la fila tenga <code>VM = 1</code>, al menos un servicio de enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>), exactamente un opcional (<code>PSI</code>, <code>NUT</code> o <code>TS</code> = <code>1</code>) y que la suma de terapias cumpla el rango del paquete.</li>
+                        <li><strong>Herramientas del modal:</strong> Puedes filtrar por <em>Todos</em>, <em>Conformes</em> o <em>Con novedades</em>, buscar por documento o nombre, copiar novedades individuales o masivas y arrastrar directamente allí la carpeta de soportes PDF.</li>
+                    </ul>
+
+                    <h2>🔄 Cruce bidireccional (Matriz ↔ Carpetas de soportes)</h2>
+                    <p>Al cargar la carpeta de PDFs en el Paso 2, el motor realiza un cruce en ambos sentidos:</p>
+                    <div class="wiki-note warning">
+                        <strong>📁 vs 📊 (Carpetas vs Matriz):</strong> Revisa las carpetas físicas cargadas. Reporta error si:
+                        <ul>
+                            <li>El paciente de la carpeta no existe en la matriz cargada.</li>
+                            <li>El paquete de la carpeta física no coincide con el paquete asignado en la matriz (<em>Discrepancia de paquete</em>).</li>
+                            <li>Falta el archivo <code>5 [servicio].pdf</code> de un servicio que tenía cantidad &gt; 0 en la matriz.</li>
+                            <li>La cantidad de evoluciones (fechas en <code>5 [servicio].pdf</code>) es mayor o menor que la cantidad programada en la matriz (indica cuántas sobran o faltan).</li>
+                            <li>Existe un soporte con evoluciones en la carpeta, pero en la matriz ese servicio está en <code>0</code>.</li>
+                        </ul>
+                    </div>
+                    <div class="wiki-note danger">
+                        <strong>📊 vs 📁 (Matriz vs Carpetas):</strong> Revisa todos los pacientes programados con paquete en la matriz. Si alguno no tiene carpeta de soportes PDF en el lote cargado, crea una fila en la tabla con el ícono de matriz (📊) y reporta: <em>"No se encontró carpeta de soportes PDF para el documento [X] programado en la matriz"</em>.
+                    </div>
+                </article>
+
+                <!-- ==================== 2. PAQUETES FOMAG (CPF) ==================== -->
+                <article id="wiki-fomag-paquete" class="wiki-article oculto">
+                    <h1>📦 2. Paquetes FOMAG (CPF): Servicios, mínimos y máximos</h1>
+                    <p class="wiki-intro">
+                        Aquí puedes consultar de forma rápida qué servicios componen cada paquete, cuáles son obligatorios u opcionales, y la cantidad mínima y máxima de atenciones permitida.
+                    </p>
+
+                    <h2>1. Estructura general de todo paquete CPF (4 grupos)</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Grupo</th>
+                                    <th>Servicios incluidos</th>
+                                    <th>Condición</th>
+                                    <th style="text-align:center;">Mín.</th>
+                                    <th style="text-align:center;">Máx.</th>
+                                    <th>Regla de validación</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>1. Médica</td>
+                                    <td class="wiki-nowrap"><code>VM</code> (Valoración médica)</td>
+                                    <td><span class="wiki-badge-req">Obligatorio fijo</span></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                                    <td>Siempre debe registrar 1 atención en el mes.</td>
+                                </tr>
+                                <tr>
+                                    <td>2. Enfermería</td>
+                                    <td class="wiki-nowrap"><code>VENF</code> (Profesional), <code>ENF</code> (Auxiliar)</td>
+                                    <td><span class="wiki-badge-enf">Obligatorio (mín. 1)</span></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 c/u</td>
+                                    <td>Puede llevar solo <code>VENF</code> (1), solo <code>ENF</code> (1), o ambos (<code>1 VENF + 1 ENF</code>). Nunca ambos en 0.</td>
+                                </tr>
+                                <tr>
+                                    <td>3. Complementario</td>
+                                    <td class="wiki-nowrap"><code>PSI</code>, <code>NUT</code>, <code>TS</code></td>
+                                    <td><span class="wiki-badge-opt">A elección (solo 1)</span></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                                    <td>Se elige únicamente 1 de los tres (Psicología, Nutrición o Trabajo Social) con cantidad 1; los otros dos en 0.</td>
+                                </tr>
+                                <tr>
+                                    <td>4. Terapias</td>
+                                    <td class="wiki-nowrap"><code>TF</code>, <code>TR</code>, <code>TRS</code>, <code>FON</code>, <code>TO</code></td>
+                                    <td><span class="wiki-badge-ter">Según paquete</span></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0, 6 o 12</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">12, 20 o 30</td>
+                                    <td>Se suman todas las evoluciones de las 5 terapias; el total debe cumplir el rango del paquete (ver tabla inferior).</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>2. Tabla detallada por código de paquete (orden oficial y reglas exactas)</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th style="width: 85px;">Código</th>
+                                    <th>Nombre del paquete</th>
+                                    <th style="text-align:center;">Médica (<code>VM</code>)</th>
+                                    <th style="text-align:center;">Enfermería (<code>VENF</code> / <code>ENF</code>)</th>
+                                    <th style="text-align:center;">Opcional (<code>PSI</code> / <code>NUT</code> / <code>TS</code>)</th>
+                                    <th style="text-align:center;">Terapias sumadas (<code>TF+TR+TRS+FON+TO</code>)</th>
+                                    <th style="min-width: 320px;">Reglas de Validación y Consistencia</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>CPF1102</code></td>
+                                    <td><strong>Agudo baja complejidad (diario)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0 (No aplica)</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0 (No aplica)</td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Matriz Columna APL:</strong> Debe registrar la cantidad en <em>Paq. Aplicación Medicamento 1 Dosis</em> igual a la cantidad diaria del paquete.</li>
+                                            <li><strong>Validación estricta de dosis:</strong> Las columnas de 2, 3 y 4 dosis deben estar en <code>0</code> (genera error si tienen valor).</li>
+                                            <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> que contenga el código <code>CPF1102</code> y documento del paciente.</li>
+                                            <li><strong>Prohibición:</strong> No admite servicios opcionales (PSI/NUT/TS) ni terapias programadas.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1103</code></td>
+                                    <td><strong>Agudo mediana complejidad (diario)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0 (No aplica)</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0 (No aplica)</td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Matriz Columna APL:</strong> Debe marcar exactamente en <em>2 Dosis</em> o en <em>3 Dosis</em> (solo una de las dos) igual a la cantidad diaria.</li>
+                                            <li><strong>Exclusividad de dosis:</strong> Genera error si ambas están marcadas o si se registran valores en 1 o 4 dosis.</li>
+                                            <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> con código <code>CPF1103</code> y cédula del paciente.</li>
+                                            <li><strong>Prohibición:</strong> Servicios opcionales (PSI/NUT/TS) y terapias deben estar en <code>0</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1104</code></td>
+                                    <td><strong>Agudo alta complejidad (diario)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0 (No aplica)</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">0 (No aplica)</td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Matriz Columna APL:</strong> Debe marcar obligatoriamente en <em>Paq. Aplicación Medicamento 4 Dosis</em> igual a la cantidad diaria.</li>
+                                            <li><strong>Validación estricta de dosis:</strong> Genera error si hay valores en 1, 2 o 3 dosis.</li>
+                                            <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> con código <code>CPF1104</code> y cédula del paciente.</li>
+                                            <li><strong>Prohibición:</strong> Servicios opcionales (PSI/NUT/TS) y terapias deben estar en <code>0</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1105</code></td>
+                                    <td><strong>Rehabilitación neurológica (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-ter">Mín 12 · Máx 30</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Rango bloqueante de terapias:</strong> La suma total de <code>TF + TR + TRS + FON + TO</code> debe ser mínimo 12 y máximo 30 (genera error si la suma es &lt; 12 o &gt; 30).</li>
+                                            <li><strong>Cruce 5.pdf:</strong> Cada terapia programada con valor &gt; 0 exige su respectivo archivo <code>5 [terapia].pdf</code> con exactamente igual número de fechas de evolución.</li>
+                                            <li><strong>Opcional único:</strong> Requiere exactamente 1 atención en solo uno de: PSI, NUT o TS (los otros dos en 0).</li>
+                                            <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> con código <code>CPF1105</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1106</code></td>
+                                    <td><strong>Traqueostomía domiciliaria (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-ter">Mín 12 · Máx 30</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Rango bloqueante de terapias:</strong> Suma de <code>TF + TR + TRS + FON + TO</code> debe estar estrictamente entre 12 y 30 evoluciones.</li>
+                                            <li><strong>Auditoría de evoluciones:</strong> Cada servicio programado debe coincidir exactamente con el conteo de fechas en su archivo <code>5 [srv].pdf</code>.</li>
+                                            <li><strong>Opcional único:</strong> Exige elegir únicamente 1 entre PSI, NUT o TS con cantidad 1.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> debe contener el texto del código <code>CPF1106</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1107</code></td>
+                                    <td><strong>Crónico paliativo (mensual 13076)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><strong>2 atenciones</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><strong>4 <code>ENF</code></strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-opt">Solo TF y TR/TRS</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Fijos obligatorios:</strong> Exige estrictamente <strong><code>VM = 2</code></strong> y <strong><code>ENF = 4</code></strong> (auxiliar de enfermería; VENF en 0).</li>
+                                            <li><strong>Regla de terapias:</strong> Son opcionales pero <strong>únicamente se permite Terapia Física (TF) y Terapia Respiratoria (TR / TRS)</strong>. No admite FON ni TO (marca error si se registran).</li>
+                                            <li><strong>Opcional único:</strong> Debe tener exactamente 1 entre PSI, NUT o TS.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1107</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1108</code></td>
+                                    <td><strong>Crónico mantenimiento (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-danger" style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">No Aplica (0 terapias)</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Prohibición estricta de terapias:</strong> Este paquete <strong>NO contempla terapias</strong>. Si en la matriz o en la carpeta se registra cualquier terapia (TF, TR, TRS, FON, TO), se marca como <strong>error</strong>.</li>
+                                            <li><strong>Fijos obligatorios:</strong> Exige <code>VM = 1</code> y al menos un servicio de enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>).</li>
+                                            <li><strong>Opcional único:</strong> Exactamente 1 atención entre PSI, NUT o TS.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1108</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1109</code></td>
+                                    <td><strong>Crónico con terapias (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-ter">Mín 6 · Máx 12</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Rango bloqueante de terapias:</strong> La sumatoria total de terapias (<code>TF + TR + TRS + FON + TO</code>) debe ser estrictamente entre 6 y 12 (genera error si suma menos de 6 o más de 12).</li>
+                                            <li><strong>Cruce estricto Matriz ↔ PDF:</strong> Cada terapia programada debe tener su archivo <code>5 [srv].pdf</code> coincidiendo exactamente en cantidad de fechas.</li>
+                                            <li><strong>Opcional único:</strong> Exactamente 1 seleccionado entre PSI, NUT o TS.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1109</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1110</code></td>
+                                    <td><strong>Crónico intensivo (mensual 13073)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-ter">Mín 12 · Máx 20</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Rango bloqueante de terapias:</strong> La suma total de terapias debe ser obligatoriamente entre 12 y 20 (genera error si la suma es &lt; 12 o &gt; 20).</li>
+                                            <li><strong>Cruce de evoluciones:</strong> Cada servicio programado debe respaldarse con <code>5 [srv].pdf</code> y coincidir en número de firmas (<code>4.pdf</code>).</li>
+                                            <li><strong>Opcional único:</strong> Exactamente 1 entre PSI, NUT o TS con valor 1.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1110</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1111</code></td>
+                                    <td><strong>Heridas alta complejidad (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-danger" style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">No Aplica (0 terapias)</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Prohibición estricta de terapias:</strong> No contempla terapias (genera error si registra alguna terapia).</li>
+                                            <li><strong>Fijos obligatorios:</strong> Requiere <code>VM = 1</code> y al menos un servicio de enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>).</li>
+                                            <li><strong>Opcional único:</strong> Exactamente 1 entre PSI, NUT o TS.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1111</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1112</code></td>
+                                    <td><strong>Heridas mediana complejidad (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-danger" style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">No Aplica (0 terapias)</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Prohibición estricta de terapias:</strong> No contempla terapias (genera error si registra alguna terapia).</li>
+                                            <li><strong>Fijos obligatorios:</strong> <code>VM = 1</code> y enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>).</li>
+                                            <li><strong>Opcional único:</strong> Exactamente 1 entre PSI, NUT o TS.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1112</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1113</code></td>
+                                    <td><strong>Heridas baja complejidad (mensual)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 atención</td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-danger" style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">No Aplica (0 terapias)</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Prohibición estricta de terapias:</strong> No contempla terapias (genera error si registra alguna terapia).</li>
+                                            <li><strong>Fijos obligatorios:</strong> <code>VM = 1</code> y enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>).</li>
+                                            <li><strong>Opcional único:</strong> Exactamente 1 entre PSI, NUT o TS.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1113</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><code>CPF1225</code></td>
+                                    <td><strong>Ventilación mecánica crónica (diario)</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><strong>2 atenciones</strong></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">1 <code>VENF</code> y/o <code>ENF</code></td>
+                                    <td class="wiki-nowrap" style="text-align:center;">Exactamente 1 de los 3</td>
+                                    <td class="wiki-nowrap" style="text-align:center;"><span class="wiki-badge-neutral">Todas las terapias</span></td>
+                                    <td>
+                                        <ul style="margin:0; padding-left:14px; font-size:11px; line-height:1.45;">
+                                            <li><strong>Modalidad diaria con terapias:</strong> Paquete de facturación diaria. Admite el registro de días en la columna <em>Cant Paquete Diario</em> de forma independiente (sin ligar a dosis de APL). Contempla todas las terapias (TF, TR, TRS, FON, TO) según programación de la matriz y carpetas.</li>
+                                            <li><strong>Fijos obligatorios:</strong> Requiere <strong><code>VM = 2</code></strong> y enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>).</li>
+                                            <li><strong>Consistencia 5.pdf:</strong> Cada servicio o terapia programada debe sustentarse con su soporte <code>5 [srv].pdf</code> con igual número de fechas.</li>
+                                            <li><strong>Soporte maestro:</strong> <code>2 PAQ.pdf</code> con código <code>CPF1225</code>.</li>
+                                        </ul>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>3. Archivos PDF exigidos dentro de la carpeta del paquete</h2>
+                    <div class="wiki-chips">
+                        <span class="wiki-chip">📦 2 PAQ.pdf (1 solo por carpeta con el código CPF)</span>
+                        <span class="wiki-chip">✍️ 4 [servicio].pdf (Firmas de cada servicio prestado)</span>
+                        <span class="wiki-chip">📑 5 [servicio].pdf (Evoluciones de cada servicio prestado)</span>
+                    </div>
+                    <div class="wiki-note danger">
+                        <strong>🚫 Regla del soporte 2 en paquetes:</strong> Nunca incluyas archivos individuales como <code>2 vm.pdf</code> o <code>2 tf.pdf</code> dentro de un paquete CPF. Todo paquete se respalda con un único archivo <code>2 PAQ.pdf</code> que debe contener el documento del paciente y el código del paquete (ej. <code>CPF1109</code>).
+                    </div>
+                </article>
+
+                <!-- ==================== 3. ESTRUCTURA DE CARPETAS ==================== -->
+                <article id="wiki-estructura" class="wiki-article oculto">
+                    <h1>📁 3. Estructura de Carpetas y Nombres de Archivos</h1>
+                    <p class="wiki-intro">
+                        El agrupador inteligente del validador soporta múltiples niveles de carpetas y detecta automáticamente el responsable (auditor), el código de paquete y el número de documento del paciente.
+                    </p>
+
+                    <h2>🗂️ Jerarquías soportadas en modo Paquete</h2>
+                    <p>Cuando dejas el selector de paquete en <em>Automático</em>, el sistema identifica el paquete desde la estructura de carpetas o desde la matriz Excel:</p>
+                    <div class="wiki-example">
+                        <strong>Opción A — Con carpeta de auditor y paquete (3+ niveles):</strong><br/>
+                        <code>📂 Lote_Mensual / 👤 Nombre_Auditor / 📦 CPF1109 / 📁 123456789 / [archivos.pdf]</code><br/>
+                        <em>→ Detecta automáticamente el responsable (👤), el paquete <code>CPF1109</code> y la cédula <code>123456789</code>.</em>
+                    </div>
+                    <div class="wiki-example">
+                        <strong>Opción B — Con carpeta de paquete (2 niveles):</strong><br/>
+                        <code>📂 CPF1108 / 📁 123456789 / [archivos.pdf]</code><br/>
+                        <em>→ Detecta el paquete <code>CPF1108</code> desde la carpeta padre.</em>
+                    </div>
+                    <div class="wiki-example">
+                        <strong>Opción C — Carpeta directa por paciente (1 nivel):</strong><br/>
+                        <code>📂 Carpeta_Raiz / 📁 123456789 / [archivos.pdf]</code><br/>
+                        <em>→ Toma el paquete asignado a ese documento en la matriz Excel (o el paquete seleccionado manualmente).</em>
+                    </div>
+
+                    <div class="wiki-note info">
+                        <strong>💡 Limpieza de prefijos en documento:</strong> Si la carpeta del paciente se llama <code>CC 123456789</code> o <code>TI123456789</code>, el sistema extrae automáticamente los dígitos numéricos (<code>123456789</code>) para buscarlos dentro de los PDFs y cruzarlos con la matriz.
+                    </div>
+
+                    <h2>🗂️ Estructura en modo Evento</h2>
+                    <ul class="wiki-list">
+                        <li><strong>Capital Salud (Evento):</strong> El nombre de la carpeta del paciente debe incluir el código del servicio además del documento. Ejemplo: <code>123456789 ENF</code>, <code>98765432 TF</code>.</li>
+                        <li><strong>FOMAG (Evento):</strong> La carpeta puede llevar solo el número de documento (ej. <code>123456789</code>), ya que el servicio se identifica por el nombre de cada archivo PDF interno (ej. <code>2 tf.pdf</code>, <code>4 tf.pdf</code>, <code>5 tf.pdf</code>).</li>
+                    </ul>
+
+                    <h2>🏷️ Nomenclatura exacta de archivos PDF</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Modo / Convenio</th>
+                                    <th>Archivos permitidos</th>
+                                    <th>Ejemplos válidos</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>FOMAG — Paquete (CPF)</td>
+                                    <td class="wiki-nowrap"><code>2 PAQ.pdf</code> + <code>4 [srv].pdf</code> + <code>5 [srv].pdf</code></td>
+                                    <td><code>2 PAQ.pdf</code>, <code>4 vm.pdf</code>, <code>5 vm.pdf</code>, <code>4 venf.pdf</code>, <code>5 venf.pdf</code>, <code>4 tf.pdf</code>, <code>5 tf.pdf</code></td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG — Evento</td>
+                                    <td class="wiki-nowrap"><code>2 [srv].pdf</code> (o <code>2 paq.pdf</code>) + <code>4 [srv].pdf</code> + <code>5 [srv].pdf</code></td>
+                                    <td><code>2 tf.pdf</code>, <code>4 tf.pdf</code>, <code>5 tf.pdf</code> (también acepta <code>2 paq.pdf</code> compartido)</td>
+                                </tr>
+                                <tr>
+                                    <td>Capital Salud — Evento</td>
+                                    <td class="wiki-nowrap"><code>2.pdf</code>, <code>3.pdf</code>, <code>4.pdf</code>, <code>5.pdf</code></td>
+                                    <td><code>2.pdf</code> (Autorización), <code>3.pdf</code> (ADRES), <code>4.pdf</code> (Firmas), <code>5.pdf</code> (Evoluciones)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p><em>Nota: El validador no distingue entre mayúsculas y minúsculas en el nombre del archivo (<code>5 TF.pdf</code> = <code>5 tf.pdf</code>) e ignora archivos del sistema como <code>desktop.ini</code> o <code>Thumbs.db</code>.</em></p>
+                </article>
+
+                <!-- ==================== 4. SERVICIOS Y TEXTOS ==================== -->
+                <article id="wiki-servicios" class="wiki-article oculto">
+                    <h1>🏥 4. Catálogo de Servicios y Textos Regla</h1>
+                    <p class="wiki-intro">
+                        El validador soporta 13 códigos de servicio. A continuación se detallan las siglas, su significado y las frases que el motor busca dentro del archivo <code>5.pdf</code> (Evoluciones) y del archivo <code>2.pdf</code> (Autorizaciones).
+                    </p>
+
+                    <div class="wiki-note info">
+                        <strong>🔎 Normalización inteligente:</strong> La búsqueda de textos ignora tildes, mayúsculas/minúsculas y espacios dobles. Si un servicio admite varias frases posibles (como <code>VM</code>, <code>VENF</code> o <code>CH</code>), basta con que aparezca cualquiera de ellas.
+                    </div>
+
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Sigla</th>
+                                    <th>Servicio clínico</th>
+                                    <th>Texto buscado en <code>5.pdf</code> (Evoluciones)</th>
+                                    <th>Texto buscado en <code>2.pdf</code> (Evento FOMAG / Capital)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td><code>VM</code></td>
-                                    <td>Valoración Médica</td>
+                                    <td class="wiki-nowrap">🩺 Valoración médica</td>
+                                    <td>"Registro de historia clínica" o "Registro de evolución médica"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por medicina general" · Capital: "Valoración médica"</td>
+                                </tr>
+                                <tr>
+                                    <td><code>VENF</code></td>
+                                    <td class="wiki-nowrap">🩺 Enfermería profesional</td>
+                                    <td>"Registro de enfermería", "Registros asistenciales", "Registro asistencial" o "Atención domiciliaria - enfermería"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por enfermería" · Capital: "Enfermería"</td>
                                 </tr>
                                 <tr>
                                     <td><code>ENF</code></td>
-                                    <td>Enfermería (Visita Domiciliaria)</td>
+                                    <td class="wiki-nowrap">💉 Auxiliar de enfermería</td>
+                                    <td>"Registro de enfermería - actividades"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por enfermería" · Capital: "Enfermería"</td>
                                 </tr>
                                 <tr>
                                     <td><code>ENF12</code></td>
-                                    <td>Enfermería (Consulta Domiciliaria)</td>
+                                    <td class="wiki-nowrap">💉 Enfermería 12 horas</td>
+                                    <td>"Enfermería 12 horas"</td>
+                                    <td>FOMAG / Capital: "Atención (visita) domiciliaria, por enfermería"</td>
+                                </tr>
+                                <tr>
+                                    <td><code>CH</code></td>
+                                    <td class="wiki-nowrap">🩹 Curación de heridas</td>
+                                    <td>"Curación de heridas", "Curación", "Curaciones", "Registro de enfermería" o "Registro asistencial"</td>
+                                    <td>FOMAG: "Curación de heridas" · Capital: "Curación"</td>
                                 </tr>
                                 <tr>
                                     <td><code>TF</code></td>
-                                    <td>Terapia Física</td>
+                                    <td class="wiki-nowrap">🏃 Terapia física</td>
+                                    <td>"Registro de terapia física"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por fisioterapia" · Capital: "Atención (visita) domiciliaria por"</td>
                                 </tr>
                                 <tr>
                                     <td><code>TR</code></td>
-                                    <td>Terapia Respiratoria</td>
+                                    <td class="wiki-nowrap">🫁 Terapia respiratoria</td>
+                                    <td>"Registro de: terapia respiratoria"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por terapia respiratoria" · Capital: "Terapia respiratoria"</td>
                                 </tr>
                                 <tr>
                                     <td><code>TRS</code></td>
-                                    <td>Terapia Respiratoria Succión</td>
-                                </tr>
-                                <tr>
-                                    <td><code>TO</code></td>
-                                    <td>Terapia Ocupacional</td>
-                                </tr>
-                                <tr>
-                                    <td><code>TS</code></td>
-                                    <td>Trabajo Social</td>
-                                </tr>
-                                <tr>
-                                    <td><code>PSI</code></td>
-                                    <td>Psicología</td>
+                                    <td class="wiki-nowrap">💨 Terapia resp. con succión</td>
+                                    <td>"Respiratoria en casa con succión"</td>
+                                    <td>"Terapia respiratoria succión" o "Terapia succión"</td>
                                 </tr>
                                 <tr>
                                     <td><code>FON</code></td>
-                                    <td>Fonoaudiología</td>
+                                    <td class="wiki-nowrap">🗣️ Fonoaudiología</td>
+                                    <td>"Registro de fonoaudiología"</td>
+                                    <td>FOMAG / Capital: "Atención (visita) domiciliaria, por foniatría y fonoaudiología"</td>
+                                </tr>
+                                <tr>
+                                    <td><code>TO</code></td>
+                                    <td class="wiki-nowrap">🧘 Terapia ocupacional</td>
+                                    <td>"Registro de terapia ocupacional"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por terapia ocupacional" · Capital: "Terapia ocupacional"</td>
+                                </tr>
+                                <tr>
+                                    <td><code>PSI</code></td>
+                                    <td class="wiki-nowrap">🧠 Psicología</td>
+                                    <td>"Registro de psicología"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por psicología" · Capital: "Psicología"</td>
+                                </tr>
+                                <tr>
+                                    <td><code>TS</code></td>
+                                    <td class="wiki-nowrap">🤝 Trabajo social</td>
+                                    <td>"Registro de trabajo social"</td>
+                                    <td>FOMAG: "Atención (visita) domiciliaria, por trabajo social" · Capital: "Trabajo social"</td>
                                 </tr>
                                 <tr>
                                     <td><code>NUT</code></td>
-                                    <td>Nutrición y Dietética</td>
+                                    <td class="wiki-nowrap">🥗 Nutrición y dietética</td>
+                                    <td>"Registro de nutrición"</td>
+                                    <td>FOMAG / Capital: "Atención (visita) domiciliaria, por nutrición y dietética"</td>
+                                </tr>
+                                <tr>
+                                    <td><code>APL</code></td>
+                                    <td class="wiki-nowrap">💊 Aplicación de medicamentos</td>
+                                    <td>"Registro De Enfermería"</td>
+                                    <td>Exclusivo de paquetes CPF1102, CPF1103 y CPF1104 (en paquete la autorización va en <code>2 PAQ.pdf</code>, no por evento)</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
-
-                    <h2>Textos esperados</h2>
-                    <h3>En 5.pdf (Evoluciones)</h3>
-                    <p>Debe contener: <code>"Registro De [Servicio]"</code></p>
-                    <div class="wiki-example">
-                        Ejemplos: "Registro De Fonoaudiología", "Registro De Enfermería - Actividades"
-                    </div>
-
-                    <h3>En 2.pdf FOMAG (Autorizaciones)</h3>
-                    <p>Debe contener: <code>"ATENCION (VISITA) DOMICILIARIA, POR ..."</code></p>
-                    <div class="wiki-example">
-                        Ejemplo: "... FONIATRIA Y FONOAUDIOLOGIA"
-                    </div>
                 </article>
 
-                <!-- Capital Salud -->
-                <article id="wiki-capital" class="wiki-article oculto">
-                    <h1>📑 Capital Salud (Evento)</h1>
-
-                    <h2>Archivos requeridos</h2>
-                    <div class="wiki-chips">
-                        <span class="wiki-chip">2.pdf</span>
-                        <span class="wiki-chip">3.pdf</span>
-                        <span class="wiki-chip">4.pdf</span>
-                        <span class="wiki-chip">5.pdf</span>
-                    </div>
-
-                    <h2>Requisitos</h2>
-                    <ul class="wiki-list">
-                        <li>La carpeta <strong>debe incluir</strong> el tipo de servicio (VM, ENF, ENF12, TF, TR,
-                            TRS, PSI, TS, FON, TO)</li>
-                        <li><strong>2.pdf</strong>, <strong>3.pdf</strong> y <strong>5.pdf</strong> deben contener el
-                            número de documento</li>
-                        <li><strong>5.pdf</strong> debe incluir el texto del servicio (ej: "Registro De Enfermería")
-                        </li>
-                    </ul>
-
-                    <h2>Resumen de validación por archivo</h2>
-                    <div class="wiki-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Archivo</th>
-                                    <th>Valida Nº Doc</th>
-                                    <th>Valida Texto</th>
-                                    <th>Extrae Cant</th>
-                                    <th>Compara</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>2.pdf</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                </tr>
-                                <tr>
-                                    <td>3.pdf</td>
-                                    <td>✅</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                </tr>
-                                <tr>
-                                    <td>4.pdf</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>Páginas</td>
-                                    <td>❌</td>
-                                </tr>
-                                <tr>
-                                    <td>5.pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>Fechas</td>
-                                    <td>❌</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h2>Validaciones específicas</h2>
-                    <div class="wiki-note warning">
-                        <strong>4.pdf (Firmas):</strong> Se espera <strong>1 página</strong>. Si contiene
-                        "identificación" se muestra alerta.
-                    </div>
-                    <div class="wiki-note info">
-                        <strong>Nota:</strong> No se compara autorizaciones vs evoluciones en Capital Salud.
-                    </div>
-                </article>
-
-                <!-- FOMAG Evento -->
-                <article id="wiki-fomag-evento" class="wiki-article oculto">
-                    <h1>📋 FOMAG (Evento)</h1>
-
-                    <h2>Archivos requeridos (por servicio)</h2>
-                    <div class="wiki-chips">
-                        <span class="wiki-chip">2 [srv].pdf</span>
-                        <span class="wiki-chip">4 [srv].pdf</span>
-                        <span class="wiki-chip">5 [srv].pdf</span>
-                    </div>
-                    <p><em>O usar <code>2 paq.pdf</code> para autorizaciones combinadas.</em></p>
-
-                    <h2>Servicios soportados</h2>
-                    <div class="wiki-chips">
-                        <span class="wiki-chip">VM</span>
-                        <span class="wiki-chip">ENF</span>
-                        <span class="wiki-chip">ENF12</span>
-                        <span class="wiki-chip">TF</span>
-                        <span class="wiki-chip">TR</span>
-                        <span class="wiki-chip">TRS</span>
-                        <span class="wiki-chip">TO</span>
-                        <span class="wiki-chip">TS</span>
-                        <span class="wiki-chip">PSI</span>
-                        <span class="wiki-chip">FON</span>
-                        <span class="wiki-chip">NUT</span>
-                    </div>
-
-                    <h2>Resumen de validación por archivo</h2>
-                    <div class="wiki-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Archivo</th>
-                                    <th>Valida Nº Doc</th>
-                                    <th>Valida Texto</th>
-                                    <th>Extrae Cant</th>
-                                    <th>Compara</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>2 [srv].pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>✅ Autorizaciones</td>
-                                    <td>✅ vs 5.pdf</td>
-                                </tr>
-                                <tr>
-                                    <td>4 [srv].pdf</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>Páginas</td>
-                                    <td>❌</td>
-                                </tr>
-                                <tr>
-                                    <td>5 [srv].pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>✅ Evoluciones</td>
-                                    <td>✅ vs 2.pdf</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h2>Lógica de comparación</h2>
-                    <div class="wiki-note success">
-                        <strong>✅ Válido:</strong> Autorizaciones ≥ Evoluciones
-                    </div>
-                    <div class="wiki-note warning">
-                        <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
-                    </div>
-                    <div class="wiki-note danger">
-                        <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
-                    </div>
-
-                    <h2>Uso de 2 paq.pdf</h2>
-                    <div class="wiki-note info">
-                        <strong>Prioridad:</strong> Si existe "2 [servicio].pdf", se usa ese archivo. Si no existe, se
-                        busca en "2 paq.pdf".
-                    </div>
-                </article>
-
-                <!-- FOMAG Paquete -->
-                <article id="wiki-fomag-paquete" class="wiki-article oculto">
-                    <h1>📦 FOMAG (Paquete)</h1>
-
-                    <h2>Archivos por servicio</h2>
-                    <div class="wiki-chips">
-                        <span class="wiki-chip">2 vm.pdf</span>
-                        <span class="wiki-chip">4 vm.pdf</span>
-                        <span class="wiki-chip">5 vm.pdf</span>
-                        <span class="wiki-chip">2 enf.pdf</span>
-                        <span class="wiki-chip">4 enf.pdf</span>
-                        <span class="wiki-chip">5 enf.pdf</span>
-                        <span class="wiki-chip">+ TF/TR/TRS/TO/TS/PSI/FON/ENF12</span>
-                    </div>
-
-                    <h2>Archivo global de paquete</h2>
-                    <p>Puede existir <code>2 paq.pdf</code> que declara autorizaciones de varios servicios en un solo
-                        archivo.</p>
-
-                    <h2>Resumen de validación por archivo</h2>
-                    <div class="wiki-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Archivo</th>
-                                    <th>Valida Nº Doc</th>
-                                    <th>Valida Texto</th>
-                                    <th>Extrae Cant</th>
-                                    <th>Compara</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>2 [srv].pdf / 2 paq.pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>✅ Autorizaciones</td>
-                                    <td>✅ vs 5.pdf</td>
-                                </tr>
-                                <tr>
-                                    <td>4 [srv].pdf</td>
-                                    <td>❌</td>
-                                    <td>❌</td>
-                                    <td>Páginas</td>
-                                    <td>❌</td>
-                                </tr>
-                                <tr>
-                                    <td>5 [srv].pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>✅ Evoluciones</td>
-                                    <td>✅ vs 2.pdf</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h2>Prioridad de archivos</h2>
-                    <div class="wiki-note info">
-                        Si existe <code>2 [servicio].pdf</code> individual, se usa ese. Si no, se busca en
-                        <code>2 paq.pdf</code>.
-                    </div>
-
-                    <h2>Requisitos de servicios obligatorios</h2>
-                    <ul class="wiki-list">
-                        <li>✅ Debe incluir <strong>VM</strong> (Valoración Médica)</li>
-                        <li>✅ Debe incluir <strong>ENF</strong> (Enfermería)</li>
-                        <li>✅ Debe incluir al menos un servicio de terapia (TF, TR, TRS, TO o FON)</li>
-                    </ul>
-
-                    <h2>Lógica de comparación</h2>
-                    <div class="wiki-note success">
-                        <strong>✅ Válido:</strong> Autorizaciones ≥ Evoluciones
-                    </div>
-                    <div class="wiki-note warning">
-                        <strong>⚠️ Alerta:</strong> Autorizaciones &gt; Evoluciones (sobran autorizaciones)
-                    </div>
-                    <div class="wiki-note danger">
-                        <strong>❌ Error:</strong> Autorizaciones &lt; Evoluciones (faltan autorizaciones)
-                    </div>
-                </article>
-
-                <!-- ========== ARCHIVO 2.pdf ========== -->
+                <!-- ==================== 5. ARCHIVO 2.pdf ==================== -->
                 <article id="wiki-archivo2" class="wiki-article oculto">
-                    <h1>📄 Validación de Archivo 2.pdf (Autorizaciones)</h1>
-                    <p class="wiki-intro">El archivo 2.pdf contiene las autorizaciones del servicio. La validación varía
-                        según convenio y modo.</p>
-
-                    <h2>🔷 Capital Salud - Evento</h2>
-                    <div class="wiki-note info">
-                        <strong>Modo:</strong> Validación solo de texto, sin conteo de autorizaciones.
-                    </div>
-                    <h3>Reglas aplicadas:</h3>
-                    <ul class="wiki-list">
-                        <li><strong>Verificar número de documento:</strong> El texto del PDF debe contener el número de
-                            documento del paciente.</li>
-                        <li><strong>Sin extracción de números:</strong> No se extrae cantidad de autorizaciones.</li>
-                        <li><strong>Sin comparación:</strong> No se compara con las evoluciones del 5.pdf.</li>
-                    </ul>
-                    <div class="wiki-example">
-                        <strong>Resultado:</strong> ✓ o ✗ dependiendo si contiene el número de documento.
-                    </div>
-
-                    <h2>🔶 FOMAG - Evento</h2>
-                    <div class="wiki-note warning">
-                        <strong>Modo:</strong> Validación de texto + extracción de autorizaciones + comparación con
-                        evoluciones.
-                    </div>
-                    <h3>Archivos aceptados:</h3>
-                    <ul class="wiki-list">
-                        <li><code>2 [servicio].pdf</code> - Archivo individual por servicio (ej: "2 TF.pdf", "2
-                            ENF.pdf")</li>
-                        <li><code>2 paq.pdf</code> - Archivo global con autorizaciones de múltiples servicios</li>
-                    </ul>
-                    <h3>Reglas aplicadas:</h3>
-                    <ol class="wiki-list">
-                        <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
-                        <li><strong>Buscar texto del servicio:</strong>
-                            <div class="wiki-table">
-                                <table>
-                                    <thead>
-                                        <tr>
-                                            <th>Servicio</th>
-                                            <th>Texto buscado</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>TF</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPEUTA"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>TR</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA RESPIRATORIO"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>TRS</td>
-                                            <td>"Terapia respiratoria Succion"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>FON</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>VM</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR MEDICO GENERAL"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>ENF</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>ENF12</td>
-                                            <td>"ATENCION (CONSULTA) DOMICILIARIA, POR ENFERMERIA"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>PSI</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGO"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>TS</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TRABAJADOR SOCIAL"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>TO</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR TERAPEUTA OCUPACIONAL"</td>
-                                        </tr>
-                                        <tr>
-                                            <td>NUT</td>
-                                            <td>"ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA"</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </li>
-                        <li><strong>Extraer número después del texto:</strong> El número que sigue al texto del servicio
-                            indica la cantidad de autorizaciones.</li>
-                        <li><strong>Comparar con evoluciones:</strong>
-                            <ul>
-                                <li>✅ <strong>Autorizaciones ≥ Evoluciones:</strong> Válido</li>
-                                <li>❌ <strong>Autorizaciones &lt; Evoluciones:</strong> Error - "Cant auto [X] &lt; cant
-                                    evol [Y]"</li>
-                                <li>⚠️ <strong>Autorizaciones &gt; Evoluciones:</strong> Alerta - Sobran autorizaciones
-                                </li>
-                            </ul>
-                        </li>
-                    </ol>
-                    <div class="wiki-note info">
-                        <strong>Prioridad:</strong> Si existe "2 [servicio].pdf" individual, se usa ese. Si no, se toma
-                        del "2 paq.pdf".
-                    </div>
-
-                    <h2>🔶 FOMAG - Paquete</h2>
-                    <div class="wiki-note warning">
-                        <strong>Modo:</strong> Igual que Evento pero con archivos nombrados "2 [servicio].pdf".
-                    </div>
-                    <h3>Reglas:</h3>
-                    <p>Aplican las mismas reglas que FOMAG Evento. La diferencia está en la estructura de carpetas
-                        (múltiples servicios por carpeta).</p>
-                </article>
-
-                <!-- ========== ARCHIVO 3.pdf ========== -->
-                <article id="wiki-archivo3" class="wiki-article oculto">
-                    <h1>📄 Validación de Archivo 3.pdf (Epicrisis)</h1>
-                    <p class="wiki-intro">El archivo 3.pdf contiene la epicrisis o resumen clínico.</p>
-
-                    <h2>🔷 Capital Salud - Evento</h2>
-                    <div class="wiki-note info">
-                        <strong>Archivo requerido:</strong> SÍ
-                    </div>
-                    <h3>Reglas aplicadas:</h3>
-                    <ul class="wiki-list">
-                        <li><strong>Verificar número de documento:</strong> El texto del PDF debe contener el número de
-                            documento del paciente.</li>
-                    </ul>
-                    <div class="wiki-example">
-                        <strong>Resultado:</strong> ✓ si contiene el número, ✗ si no lo contiene.
-                    </div>
-
-                    <h2>🔶 FOMAG - Evento</h2>
-                    <div class="wiki-note success">
-                        <strong>Archivo requerido:</strong> NO
-                    </div>
-                    <p>En FOMAG modo Evento, el archivo 3.pdf <strong>no es requerido</strong> ni validado.</p>
-
-                    <h2>🔶 FOMAG - Paquete</h2>
-                    <div class="wiki-note success">
-                        <strong>Archivo requerido:</strong> NO
-                    </div>
-                    <p>En FOMAG modo Paquete, el archivo 3.pdf <strong>no es requerido</strong> ni validado.</p>
-
-                    <div class="wiki-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Convenio</th>
-                                    <th>Modo</th>
-                                    <th>¿Requerido?</th>
-                                    <th>Validación</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Capital Salud</td>
-                                    <td>Evento</td>
-                                    <td>✅ SÍ</td>
-                                    <td>Número de documento</td>
-                                </tr>
-                                <tr>
-                                    <td>FOMAG</td>
-                                    <td>Evento</td>
-                                    <td>❌ NO</td>
-                                    <td>-</td>
-                                </tr>
-                                <tr>
-                                    <td>FOMAG</td>
-                                    <td>Paquete</td>
-                                    <td>❌ NO</td>
-                                    <td>-</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-
-                <!-- ========== ARCHIVO 4.pdf ========== -->
-                <article id="wiki-archivo4" class="wiki-article oculto">
-                    <h1>📄 Validación de Archivo 4.pdf (Firmas)</h1>
-                    <p class="wiki-intro">El archivo 4.pdf contiene los formatos de firma del paciente o acudiente.</p>
-
-                    <h2>Validación común (todos los convenios)</h2>
-                    <div class="wiki-note warning">
-                        <strong>Regla principal:</strong> El archivo 4.pdf debe tener <strong>1 sola página</strong>.
-                    </div>
-                    <h3>Reglas aplicadas:</h3>
-                    <ol class="wiki-list">
-                        <li><strong>Conteo de páginas:</strong>
-                            <ul>
-                                <li>✅ <strong>1 página:</strong> Válido</li>
-                                <li>⚠️ <strong>Más de 1 página:</strong> Alerta - "4.pdf contiene [N] páginas, se espera
-                                    1"</li>
-                            </ul>
-                        </li>
-                        <li><strong>Detección de "identificación":</strong>
-                            <ul>
-                                <li>⚠️ Si el texto contiene la palabra "identificación", se genera alerta (posible
-                                    documento erróneo)</li>
-                            </ul>
-                        </li>
-                    </ol>
-
-                    <h2>🔷 Capital Salud - Evento</h2>
-                    <div class="wiki-note info">
-                        <strong>Archivo:</strong> <code>4.pdf</code>
-                    </div>
-                    <p>Aplica validación de páginas y detección de "identificación".</p>
-
-                    <h2>🔶 FOMAG - Evento</h2>
-                    <div class="wiki-note info">
-                        <strong>Archivo:</strong> <code>4 [servicio].pdf</code> (ej: "4 TF.pdf", "4 ENF.pdf")
-                    </div>
-                    <p>Mismo archivo por cada servicio. Aplica las mismas validaciones.</p>
-
-                    <h2>🔶 FOMAG - Paquete</h2>
-                    <div class="wiki-note info">
-                        <strong>Archivo:</strong> <code>4 [servicio].pdf</code>
-                    </div>
-                    <p>Cada servicio tiene su propio archivo de firmas.</p>
-
-                    <div class="wiki-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Convenio</th>
-                                    <th>Modo</th>
-                                    <th>Archivo</th>
-                                    <th>Páginas esperadas</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Capital Salud</td>
-                                    <td>Evento</td>
-                                    <td>4.pdf</td>
-                                    <td>1</td>
-                                </tr>
-                                <tr>
-                                    <td>FOMAG</td>
-                                    <td>Evento</td>
-                                    <td>4 [servicio].pdf</td>
-                                    <td>1</td>
-                                </tr>
-                                <tr>
-                                    <td>FOMAG</td>
-                                    <td>Paquete</td>
-                                    <td>4 [servicio].pdf</td>
-                                    <td>1</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </article>
-
-                <!-- ========== ARCHIVO 5.pdf ========== -->
-                <article id="wiki-archivo5" class="wiki-article oculto">
-                    <h1>📄 Validación de Archivo 5.pdf (Evoluciones)</h1>
-                    <p class="wiki-intro">El archivo 5.pdf contiene las evoluciones o registros del servicio prestado.
+                    <h1>📄 Validación de Soporte 2 (<code>2 PAQ.pdf</code> / <code>2.pdf</code>)</h1>
+                    <p class="wiki-intro">
+                        El soporte número 2 corresponde a la orden de prestación, autorización o validación del paquete/servicio. Su comportamiento depende de la modalidad elegida:
                     </p>
 
-                    <h2>Validación común</h2>
+                    <h2>📦 1. En modo Paquete (<code>2 PAQ.pdf</code>)</h2>
                     <div class="wiki-note info">
-                        <strong>Funciones principales:</strong>
-                        <ul>
-                            <li>Verificar número de documento</li>
-                            <li>Validar texto del servicio</li>
-                            <li>Contar evoluciones (fechas)</li>
-                        </ul>
+                        <strong>Archivo único requerido:</strong> <code>2 PAQ.pdf</code> (o <code>2 paq.pdf</code>). No deben incluirse archivos <code>2 [servicio].pdf</code> sueltos.
                     </div>
+                    <ul class="wiki-list">
+                        <li><strong>Validación de documento:</strong> Verifica que el número de identificación del paciente aparezca dentro del PDF (con respaldo OCR si es imagen).</li>
+                        <li><strong>Validación del código de paquete:</strong> Verifica que el código del paquete asignado (ej. <code>CPF1108</code>, <code>CPF1109</code>) aparezca explícitamente dentro del texto de <code>2 PAQ.pdf</code>.</li>
+                        <li><strong>Cruce de cantidades:</strong> En paquetes <code>CPF</code>, las cantidades por servicio se validan contra la matriz Excel y las reglas del paquete, por lo que <code>2 PAQ.pdf</code> actúa como soporte maestro del paquete.</li>
+                    </ul>
 
-                    <h2>Textos esperados por servicio</h2>
-                    <div class="wiki-table">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Servicio</th>
-                                    <th>Texto(s) buscado(s)</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>TF</td>
-                                    <td>"Registro De Terapia Física"</td>
-                                </tr>
-                                <tr>
-                                    <td>TR</td>
-                                    <td>"Registro De Terapia Respiratoria"</td>
-                                </tr>
-                                <tr>
-                                    <td>TRS</td>
-                                    <td>"Respiratoria En Casa Con Succión"</td>
-                                </tr>
-                                <tr>
-                                    <td>FON</td>
-                                    <td>"Registro De Fonoaudiología"</td>
-                                </tr>
-                                <tr>
-                                    <td>VM</td>
-                                    <td>"Registro de Valoración Médica"</td>
-                                </tr>
-                                <tr>
-                                    <td>ENF</td>
-                                    <td>"Registro De Enfermería - Actividades" o "Registro De Enfermería"</td>
-                                </tr>
-                                <tr>
-                                    <td>ENF12</td>
-                                    <td>"Registro De Enfermería - Actividades" o "Registro De Enfermería"</td>
-                                </tr>
-                                <tr>
-                                    <td>PSI</td>
-                                    <td>"Registro De Psicología"</td>
-                                </tr>
-                                <tr>
-                                    <td>TS</td>
-                                    <td>"Registro De Trabajo Social"</td>
-                                </tr>
-                                <tr>
-                                    <td>TO</td>
-                                    <td>"Registro De Terapia Ocupacional"</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <h2>🔷 Capital Salud - Evento</h2>
-                    <div class="wiki-note info">
-                        <strong>Archivo:</strong> <code>5.pdf</code>
-                    </div>
-                    <h3>Reglas aplicadas:</h3>
-                    <ol class="wiki-list">
-                        <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
-                        <li><strong>Validar texto del servicio:</strong> Debe contener el texto correspondiente al tipo
-                            de servicio de la carpeta.</li>
-                        <li><strong>Contar evoluciones:</strong> Extrae las fechas del documento (formato DD/MM/AAAA o
-                            DD-MM-AAAA).</li>
-                    </ol>
-                    <div class="wiki-note success">
-                        <strong>Nota:</strong> En Capital Salud no se compara la cantidad de evoluciones con
-                        autorizaciones.
-                    </div>
-
-                    <h2>🔶 FOMAG - Evento</h2>
+                    <h2>📋 2. En FOMAG — Modo Evento (<code>2 [srv].pdf</code> o <code>2 paq.pdf</code>)</h2>
                     <div class="wiki-note warning">
-                        <strong>Archivo:</strong> <code>5 [servicio].pdf</code> (ej: "5 TF.pdf", "5 ENF.pdf")
+                        <strong>Prioridad inteligente:</strong> Si existe <code>2 [servicio].pdf</code> (ej. <code>2 tf.pdf</code>), se usa ese archivo. Si no existe archivo individual, el sistema busca la autorización de ese servicio dentro de <code>2 paq.pdf</code>.
                     </div>
-                    <h3>Reglas aplicadas:</h3>
                     <ol class="wiki-list">
-                        <li><strong>Verificar número de documento:</strong> Debe contener el número del paciente.</li>
-                        <li><strong>Validar texto del servicio:</strong> Debe contener el texto correspondiente al
-                            servicio.</li>
-                        <li><strong>Contar evoluciones:</strong> Extrae las fechas del documento.</li>
-                        <li><strong>Comparar con autorizaciones:</strong>
+                        <li>Verifica el número de documento del paciente.</li>
+                        <li>Busca la leyenda oficial FOMAG del servicio (ver tabla en <em>Servicios y Textos Regla</em>).</li>
+                        <li>Extrae la cantidad autorizada tomando el número entero que aparece inmediatamente después del texto del servicio.</li>
+                        <li>Compara contra las evoluciones de <code>5 [srv].pdf</code>:
                             <ul>
-                                <li>✅ Evoluciones ≤ Autorizaciones → Válido</li>
-                                <li>❌ Evoluciones &gt; Autorizaciones → Error</li>
+                                <li>✅ <strong>Cant. autorizada = Cant. evoluciones:</strong> Conforme.</li>
+                                <li>⚠️ <strong>Cant. autorizada &gt; Cant. evoluciones:</strong> Alerta (sobran autorizaciones respecto a lo ejecutado).</li>
+                                <li>❌ <strong>Cant. autorizada &lt; Cant. evoluciones:</strong> Error crítico (se realizaron más evoluciones de las autorizadas).</li>
                             </ul>
                         </li>
                     </ol>
 
-                    <h2>🔶 FOMAG - Paquete</h2>
-                    <div class="wiki-note warning">
-                        <strong>Archivo:</strong> <code>5 [servicio].pdf</code>
-                    </div>
-                    <p>Aplican las mismas reglas que FOMAG Evento.</p>
+                    <h2>📑 3. En Capital Salud — Modo Evento (<code>2.pdf</code>)</h2>
+                    <ul class="wiki-list">
+                        <li>Verifica que <code>2.pdf</code> contenga el número de documento del paciente y el texto del servicio correspondiente al tipo de carpeta.</li>
+                        <li>No extrae ni compara cantidades numéricas contra <code>5.pdf</code>.</li>
+                    </ul>
+                </article>
 
-                    <h2>Extracción de fechas</h2>
-                    <div class="wiki-note info">
-                        <strong>Patrón de fecha:</strong> Se buscan fechas en formato <code>DD/MM/AAAA</code> o
-                        <code>DD-MM-AAAA</code>.
-                    </div>
-                    <p>Las fechas encontradas se muestran en la columna "Evoluciones" y se cuentan para comparar con las
-                        autorizaciones.</p>
-                    <div class="wiki-example">
-                        <strong>Ejemplo de salida:</strong> "3 evoluciones: 01/03/2024, 08/03/2024, 15/03/2024"
-                    </div>
+                <!-- ==================== 6. ARCHIVO 3.pdf ==================== -->
+                <article id="wiki-archivo3" class="wiki-article oculto">
+                    <h1>📋 Validación de Soporte 3 (<code>3.pdf</code> — ADRES)</h1>
+                    <p class="wiki-intro">
+                        El archivo <code>3.pdf</code> corresponde al soporte de comprobación de derechos ADRES cuando aplica según el convenio.
+                    </p>
 
-                    <h2>Resumen comparativo</h2>
                     <div class="wiki-table">
                         <table>
                             <thead>
                                 <tr>
                                     <th>Convenio</th>
                                     <th>Modo</th>
+                                    <th>¿Es obligatorio?</th>
+                                    <th>Qué valida el sistema</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Capital Salud EPS</td>
+                                    <td class="wiki-nowrap">Por Evento</td>
+                                    <td class="wiki-nowrap"><span class="wiki-badge-req">Sí (<code>3.pdf</code>)</span></td>
+                                    <td>Verifica que exista el archivo ADRES (<code>3.pdf</code>) en la carpeta y que su contenido incluya el número de documento del paciente (con respaldo OCR si es imagen).</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG Magisterio</td>
+                                    <td class="wiki-nowrap">Por Evento</td>
+                                    <td class="wiki-nowrap"><span class="wiki-badge-neutral">No requerido</span></td>
+                                    <td>No es obligatorio para FOMAG. Si se incluye <code>3.pdf</code> se marca como presente (<code>✔</code>), pero su ausencia no genera error.</td>
+                                </tr>
+                                <tr>
+                                    <td>FOMAG Magisterio</td>
+                                    <td class="wiki-nowrap">Por Paquete (CPF)</td>
+                                    <td class="wiki-nowrap"><span class="wiki-badge-neutral">No aplica</span></td>
+                                    <td>No se utiliza en paquetes domiciliarios CPF (solo se exigen <code>2 PAQ.pdf</code>, <code>4 [srv].pdf</code> y <code>5 [srv].pdf</code>).</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </article>
+
+                <!-- ==================== 7. ARCHIVO 4.pdf ==================== -->
+                <article id="wiki-archivo4" class="wiki-article oculto">
+                    <h1>✍️ Validación de Soporte 4 (<code>4 [srv].pdf</code> / <code>4.pdf</code> — Firmas)</h1>
+                    <p class="wiki-intro">
+                        El soporte número 4 contiene la planilla de firmas de recibido del paciente o acudiente por cada servicio prestado. Combina validaciones automáticas con un control visual obligatorio.
+                    </p>
+
+                    <h2>🤖 1. Validaciones automáticas del sistema</h2>
+                    <ul class="wiki-list">
+                        <li><strong>Presencia obligatoria por servicio:</strong> Cada servicio activo en la carpeta debe tener su respectivo <code>4 [servicio].pdf</code> (ej. <code>4 vm.pdf</code>, <code>4 tf.pdf</code>) o <code>4.pdf</code> en Capital Salud.</li>
+                        <li><strong>Conteo de páginas (regla de 1 sola página):</strong>
+                            <ul>
+                                <li>✅ Si tiene 1 página: Correcto.</li>
+                                <li>⚠️ Si tiene más de 1 página: Genera alerta <em>"4.pdf: Tiene N páginas (se espera 1 sola página)"</em>.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Detección de documento equivocado:</strong>
+                            <ul>
+                                <li>⚠️ Si el texto del archivo 4 contiene la palabra <code>"identificación"</code> (típico cuando suben por error la copia de la cédula o un encabezado de historia clínica en vez de la planilla de firmas), genera la alerta: <em>"4.pdf: Al parecer no es el archivo de firmas (contiene 'identificación')"</em>.</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h2>👁️ 2. Control obligatorio manual (Checklist del auditor)</h2>
+                    <div class="wiki-note warning">
+                        Al cambiar a modo Paquete, el sistema muestra un recordatorio de seguridad de 4 segundos. Como las firmas manuscritas requieren inspección visual humana, el auditor debe abrir el botón <code>4 ✔</code> de cada servicio en el visor integrado y verificar 4 puntos:
+                    </div>
+                    <ol class="wiki-list">
+                        <li><strong>📅 Fechas coincidentes:</strong> Las fechas escritas en la planilla de firmas (<code>4.pdf</code>) deben coincidir exactamente con las fechas de las evoluciones extraídas de la historia clínica (<code>5.pdf</code>).</li>
+                        <li><strong>🔢 Cantidad acorde:</strong> El número de renglones firmados debe ser igual al número de evoluciones reportadas.</li>
+                        <li><strong>🔍 Legibilidad completa:</strong> Sin borrones, tachones, enmendaduras ni firmas cortadas por el escáner.</li>
+                        <li><strong>📐 Orientación de lectura vertical (al derecho):</strong> El documento debe leerse en sentido natural vertical. Nunca debe estar acostado, de lado ni rotado 90°.</li>
+                    </ol>
+                </article>
+
+                <!-- ==================== 8. ARCHIVO 5.pdf ==================== -->
+                <article id="wiki-archivo5" class="wiki-article oculto">
+                    <h1>📑 Validación de Soporte 5 (<code>5 [srv].pdf</code> / <code>5.pdf</code> — Evoluciones)</h1>
+                    <p class="wiki-intro">
+                        El archivo 5 es el núcleo clínico de la auditoría: contiene las evoluciones o registros asistenciales de cada atención realizada al paciente.
+                    </p>
+
+                    <h2>⚙️ ¿Qué valida automáticamente el motor en el archivo 5?</h2>
+                    <ol class="wiki-list">
+                        <li><strong>Número de documento del paciente:</strong> Verifica que la cédula/documento de la carpeta aparezca en el texto del PDF (ejecutando OCR si no lo halla en la capa digital).</li>
+                        <li><strong>Leyenda obligatoria del servicio:</strong> Verifica que contenga el título clínico exacto según el servicio (ej. <code>"Registro de terapia física"</code> para <code>5 tf.pdf</code>).</li>
+                        <li><strong>Extracción y conteo de fechas de evolución:</strong>
+                            <ul>
+                                <li>Busca todas las marcas de fecha y hora con el patrón <code>aaaa-mm-dd hh:mm</code> (ej. <code>2025-08-14 09:30</code>), ignorando fechas encerradas entre corchetes <code>[...]</code>.</li>
+                                <li>Cuenta las fechas únicas para determinar cuántas evoluciones reales tiene el soporte y las muestra en la columna <em>Fechas</em> con un deslizador interactivo.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Auditoría de calidad y coherencia de fechas:</strong>
+                            <ul>
+                                <li>🚫 <strong>Rango de periodos permitidos (Mes Inicial - Mes Final):</strong> Al cargar los soportes, el sistema permite definir el rango de meses habilitados para facturar (ej. <code>2026-09</code> a <code>2026-10</code>). Cualquier evolución asistencial que caiga por fuera de los meses permitidos se califica inmediatamente como <strong>error estricto</strong> (<code>5 ✗</code>), indicando el error de forma clara (ej. <code>Fuera del periodo permitido Sep 2026 a Oct 2026 (2026-08-27)</code>) y marcando la píldora de fecha en rojo brillante con tooltip explicativo.</li>
+                                <li>⚠️ <strong>Fechas duplicadas:</strong> Si una misma fecha aparece repetida dentro del <code>5.pdf</code>, se resalta visualmente en la columna de fechas con tonalidad rojiza sutil y tooltip explicativo, registrando la novedad en las alertas del servicio.</li>
+                                <li>⚠️ <strong>Orden cronológico (LNDS):</strong> Si las notas están desordenadas en el tiempo, el sistema identifica matemáticamente qué atenciones rompen la secuencia temporal y las resalta en color ámbar sin recargar el texto con símbolos innecesarios.</li>
+                                <li>👁️ <strong>Visor de PDF:</strong> Al abrir el archivo <code>5.pdf</code>, el widget flotante superior también refleja estos distintivos visuales para facilitar su inspección rápida.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Cruce de cantidad de evoluciones:</strong>
+                            <ul>
+                                <li><strong>En modo Paquete (con Matriz):</strong> Compara el total de fechas del <code>5 [srv].pdf</code> contra la cantidad programada para ese servicio en la matriz Excel, y suma las terapias (<code>TF + TR + TRS + FON + TO</code>) para verificar el rango del paquete <code>CPF</code>.</li>
+                                <li><strong>En modo Evento (FOMAG):</strong> Compara el total de fechas del <code>5 [srv].pdf</code> contra la cantidad autorizada en <code>2 [srv].pdf</code> (o <code>2 paq.pdf</code>).</li>
+                            </ul>
+                        </li>
+                    </ol>
+
+                    <div class="wiki-note info">
+                        <strong>🧠 Regla especial para Psicología (<code>PSI</code>):</strong> En los registros de Psicología (<code>5 psi.pdf</code>), el sistema toma únicamente la primera fecha de evolución (máximo 1) para evitar que fechas históricas o de antecedentes mencionadas dentro de la nota psicológica se cuenten por error como sesiones adicionales.
+                    </div>
+                </article>
+
+                <!-- ==================== 9. FOMAG EVENTO ==================== -->
+                <article id="wiki-fomag-evento" class="wiki-article oculto">
+                    <h1>📋 FOMAG Magisterio — Modo Por Evento</h1>
+                    <p class="wiki-intro">
+                        Utiliza este modo cuando audites servicios individuales facturados por evento para FOMAG Magisterio (sin paquete mensual CPF).
+                    </p>
+
+                    <h2>📄 Archivos requeridos por cada servicio en la carpeta</h2>
+                    <div class="wiki-chips">
+                        <span class="wiki-chip">2 [servicio].pdf (o 2 paq.pdf)</span>
+                        <span class="wiki-chip">4 [servicio].pdf</span>
+                        <span class="wiki-chip">5 [servicio].pdf</span>
+                    </div>
+                    <p>Si una carpeta contiene varios servicios por evento (ej. <code>TF</code> y <code>TR</code>), la tabla creará una fila independiente por cada servicio detectado.</p>
+
+                    <h2>📊 Resumen de validación por archivo</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
                                     <th>Archivo</th>
-                                    <th>Texto</th>
-                                    <th>Fechas</th>
+                                    <th>Valida documento</th>
+                                    <th>Valida leyenda servicio</th>
+                                    <th>Dato extraído</th>
                                     <th>Comparación</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
-                                    <td>Capital Salud</td>
-                                    <td>Evento</td>
-                                    <td>5.pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>❌ No</td>
+                                    <td><code>2 [srv].pdf</code> / <code>2 paq.pdf</code></td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td class="wiki-nowrap">✅ Sí (Texto FOMAG)</td>
+                                    <td class="wiki-nowrap">🔢 Cant. autorizada</td>
+                                    <td>Compara vs <code>5 [srv].pdf</code></td>
                                 </tr>
                                 <tr>
-                                    <td>FOMAG</td>
-                                    <td>Evento</td>
-                                    <td>5 [srv].pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>✅ Sí</td>
+                                    <td><code>4 [srv].pdf</code></td>
+                                    <td class="wiki-nowrap">—</td>
+                                    <td class="wiki-nowrap">—</td>
+                                    <td class="wiki-nowrap">📄 Nº de páginas (1)</td>
+                                    <td>Alerta si &gt; 1 pág.</td>
                                 </tr>
                                 <tr>
-                                    <td>FOMAG</td>
-                                    <td>Paquete</td>
-                                    <td>5 [srv].pdf</td>
-                                    <td>✅</td>
-                                    <td>✅</td>
-                                    <td>✅ Sí</td>
+                                    <td><code>5 [srv].pdf</code></td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td class="wiki-nowrap">✅ Sí (Registro clínico)</td>
+                                    <td class="wiki-nowrap">📅 Fechas de evolución</td>
+                                    <td>Compara vs <code>2 [srv].pdf</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>📥 Exportación especial: Reporte Matriz FOMAG Eventos</h2>
+                    <div class="wiki-note success">
+                        En modo <strong>Por Evento + FOMAG Magisterio</strong>, al finalizar la validación se habilita el botón verde <strong>Reporte Matriz</strong> en el panel izquierdo. Este botón genera automáticamente el Excel oficial con las 18 columnas de servicios de evento FOMAG y las celdas resaltadas en verde donde el paciente registra evoluciones.
+                    </div>
+                </article>
+
+                <!-- ==================== 10. CAPITAL SALUD EVENTO ==================== -->
+                <article id="wiki-capital" class="wiki-article oculto">
+                    <h1>📑 Capital Salud EPS — Modo Por Evento</h1>
+                    <p class="wiki-intro">
+                        Validación para expedientes individuales del convenio Capital Salud EPS.
+                    </p>
+
+                    <h2>📁 Requisitos de carpeta y archivos</h2>
+                    <ul class="wiki-list">
+                        <li><strong>Nombre de la carpeta:</strong> Debe incluir el número de documento y la sigla del servicio (ej. <code>10203040 ENF</code>, <code>52111222 TF</code>).</li>
+                        <li><strong>4 archivos obligatorios con nombres genéricos:</strong>
+                            <div class="wiki-chips">
+                                <span class="wiki-chip">2.pdf (Autorización)</span>
+                                <span class="wiki-chip">3.pdf (ADRES)</span>
+                                <span class="wiki-chip">4.pdf (Firmas)</span>
+                                <span class="wiki-chip">5.pdf (Evoluciones)</span>
+                            </div>
+                        </li>
+                    </ul>
+
+                    <h2>📊 Resumen de validación por archivo</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Archivo</th>
+                                    <th>Valida documento</th>
+                                    <th>Valida texto servicio</th>
+                                    <th>Extracción / Regla especial</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>2.pdf</code></td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td>Verifica leyenda de Capital Salud según el servicio de la carpeta.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>3.pdf</code></td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td class="wiki-nowrap">❌ No</td>
+                                    <td>Soporte ADRES obligatorio en Capital Salud. Verifica documento del paciente.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>4.pdf</code></td>
+                                    <td class="wiki-nowrap">❌ No</td>
+                                    <td class="wiki-nowrap">❌ No</td>
+                                    <td>Verifica que tenga 1 sola página.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>5.pdf</code></td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td class="wiki-nowrap">✅ Sí</td>
+                                    <td>Extrae y lista las fechas de evolución (no compara contra <code>2.pdf</code>).</td>
                                 </tr>
                             </tbody>
                         </table>
                     </div>
                 </article>
 
-                <!-- Errores -->
+                <!-- ==================== 11. HERRAMIENTAS, FILTROS Y REPORTES ==================== -->
+                <article id="wiki-herramientas" class="wiki-article oculto">
+                    <h1>🛠️ 7. Herramientas Interactivas, Filtros y Reportes</h1>
+                    <p class="wiki-intro">
+                        La interfaz cuenta con múltiples herramientas diseñadas para acelerar la revisión visual, el filtrado de inconsistencias y el envío de reportes a los responsables.
+                    </p>
+
+                    <h2>🔎 1. Barra de filtros y cruce rápido</h2>
+                    <ul class="wiki-list">
+                        <li><strong>Buscador de cédula:</strong> Filtra en tiempo real por número de documento.</li>
+                        <li><strong>Botones de estado:</strong>
+                            <ul>
+                                <li><strong>Todos:</strong> Muestra todos los expedientes procesados.</li>
+                                <li><strong>Con novedades:</strong> Muestra únicamente pacientes con errores o alertas.</li>
+                                <li><strong>📁 vs 📊 (Carpetas vs Matriz):</strong> Filtra las carpetas físicas cargadas que presentan inconsistencias frente a la matriz o soportes faltantes.</li>
+                                <li><strong>📊 vs 📁 (Matriz vs Carpetas):</strong> Muestra exclusivamente los pacientes que están programados en la matriz Excel pero no tienen carpeta de soportes PDF.</li>
+                            </ul>
+                        </li>
+                        <li><strong>Filtro por servicio y ordenamiento:</strong> Permite aislar un servicio específico (ej. solo <code>TF</code> o solo <code>VM</code>) y ordenar la tabla por <em>Paquete</em>, <em>Documento</em> o <em>Responsable (Auditor)</em>.</li>
+                        <li><strong>Casilla "Exitosas":</strong> Actívala si deseas ver en color verde el detalle de cada validación superada (<code>✓</code>) dentro de la columna de hallazgos.</li>
+                    </ul>
+
+                    <h2>🧩 2. Desglose interactivo de hallazgos y errores</h2>
+                    <p>Cuando finaliza una auditoría con novedades, aparece encima de la tabla el panel <em>Desglose de hallazgos y errores</em>:</p>
+                    <ul class="wiki-list">
+                        <li>Agrupa automáticamente todos los errores en tarjetas por categoría con su contador de casos.</li>
+                        <li><strong>Filtro por clic:</strong> Haz clic en una o varias tarjetas para filtrar la tabla y ver solo los pacientes con ese problema específico.</li>
+                        <li><strong>Botón "Copiar listado (N)":</strong> Al seleccionar una o más tarjetas, copia al portapapeles un reporte agrupado por tipo de error (incluyendo Responsable, Paquete, Documento y detalle), listo para pegar en WhatsApp, Teams o correo.</li>
+                        <li><strong>Redimensionable:</strong> Puedes arrastrar la barra inferior del panel de hallazgos para darle más o menos altura.</li>
+                    </ul>
+
+                    <h2>📋 3. Botones en cada tarjeta de paciente (Columna izquierda)</h2>
+                    <div class="wiki-table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Botón / Ícono</th>
+                                    <th>Función</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>ℹ️</code> (junto al código <code>CPF</code>)</td>
+                                    <td>Abre la ventana con las reglas oficiales de ese paquete (fijos, opcionales y rango de terapias).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>📋</code> (Copiar documento)</td>
+                                    <td>Copia únicamente el número de documento del paciente (ej. <code>123456789</code>).</td>
+                                </tr>
+                                <tr>
+                                    <td><code>🏷️</code> (Copiar etiqueta)</td>
+                                    <td>Copia el formato <code>CPF1109 - 123456789 - </code> para redactar observaciones rápidas.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>📝</code> (Copiar hallazgos)</td>
+                                    <td>Copia todas las novedades de ese paciente con formato completo: <code>[Responsable - ]Paquete - Documento - Servicio - Archivo - Error</code>.</td>
+                                </tr>
+                                <tr>
+                                    <td>📄 N soportes</td>
+                                    <td>Abre un menú flotante con todos los archivos de la carpeta, clasificados por color (azul=2, ámbar=4, verde=5, rojo=no reconocido) para abrirlos con un clic.</td>
+                                </tr>
+                                <tr>
+                                    <td>📊 Programado</td>
+                                    <td>Abre el comparador <em>Matriz vs Soportes</em> del paciente (con opción de expandir en ventana grande), mostrando lado a lado cuántos servicios programó la matriz y cuántos se hallaron en los PDFs, con botones directos a los archivos <code>4</code> y <code>5</code>.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h2>👁️ 4. Visor PDF integrado y atajos</h2>
+                    <ul class="wiki-list">
+                        <li>Haz clic en cualquier insignia de archivo (<code>2 PAQ</code>, <code>4 ✔</code>, <code>5 ✔</code>) para abrir el documento sin salir de la aplicación.</li>
+                        <li>Incluye cambio de página, zoom (<code>+</code> / <code>-</code>), ajuste al ancho y botón de rotación (🔄) para enderezar páginas escaneadas de lado.</li>
+                        <li>Presiona la tecla <code>ESC</code> en cualquier momento para cerrar la ventana emergente, visor PDF o menú flotante activo.</li>
+                    </ul>
+
+                    <h2>📥 5. Opciones de exportación a Excel (.XLSX)</h2>
+                    <ul class="wiki-list">
+                        <li><strong>Exportar XLSX (Panel lateral izquierdo):</strong> Descarga la sábana completa de la auditoría con todas las carpetas, servicios, estados coloreados (verde/amarillo/rojo), conteo de evoluciones, errores, alertas y éxitos.</li>
+                        <li><strong>Exportar XLSX (Dentro del panel Desglose de hallazgos):</strong> Descarga un Excel ejecutivo resumido por <em>Tipo de error</em>, <em>Cantidad</em> y la lista de <em>Documentos afectados</em>.</li>
+                        <li><strong>Reporte Matriz (Panel lateral en modo FOMAG Evento):</strong> Genera el formato oficial de eventos FOMAG.</li>
+                    </ul>
+                </article>
+
+                <!-- ==================== 12. DICCIONARIO DE ERRORES ==================== -->
                 <article id="wiki-errores" class="wiki-article oculto">
-                    <h1>⚠️ Tipos de errores comunes</h1>
+                    <h1>⚠️ 8. Diccionario de Errores y Alertas</h1>
+                    <p class="wiki-intro">
+                        Referencia rápida de los mensajes que genera el validador, qué los causa y cómo corregirlos.
+                    </p>
 
-                    <h2>Errores de archivos</h2>
+                    <h2>🔴 Errores de cruce con matriz (Modo Paquete)</h2>
                     <div class="wiki-error-item">
-                        <strong>Falta [X].pdf</strong>
-                        <p>El archivo correspondiente no se encontró en la carpeta.</p>
+                        <strong>El paciente [X] no se encuentra programado en la matriz cargada</strong>
+                        <p>Subiste una carpeta de soportes PDF cuyo número de documento (o combinación Documento + Paquete) no existe en el Excel de programación cargado en el Paso 1.</p>
                     </div>
                     <div class="wiki-error-item">
-                        <strong>[X].pdf: error leyendo PDF</strong>
-                        <p>El archivo puede estar corrupto o no se pudo leer.</p>
+                        <strong>No se encontró carpeta de soportes PDF para el documento [X] programado en la matriz</strong>
+                        <p>El paciente aparece programado con paquete en la matriz Excel, pero no se incluyó su carpeta de PDFs dentro del lote cargado (visible con el filtro <code>📊 vs 📁</code>).</p>
                     </div>
                     <div class="wiki-error-item">
-                        <strong>Archivo no permitido: [nombre]</strong>
-                        <p>Hay archivos que no siguen el patrón esperado (ej: "2 vm.pdf", "4 enf.pdf", "5 tf.pdf" en
-                            validación por evento).</p>
-                    </div>
-
-                    <h2>Errores de contenido</h2>
-                    <div class="wiki-error-item">
-                        <strong>[X].pdf: no contiene número [documento]</strong>
-                        <p>El número de documento no aparece en el PDF (FOMAG archivos 2 y 5).</p>
+                        <strong>Discrepancia de paquete: La carpeta física es [CPF_A], pero en la matriz está programado como [CPF_B]</strong>
+                        <p>La subcarpeta donde está guardado el paciente tiene un nombre de paquete distinto al que figura en la Columna D de la matriz Excel.</p>
                     </div>
                     <div class="wiki-error-item">
-                        <strong>[X].pdf: falta alguno de: [textos]</strong>
-                        <p>No se encontró el texto requerido del servicio en el archivo.</p>
+                        <strong>[Servicio]: En la matriz está programado [N] atención(es), pero falta el soporte 5 [srv].pdf</strong>
+                        <p>La matriz indica que el paciente debía recibir ese servicio, pero en la carpeta no está el archivo de evoluciones <code>5 [srv].pdf</code>.</p>
                     </div>
                     <div class="wiki-error-item">
-                        <strong>[X].pdf: no se pudo extraer el número después del texto</strong>
-                        <p>En archivo 2.pdf de FOMAG, no se encontró un número después del texto del servicio.</p>
+                        <strong>[Servicio]: En la matriz está programado [X] atención(es), pero en el soporte 5 [srv].pdf se registraron [Y] (sobran/faltan Z)</strong>
+                        <p>La cantidad de fechas de evolución detectadas dentro del archivo <code>5 [srv].pdf</code> no coincide exactamente con las sesiones programadas en la matriz.</p>
                     </div>
-
-                    <h2>Errores de validación</h2>
                     <div class="wiki-error-item">
-                        <strong>Cant autorizaciones [X] ≠ cant evoluciones [Y]</strong>
-                        <p>El número de autorizaciones declaradas en el 2.pdf no coincide con las evoluciones en el
-                            5.pdf (solo FOMAG).</p>
+                        <strong>[Servicio]: El soporte 5 [srv].pdf registra [N] atención(es), pero en la matriz figura 0 programadas</strong>
+                        <p>En la carpeta hay evoluciones de un servicio que en la matriz Excel está en cero o vacío.</p>
                     </div>
 
-                    <h2>Errores de paquete</h2>
+                    <h2>🔴 Errores de reglas de paquete (CPF)</h2>
                     <div class="wiki-error-item">
-                        <strong>Paquete debe incluir servicio VM/ENF</strong>
-                        <p>En paquetes, se requiere siempre Valoración Médica y Enfermería.</p>
+                        <strong>2 PAQ.pdf: no contiene el código del paquete [CPFXXXX]</strong>
+                        <p>El archivo <code>2 PAQ.pdf</code> no menciona el código del paquete asignado al paciente o pertenece a otro paquete distinto.</p>
                     </div>
                     <div class="wiki-error-item">
-                        <strong>Paquete debe incluir al menos un servicio de terapia</strong>
-                        <p>Debe haber al menos TF, TR, TRS, TO o FON.</p>
+                        <strong>Archivo no permitido: 2 [srv].pdf (Todo se valida desde el 2 PAQ)</strong>
+                        <p>En paquetes CPF no deben subirse archivos 2 individuales por servicio; elimínalos y deja únicamente <code>2 PAQ.pdf</code>.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>Terapias: Requiere [Min]-[Max] sumadas (tiene [N])</strong>
+                        <p>La suma de terapias (<code>TF + TR + TRS + FON + TO</code>) está por debajo del mínimo o por encima del máximo permitido para ese código de paquete (ej. 6–12 en <code>CPF1109</code>, 12–20 en <code>CPF1110</code>, 12–30 en <code>CPF1105/1106</code>).</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>Opcional: Falta elegir 1 (PSI, NUT o TS) / Solo 1 permitido</strong>
+                        <p>Todo paquete CPF exige exactamente un servicio opcional entre Psicología, Nutrición o Trabajo Social con 1 atención.</p>
+                    </div>
+
+                    <h2>🔴 Errores de archivos y contenido clínico</h2>
+                    <div class="wiki-error-item">
+                        <strong>Falta [4/5].pdf (o Archivo no permitido: [nombre])</strong>
+                        <p>Falta el soporte de firmas (<code>4</code>) o evoluciones (<code>5</code>) de un servicio, o hay un PDF con un nombre mal escrito que no sigue el estándar <code>[número] [servicio].pdf</code>.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>[Archivo].pdf: no contiene número [documento]</strong>
+                        <p>Ni la lectura digital ni el OCR encontraron el número de documento del paciente dentro del PDF (posible soporte cruzado de otro paciente).</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>[Archivo].pdf: no contiene el texto requerido "[leyenda]"</strong>
+                        <p>El PDF no corresponde al servicio indicado en su nombre o no incluye el encabezado clínico obligatorio (consulta la sección <em>4. Servicios y Textos Regla</em>).</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>Cant. autorizaciones [X] &lt; cant. evoluciones [Y] (Modo Evento FOMAG)</strong>
+                        <p>El archivo <code>5 [srv].pdf</code> tiene más evoluciones que las autorizadas en el archivo <code>2 [srv].pdf</code>.</p>
+                    </div>
+
+                    <h2>🟡 Alertas de revisión (no bloqueantes pero requieren verificación)</h2>
+                    <div class="wiki-error-item">
+                        <strong>⚠️ 4.pdf: Tiene [N] páginas (se espera 1 sola página)</strong>
+                        <p>La planilla de firmas tiene más de una página; ábrela en el visor para verificar que no tenga hojas en blanco o documentos anexos por error.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>⚠️ 4.pdf: Al parecer no es el archivo de firmas (contiene "identificación")</strong>
+                        <p>El archivo <code>4.pdf</code> contiene texto típico de un documento de identidad o historia clínica en lugar del formato de firmas.</p>
+                    </div>
+                    <div class="wiki-error-item">
+                        <strong>⚠️ 5.pdf: Fechas duplicadas / Fechas no están en orden cronológico</strong>
+                        <p>En la historia clínica (<code>5.pdf</code>) hay dos evoluciones con la misma fecha o las notas están desordenadas cronológicamente. Las fechas afectadas se destacan visualmente en la tabla (ámbar para desordenadas con <code>⚠️</code>, rojo para duplicadas con <code>dup</code>) y en el mensaje de alerta.</p>
                     </div>
                 </article>
             </div>
+            </div> <!-- Cierre de wiki-modal-main -->
         </div>
     </div>
 
@@ -1293,6 +1578,13 @@
         function toggleWiki() {
             const wiki = document.getElementById('wikiContainer');
             if (wiki) wiki.classList.toggle('oculto');
+        }
+
+        function toggleWikiSidebar() {
+            const sidebar = document.getElementById('wikiSidebar');
+            if (sidebar) {
+                sidebar.classList.toggle('collapsed');
+            }
         }
 
         function closeWikiOnBackdrop(event) {

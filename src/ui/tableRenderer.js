@@ -2,13 +2,71 @@ import {
     formatearFecha,
     formatearFechaCompacta,
     formatearErrorConIconosPDF,
+    estaFechaEnPeriodo,
+    formatearPeriodoLegible,
 } from "../utils/textUtils.js";
+import {
+    obtenerIndicesDesordenados,
+    obtenerIndicesDuplicados,
+} from "../utils/pdfUtils.js";
 import {
     SERVICIOS_NOMBRES,
     PAQUETES_INFO,
     ORDEN_SERVICIOS_CLINICOS,
 } from "../config/constants.js";
 import { normalizarTipoError, clasificarErrorResumen } from "./filterManager.js";
+
+// Helper para renderizar la lista de fechas marcando desordenadas, duplicadas y fuera de periodo
+export function renderFechasPills(fechas = [], periodoPermitido = null) {
+    if (!fechas || fechas.length === 0) return "";
+
+    const indicesDesordenados = obtenerIndicesDesordenados(fechas);
+    const indicesDuplicados = obtenerIndicesDuplicados(fechas);
+
+    return fechas
+        .map((f, i) => {
+            const fFormateada = formatearFecha(f);
+            const esDesordenada = indicesDesordenados.has(i);
+            const esDuplicada = indicesDuplicados.has(i);
+            const enPeriodo = estaFechaEnPeriodo(
+                f,
+                periodoPermitido?.desde,
+                periodoPermitido?.hasta
+            );
+            const esUltima = i === fechas.length - 1;
+
+            let extraClass = "";
+            let titleAttr = "";
+
+            if (!enPeriodo && periodoPermitido && (periodoPermitido.desde || periodoPermitido.hasta)) {
+                extraClass += " fecha-fuera-periodo";
+                const periodoTextoCorto = formatearPeriodoLegible(periodoPermitido.desde, periodoPermitido.hasta, true);
+                titleAttr = ` title="❌ Fuera del periodo permitido ${periodoTextoCorto} (${fFormateada})"`;
+            }
+
+            if (esDesordenada && esDuplicada) {
+                extraClass += " fecha-desordenada fecha-duplicada";
+                if (!titleAttr) {
+                    titleAttr = ` title="⚠️ Fecha duplicada y fuera de orden cronológico (${fFormateada})"`;
+                }
+            } else if (esDesordenada) {
+                extraClass += " fecha-desordenada";
+                if (!titleAttr) {
+                    titleAttr = ` title="⚠️ Fecha fuera de orden cronológico (${fFormateada})"`;
+                }
+            } else if (esDuplicada) {
+                extraClass += " fecha-duplicada";
+                if (!titleAttr) {
+                    titleAttr = ` title="⚠️ Fecha duplicada: aparece repetida (${fFormateada})"`;
+                }
+            }
+
+            const sep = !esUltima ? `<span class="fecha-sep">,</span>` : "";
+
+            return `<span class="fecha-item-wrapper"><span class="fecha-text${extraClass}"${titleAttr}>${fFormateada}</span>${sep}</span>`;
+        })
+        .join("");
+}
 
 // Map para rastrear el color de grupo de cada carpeta
 const gruposPorCarpeta = new Map();
@@ -210,12 +268,9 @@ export function updateRow(tablaBody, carpeta, r, mostrarExitos = false) {
     const existing = document.querySelector(`tr[data-carpeta="${carpeta}"]`);
     if (!existing) return pintarFila(tablaBody, carpeta, r, mostrarExitos);
 
-    const fechasUnicas = [...new Set(r.fechas)];
-    const fechasFormateadas = fechasUnicas.map(formatearFecha);
-    const scrollClass = fechasFormateadas.length > 4 ? "fechas-scroll" : "";
-    const fechasPills = fechasFormateadas
-        .map((f) => `<span class="fecha-text">${f}</span>`)
-        .join("");
+    const totalFechas = (r.fechas || []).length;
+    const scrollClass = totalFechas > 4 ? "fechas-scroll" : "";
+    const fechasPills = renderFechasPills(r.fechas || [], r.periodoPermitido);
 
     const tipoDisplay = r.tipo || "—";
 
@@ -243,12 +298,9 @@ export function updateRow(tablaBody, carpeta, r, mostrarExitos = false) {
  * Pinta una nueva fila en la tabla
  */
 export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
-    const fechasUnicas = [...new Set(r.fechas)];
-    const fechasFormateadas = fechasUnicas.map(formatearFecha);
-    const scrollClass = fechasFormateadas.length > 4 ? "fechas-scroll" : "";
-    const fechasPills = fechasFormateadas
-        .map((f) => `<span class="fecha-text">${f}</span>`)
-        .join("");
+    const totalFechas = (r.fechas || []).length;
+    const scrollClass = totalFechas > 4 ? "fechas-scroll" : "";
+    const fechasPills = renderFechasPills(r.fechas || [], r.periodoPermitido);
 
     const tipoDisplay = r.tipo || "—";
     const erroresHTML = renderErrorItems(r.errores) || "—";
@@ -474,7 +526,10 @@ function renderPaqueteFilas(
         }
 
         const fechas5 = r.fechasPorServicio[s] || [];
-        const cant5 = [...new Set(fechas5)].length;
+        const cantUnicas = [...new Set(fechas5)].length;
+        const cant5 = fechas5.length !== cantUnicas
+            ? `<span title="${fechas5.length} evoluciones (${cantUnicas} fechas únicas)">${fechas5.length}</span>`
+            : `${fechas5.length}`;
         const servicioLower = s === "SUCCION" ? "succion" : s.toLowerCase();
 
         // Determinar estado para filtrado
@@ -516,15 +571,11 @@ function renderPaqueteFilas(
             })
             .join(" ");
 
-        // Formatear fechas mostrando mínimo 3 fechas completas si aplica (slider con > 3 fechas)
-        const fechasFormateadas = [...new Set(fechas5)].map(formatearFecha);
+        // Formatear fechas marcando duplicadas y fuera de orden cronológico
+        const fechasPills = renderFechasPills(fechas5, r.periodoPermitido);
         let fechasHTML = "—";
-        if (fechasFormateadas.length > 0) {
-            const fechasPills = fechasFormateadas
-                .map((f) => `<span class="fecha-text">${f}</span>`)
-                .join("");
-            
-            if (fechasFormateadas.length > 3) {
+        if (fechas5.length > 0) {
+            if (fechas5.length > 3) {
                 fechasHTML = `
                     <div class="fechas-slider-wrapper">
                         <button type="button" class="btn-scroll-fecha" onclick="this.nextElementSibling.scrollBy({left: -82, behavior: 'smooth'})" title="Fecha anterior">‹</button>
@@ -698,15 +749,14 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
 
         // Extraer fechas de los archivos 5 de este servicio
         const fechasServicio = r.fechasPorServicio?.[servicio] || [];
-        const fechasUnicas = [...new Set(fechasServicio)];
-        const cantEvol = fechasUnicas.length;
-        const fechasFormateadas = fechasUnicas.map(formatearFecha);
-        const fechasPills = fechasFormateadas
-            .map((f) => `<span class="fecha-text">${f}</span>`)
-            .join("");
-        const scrollClass = fechasFormateadas.length > 4 ? "fechas-scroll" : "";
+        const cantUnicas = [...new Set(fechasServicio)].length;
+        const cantEvol = fechasServicio.length !== cantUnicas
+            ? `<span title="${fechasServicio.length} evoluciones (${cantUnicas} fechas únicas)">${fechasServicio.length}</span>`
+            : `${fechasServicio.length}`;
+        const fechasPills = renderFechasPills(fechasServicio, r.periodoPermitido);
+        const scrollClass = fechasServicio.length > 4 ? "fechas-scroll" : "";
         const fechasHTML =
-            fechasFormateadas.length > 0
+            fechasServicio.length > 0
                 ? `<div class="fechas-list ${scrollClass}">${fechasPills}</div>`
                 : "—";
 
@@ -831,7 +881,11 @@ function renderEvento(
         })
         .join("");
 
-    const fechasUnicas = [...new Set(r.fechas)];
+    const fechasTotales = (r.fechas || []).length;
+    const fechasUnicas = [...new Set(r.fechas || [])].length;
+    const countDisplay = fechasTotales !== fechasUnicas
+        ? `<span title="${fechasTotales} evoluciones (${fechasUnicas} fechas únicas)">${fechasTotales}</span>`
+        : `${fechasTotales}`;
 
     return `
         <td class="tipo">${tipoDisplay}</td>
@@ -844,7 +898,7 @@ function renderEvento(
             .join(" ")}</div>
         </td>
         ${pdfCells}
-        <td class="count">${fechasUnicas.length}</td>
+        <td class="count">${countDisplay}</td>
         <td class="fechas"><div class="fechas-list ${scrollClass}">${fechasPills || "—"
         }</div></td>
         <td class="errores">${erroresHTML}</td>

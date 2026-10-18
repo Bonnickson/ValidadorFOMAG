@@ -4,6 +4,7 @@ import {
     DEBUG,
     SERVICIOS_TERAPIA,
     TERAPIAS_CONTABLES,
+    PAQUETES_SOPORTADOS,
     REGLAS_TERAPIAS_PAQUETES,
     obtenerTextoServicioFomag,
     REGEX_SERVICIO_ARCHIVO,
@@ -12,6 +13,8 @@ import {
     normalizeForSearch,
     escapeRegExp,
     extraerNumeroDelTexto,
+    estaFechaEnPeriodo,
+    formatearPeriodoLegible,
 } from "../utils/textUtils.js";
 import {
     extraerTextoPDF,
@@ -97,7 +100,8 @@ export async function validarPorPaquete(
     estado,
     updateRow,
     convenio = "capital-salud",
-    onProgresoArchivo = null
+    onProgresoArchivo = null,
+    periodoPermitido = null
 ) {
     const nombres = archivos.map((a) => a.name);
 
@@ -193,7 +197,8 @@ export async function validarPorPaquete(
                         servicio,
                         resultados,
                         convenio,
-                        tipoPaquete
+                        tipoPaquete,
+                        periodoPermitido
                     );
                 }
             }
@@ -216,7 +221,8 @@ export async function validarPorPaquete(
             "General",
             resultados,
             convenio,
-            tipoPaquete
+            tipoPaquete,
+            periodoPermitido
         );
     }
 
@@ -241,7 +247,7 @@ export async function validarPorPaquete(
         }
 
         // Validar todos los servicios conocidos
-        const todosServicios = ["VM", "VENF", "ENF", "TF", "TR", "TRS", "FON", "TO", "NUT", "TS", "PSI"];
+        const todosServicios = ["VM", "VENF", "ENF", "TF", "TR", "TRS", "FON", "TO", "NUT", "TS", "PSI", "APL"];
 
         for (const s of todosServicios) {
             const cantEsperada = servMatriz[s] || 0;
@@ -283,6 +289,13 @@ export async function validarPorPaquete(
             }
         }
     } else if (tipoPaquete.startsWith("CPF")) {
+        const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
+        if (!esPaqueteParametrizado) {
+            // Si el paquete no está parametrizado, no exigir reglas por defecto
+            updateRow(carpeta, resultados[carpeta]);
+            return;
+        }
+
         // En paquete nuevo sin matriz: validaciones por defecto
         const cantVM =
             resultados[carpeta].fechasPorServicio?.["VM"]?.length || 0;
@@ -291,89 +304,160 @@ export async function validarPorPaquete(
         const cantVENF =
             resultados[carpeta].fechasPorServicio?.["VENF"]?.length || 0;
 
-        if (cantVM !== 1) {
+        const vmEsperada = (tipoPaquete === "CPF1107" || tipoPaquete === "CPF1225") ? 2 : 1;
+
+        if (cantVM !== vmEsperada) {
             resultados[carpeta].erroresPorServicio["General"].push(
-                `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de VM (tiene ${cantVM})`
+                `Paquete ${tipoPaquete} debe tener exactamente ${vmEsperada} evolución(es) de VM (tiene ${cantVM})`
             );
         } else {
             resultados[carpeta].exitosPorServicio["General"].push(
-                `VM: 1 evolución ✓`
+                `VM: ${vmEsperada} evolución(es) ✓`
             );
         }
 
-        const tieneEnf = resultados[carpeta].servicios?.has("ENF");
-        const tieneVenf = resultados[carpeta].servicios?.has("VENF");
+        const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(tipoPaquete);
 
-        if (!tieneEnf && !tieneVenf) {
-            resultados[carpeta].erroresPorServicio["General"].push(
-                `Paquete ${tipoPaquete} debe incluir al menos un servicio de enfermería (ENF o VENF)`
-            );
+        if (esPaqueteAplicacion) {
+            // CPF1102, CPF1103, CPF1104 solo requieren 1 VM, 1 ENF y APL
+            if (!resultados[carpeta].servicios?.has("ENF") || cantENF !== 1) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ENF (tiene ${cantENF})`
+                );
+            } else {
+                resultados[carpeta].exitosPorServicio["General"].push(
+                    `ENF: 1 evolución ✓`
+                );
+            }
+
+            const cantAPL = resultados[carpeta].fechasPorServicio?.["APL"]?.length || 0;
+            if (!resultados[carpeta].servicios?.has("APL") || cantAPL === 0) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} requiere soporte 5 apl.pdf con registro de evolución de APL (tiene ${cantAPL})`
+                );
+            } else {
+                resultados[carpeta].exitosPorServicio["General"].push(
+                    `APL: ${cantAPL} evolución(es) registradas ✓`
+                );
+            }
         } else {
-            if (tieneEnf) {
-                if (cantENF !== 1) {
+            if (tipoPaquete === "CPF1107") {
+                // CPF1107: Exige 4 ENF
+            if (!resultados[carpeta].servicios?.has("ENF") || cantENF !== 4) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} debe tener exactamente 4 evoluciones de ENF (tiene ${cantENF})`
+                );
+            } else {
+                resultados[carpeta].exitosPorServicio["General"].push(
+                    `ENF: 4 evoluciones ✓`
+                );
+            }
+            if (resultados[carpeta].servicios?.has("VENF") && cantVENF > 0) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} no contempla VENF (tiene ${cantVENF})`
+                );
+            }
+        } else {
+            const tieneEnf = resultados[carpeta].servicios?.has("ENF");
+            const tieneVenf = resultados[carpeta].servicios?.has("VENF");
+
+            if (!tieneEnf && !tieneVenf) {
+                resultados[carpeta].erroresPorServicio["General"].push(
+                    `Paquete ${tipoPaquete} debe incluir al menos un servicio de enfermería (ENF o VENF)`
+                );
+            } else {
+                if (tieneEnf) {
+                    if (cantENF !== 1) {
+                        resultados[carpeta].erroresPorServicio["General"].push(
+                            `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ENF (tiene ${cantENF})`
+                        );
+                    } else {
+                        resultados[carpeta].exitosPorServicio["General"].push(
+                            `ENF: 1 evolución ✓`
+                        );
+                    }
+                }
+
+                if (tieneVenf) {
+                    if (cantVENF !== 1) {
+                        resultados[carpeta].erroresPorServicio["General"].push(
+                            `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de VENF (tiene ${cantVENF})`
+                        );
+                    } else {
+                        resultados[carpeta].exitosPorServicio["General"].push(
+                            `VENF: 1 evolución ✓`
+                        );
+                    }
+                }
+            }
+        }
+
+            // Validar que el opcional seleccionado tenga exactamente 1 evolución
+            const opcionales = ["PSI", "NUT", "TS"];
+            const opcionalEncontrado = opcionales.find(s => resultados[carpeta].servicios?.has(s));
+            
+            if (opcionalEncontrado) {
+                const cantOpcional = resultados[carpeta].fechasPorServicio?.[opcionalEncontrado]?.length || 0;
+                if (cantOpcional !== 1) {
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ENF (tiene ${cantENF})`
+                        `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ${opcionalEncontrado} (tiene ${cantOpcional})`
                     );
                 } else {
                     resultados[carpeta].exitosPorServicio["General"].push(
-                        `ENF: 1 evolución ✓`
+                        `${opcionalEncontrado}: 1 evolución ✓`
                     );
                 }
             }
 
-            if (tieneVenf) {
-                if (cantVENF !== 1) {
+            // Validar evoluciones de terapias según paquete
+            const reglaTerapias = REGLAS_TERAPIAS_PAQUETES[tipoPaquete];
+            let totalTerapias = 0;
+            for (const s of TERAPIAS_CONTABLES) {
+                totalTerapias +=
+                    resultados[carpeta].fechasPorServicio?.[s]?.length || 0;
+            }
+
+            if (reglaTerapias && reglaTerapias.permiteTerapias === false) {
+                if (totalTerapias > 0) {
                     resultados[carpeta].erroresPorServicio["General"].push(
-                        `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de VENF (tiene ${cantVENF})`
+                        `Paquete ${tipoPaquete} no contempla terapias y registra ${totalTerapias} evoluciones`
+                    );
+                }
+            } else if (reglaTerapias && reglaTerapias.terapiasPermitidas && Array.isArray(reglaTerapias.terapiasPermitidas)) {
+                let tieneNoPermitidas = false;
+                for (const s of TERAPIAS_CONTABLES) {
+                    const cant = resultados[carpeta].fechasPorServicio?.[s]?.length || 0;
+                    if (cant > 0 && !reglaTerapias.terapiasPermitidas.includes(s)) {
+                        tieneNoPermitidas = true;
+                        resultados[carpeta].erroresPorServicio["General"].push(
+                            `Paquete ${tipoPaquete} no permite ${s} (registra ${cant} evoluciones)`
+                        );
+                    }
+                }
+                if (!tieneNoPermitidas && totalTerapias > 0) {
+                    resultados[carpeta].exitosPorServicio["General"].push(
+                        `Terapias opcionales válidas (${reglaTerapias.terapiasPermitidas.join(", ")}): ${totalTerapias} evoluciones ✓`
+                    );
+                }
+            } else if (reglaTerapias && reglaTerapias.permiteTerapias && reglaTerapias.min > 0) {
+                const minTerapias = reglaTerapias.min;
+                const maxTerapias = reglaTerapias.max;
+                if (totalTerapias < minTerapias) {
+                    resultados[carpeta].erroresPorServicio["General"].push(
+                        `Paquete ${tipoPaquete} debe tener mínimo ${minTerapias} terapias (tiene ${totalTerapias})`
+                    );
+                } else if (totalTerapias > maxTerapias) {
+                    resultados[carpeta].erroresPorServicio["General"].push(
+                        `Paquete ${tipoPaquete} debe tener máximo ${maxTerapias} terapias (tiene ${totalTerapias})`
                     );
                 } else {
                     resultados[carpeta].exitosPorServicio["General"].push(
-                        `VENF: 1 evolución ✓`
+                        `Terapias sumadas: ${totalTerapias} (${minTerapias}-${maxTerapias}) ✓`
                     );
                 }
-            }
-        }
-
-        // Validar que el opcional seleccionado tenga exactamente 1 evolución
-        const opcionales = ["PSI", "NUT", "TS"];
-        const opcionalEncontrado = opcionales.find(s => resultados[carpeta].servicios?.has(s));
-        
-        if (opcionalEncontrado) {
-            const cantOpcional = resultados[carpeta].fechasPorServicio?.[opcionalEncontrado]?.length || 0;
-            if (cantOpcional !== 1) {
-                resultados[carpeta].erroresPorServicio["General"].push(
-                    `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ${opcionalEncontrado} (tiene ${cantOpcional})`
-                );
-            } else {
+            } else if (reglaTerapias && reglaTerapias.permiteTerapias && totalTerapias > 0) {
                 resultados[carpeta].exitosPorServicio["General"].push(
-                    `${opcionalEncontrado}: 1 evolución ✓`
-                );
-            }
-        }
-
-        // Sumar evoluciones de las 5 terapias
-        let totalTerapias = 0;
-        for (const s of TERAPIAS_CONTABLES) {
-            totalTerapias +=
-                resultados[carpeta].fechasPorServicio?.[s]?.length || 0;
-        }
-
-        const reglaTerapias = REGLAS_TERAPIAS_PAQUETES[tipoPaquete];
-        const minTerapias = reglaTerapias?.min || 0;
-        const maxTerapias = reglaTerapias?.max || 0;
-
-        if (minTerapias > 0) {
-            if (totalTerapias < minTerapias) {
-                resultados[carpeta].erroresPorServicio["General"].push(
-                    `Paquete ${tipoPaquete} debe tener mínimo ${minTerapias} terapias (tiene ${totalTerapias})`
-                );
-            } else if (totalTerapias > maxTerapias) {
-                resultados[carpeta].erroresPorServicio["General"].push(
-                    `Paquete ${tipoPaquete} debe tener máximo ${maxTerapias} terapias (tiene ${totalTerapias})`
-                );
-            } else {
-                resultados[carpeta].exitosPorServicio["General"].push(
-                    `Terapias sumadas: ${totalTerapias} (${minTerapias}-${maxTerapias}) ✓`
+                    `Terapias registradas: ${totalTerapias} evoluciones ✓`
                 );
             }
         }
@@ -391,7 +475,7 @@ function detectarServicios(nombres) {
     for (const nombre of nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
-            /\d+\s+(VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT)/
+            /\d+\s+(VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
         );
         if (match) {
             let servicio = match[1];
@@ -418,26 +502,99 @@ function validarNuevoPaquete(
         [...serviciosEncontrados].filter((s) => s !== "General" && s !== "PAQ")
     );
 
-    // 1. Validar Obligatorios (VM y al menos una de ENF o VENF) solo si no hay matriz
+    const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
+    if (!esPaqueteParametrizado) {
+        resultados[carpeta].errores.push(`Paquete ${tipoPaquete}: Código de paquete no parametrizado en el sistema.`);
+        return;
+    }
+
+    const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(tipoPaquete);
+
+    // 1. Validar Obligatorios y Prohibiciones (solo si no hay matriz; si hay matriz se valida contra ella)
     if (!resultados[carpeta].datosMatriz) {
         if (!serviciosReales.has("VM")) {
             resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio obligatorio VM`);
         }
-        if (!serviciosReales.has("ENF") && !serviciosReales.has("VENF")) {
-            resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir al menos un servicio de enfermería (ENF o VENF)`);
-        }
 
-        // 2. Validar "Uno de los siguientes" (PSI, NUT, TS)
-        const opcionales = ["PSI", "NUT", "TS"];
-        const opcionalesEncontrados = opcionales.filter(s => serviciosReales.has(s));
-        
-        if (opcionalesEncontrados.length !== 1) {
-            resultados[carpeta].errores.push(
-                `Paquete ${tipoPaquete} debe incluir exactamente 1 servicio de (PSI, NUT, TS). Se encontraron: ${opcionalesEncontrados.length}`
-            );
+        if (esPaqueteAplicacion) {
+            if (!serviciosReales.has("ENF")) {
+                resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio obligatorio ENF`);
+            }
+            if (!serviciosReales.has("APL")) {
+                resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio de aplicación de medicamentos (APL)`);
+            }
+
+            // Prohibir opcionales en paquetes de medicamento
+            const opcionalesProhibidos = ["PSI", "NUT", "TS"].filter(s => serviciosReales.has(s));
+            if (opcionalesProhibidos.length > 0) {
+                resultados[carpeta].errores.push(
+                    `Paquete ${tipoPaquete} no contempla servicios opcionales (encontrados: ${opcionalesProhibidos.join(", ")})`
+                );
+            }
+
+            // Prohibir terapias en paquetes de medicamento
+            const terapiasProhibidas = [...TERAPIAS_CONTABLES].filter(s => serviciosReales.has(s) || (s === "TRS" && serviciosReales.has("SUCCION")));
+            if (terapiasProhibidas.length > 0) {
+                resultados[carpeta].errores.push(
+                    `Paquete ${tipoPaquete} no contempla terapias (encontradas: ${terapiasProhibidas.join(", ")})`
+                );
+            }
         } else {
-            const opcionalSelec = opcionalesEncontrados[0];
-            resultados[carpeta].alertasPorServicio[opcionalSelec] = resultados[carpeta].alertasPorServicio[opcionalSelec] || [];
+            // Paquetes normales (no medicamento) no contemplan APL
+            if (serviciosReales.has("APL")) {
+                resultados[carpeta].errores.push(
+                    `Paquete ${tipoPaquete} no contempla servicio de aplicación de medicamentos (APL)`
+                );
+            }
+
+            if (tipoPaquete === "CPF1107") {
+                if (!serviciosReales.has("ENF")) {
+                    resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio de auxiliar de enfermería (ENF)`);
+                }
+                if (serviciosReales.has("VENF")) {
+                    resultados[carpeta].errores.push(`Paquete ${tipoPaquete} no contempla enfermería profesional (VENF)`);
+                }
+            } else {
+                if (!serviciosReales.has("ENF") && !serviciosReales.has("VENF")) {
+                    resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir al menos un servicio de enfermería (ENF o VENF)`);
+                }
+            }
+
+            // 2. Validar "Uno de los siguientes" (PSI, NUT, TS)
+            const opcionales = ["PSI", "NUT", "TS"];
+            const opcionalesEncontrados = opcionales.filter(s => serviciosReales.has(s));
+            
+            if (opcionalesEncontrados.length !== 1) {
+                resultados[carpeta].errores.push(
+                    `Paquete ${tipoPaquete} debe incluir exactamente 1 servicio de (PSI, NUT, TS). Se encontraron: ${opcionalesEncontrados.length}`
+                );
+            } else {
+                const opcionalSelec = opcionalesEncontrados[0];
+                resultados[carpeta].alertasPorServicio[opcionalSelec] = resultados[carpeta].alertasPorServicio[opcionalSelec] || [];
+            }
+
+            // 3. Validar prohibición de terapias según paquete
+            const reglaTer = REGLAS_TERAPIAS_PAQUETES[tipoPaquete];
+            if (reglaTer && reglaTer.permiteTerapias === false) {
+                const terEncontradas = [...TERAPIAS_CONTABLES].filter(s => serviciosReales.has(s) || (s === "TRS" && serviciosReales.has("SUCCION")));
+                if (terEncontradas.length > 0) {
+                    resultados[carpeta].errores.push(
+                        `Paquete ${tipoPaquete} no contempla terapias (encontradas en carpeta: ${terEncontradas.join(", ")})`
+                    );
+                }
+            } else if (reglaTer && reglaTer.terapiasPermitidas && Array.isArray(reglaTer.terapiasPermitidas)) {
+                const terNoPermitidas = [...serviciosReales].filter(s => {
+                    const esTerapia = TERAPIAS_CONTABLES.has(s) || s === "SUCCION";
+                    if (!esTerapia) return false;
+                    const sNorm = s === "SUCCION" ? "TRS" : s;
+                    return !reglaTer.terapiasPermitidas.includes(sNorm);
+                });
+                if (terNoPermitidas.length > 0) {
+                    resultados[carpeta].errores.push(
+                        `Paquete ${tipoPaquete} solo permite terapias (${reglaTer.terapiasPermitidas.join(", ")}). No admite: ${terNoPermitidas.join(", ")}`
+                    );
+                }
+            }
         }
     }
 
@@ -486,7 +643,8 @@ async function validarPDFPaquete(
     servicio,
     resultados,
     convenio = "capital-salud",
-    tipoPaquete = ""
+    tipoPaquete = "",
+    periodoPermitido = null
 ) {
     let pdf = null;
     try {
@@ -586,9 +744,35 @@ async function validarPDFPaquete(
                 const fechasServicio = servicio === "PSI" ? fechas.slice(0, 1) : fechas;
                 resultados[carpeta].fechasPorServicio[servicio] = fechasServicio;
 
+                // Validar que las fechas pertenezcan al periodo permitido (error estricto)
+                if (periodoPermitido && (periodoPermitido.desde || periodoPermitido.hasta)) {
+                    const fechasFuera = fechasServicio.filter(
+                        (f) => !estaFechaEnPeriodo(f, periodoPermitido.desde, periodoPermitido.hasta)
+                    );
+                    const periodoTextoCorto = formatearPeriodoLegible(periodoPermitido.desde, periodoPermitido.hasta, true);
+
+                    if (fechasFuera.length > 0) {
+                        resultados[carpeta].erroresPorServicio[servicio] =
+                            resultados[carpeta].erroresPorServicio[servicio] || [];
+                        const unicasFuera = [...new Set(fechasFuera)];
+                        resultados[carpeta].erroresPorServicio[servicio].push(
+                            `5.pdf: Fuera del periodo permitido ${periodoTextoCorto} (${unicasFuera.join(", ")})`
+                        );
+                        if (resultados[carpeta].pdfsPorServicio[servicio]) {
+                            resultados[carpeta].pdfsPorServicio[servicio]["5"] = "✗";
+                        }
+                    } else if (fechasServicio.length > 0) {
+                        resultados[carpeta].exitosPorServicio[servicio] =
+                            resultados[carpeta].exitosPorServicio[servicio] || [];
+                        resultados[carpeta].exitosPorServicio[servicio].push(
+                            `5.pdf: Fechas dentro del periodo permitido (${periodoTextoCorto}) ✓`
+                        );
+                    }
+                }
+
                 // Validar fechas duplicadas y orden
                 if (fechasServicio.length > 0) {
-                    const { duplicadas, desordenadas } =
+                    const { duplicadas, desordenadas, fechasDesordenadas } =
                         validarOrdenFechas(fechasServicio);
 
                     if (duplicadas.length > 0) {
@@ -612,8 +796,11 @@ async function validarPDFPaquete(
                         resultados[carpeta].alertasPorServicio[servicio] =
                             resultados[carpeta].alertasPorServicio[servicio] ||
                             [];
+                        const detalleDesorden = fechasDesordenadas?.length > 0
+                            ? ` (${fechasDesordenadas.join(", ")})`
+                            : "";
                         resultados[carpeta].alertasPorServicio[servicio].push(
-                            `5.pdf: Fechas no están en orden cronológico`
+                            `5.pdf: Fechas no están en orden cronológico${detalleDesorden}`
                         );
                     } else {
                         // Agregar validación exitosa cuando están en orden

@@ -72,3 +72,75 @@ export function formatearErrorConIconosPDF(texto) {
         }
     );
 }
+
+const NOMBRES_MESES = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
+
+/**
+ * Extrae el año y mes (YYYY-MM) de una fecha
+ */
+export function extraerAnioMes(fechaStr) {
+    if (!fechaStr) return null;
+    const m = String(fechaStr).match(/(\d{4})-?(\d{2})/);
+    return m ? `${m[1]}-${m[2]}` : null;
+}
+
+/**
+ * Valida si una fecha se encuentra dentro del rango de periodos (YYYY-MM)
+ */
+export function estaFechaEnPeriodo(fechaStr, periodoDesde, periodoHasta) {
+    if (!periodoDesde && !periodoHasta) return true;
+    const anioMes = extraerAnioMes(fechaStr);
+    if (!anioMes) return true;
+    if (periodoDesde && anioMes < periodoDesde) return false;
+    if (periodoHasta && anioMes > periodoHasta) return false;
+    return true;
+}
+
+const NOMBRES_MESES_CORTOS = [
+    "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+    "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
+];
+
+/**
+ * Formatea un rango de periodos YYYY-MM en un texto legible en español
+ * Ejemplo: ("2026-06", "2026-06") => "Junio 2026"
+ * Ejemplo: ("2026-05", "2026-07") => "Mayo 2026 a Julio 2026"
+ */
+export function formatearPeriodoLegible(desde, hasta, corto = false) {
+    const listaMeses = corto ? NOMBRES_MESES_CORTOS : NOMBRES_MESES;
+    const fmt = (ym) => {
+        if (!ym) return "";
+        const parts = ym.split("-");
+        const idx = parseInt(parts[1], 10) - 1;
+        return `${listaMeses[idx] || parts[1]} ${parts[0]}`;
+    };
+    if (!desde && !hasta) return "Todos los periodos";
+    if (desde && hasta && desde === hasta) return fmt(desde);
+    if (desde && hasta) return `${fmt(desde)} a ${fmt(hasta)}`;
+    if (desde) return `Desde ${fmt(desde)}`;
+    return `Hasta ${fmt(hasta)}`;
+}
+
+/**
+ * Intenta inferir el periodo (YYYY-MM) a partir de un texto o nombre de archivo
+ */
+export function sugerirPeriodoDeTexto(texto) {
+    if (!texto) return null;
+    const t = texto.toLowerCase();
+    const meses = [
+        ["enero", "01"], ["febrero", "02"], ["marzo", "03"], ["abril", "04"],
+        ["mayo", "05"], ["junio", "06"], ["julio", "07"], ["agosto", "08"],
+        ["septiembre", "09"], ["octubre", "10"], ["noviembre", "11"], ["diciembre", "12"]
+    ];
+    const anioMatch = t.match(/202\d|203\d/);
+    const anio = anioMatch ? anioMatch[0] : new Date().getFullYear().toString();
+    for (const [nombre, num] of meses) {
+        if (t.includes(nombre)) {
+            return `${anio}-${num}`;
+        }
+    }
+    return null;
+}

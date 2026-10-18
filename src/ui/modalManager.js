@@ -1,5 +1,6 @@
 import {
     PAQUETES_INFO,
+    PAQUETES_SOPORTADOS,
     REGLAS_TERAPIAS_PAQUETES,
     obtenerInfoSoporte,
 } from "../config/constants.js";
@@ -19,33 +20,86 @@ export function mostrarCondicionesPaquete(tipoPaqueteSelect, paqueteCondicionesC
     if (!paqueteCondicionesContent || !tipoPaqueteSelect) return;
 
     const paquete = tipoPaqueteSelect.value;
+    const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(paquete);
     const regla = REGLAS_TERAPIAS_PAQUETES[paquete] || { descripcion: "Requisitos según paquete." };
-    const terapias = regla.descripcion;
+    const tieneRangoTer = regla.min !== undefined && regla.max !== undefined;
+    const minTer = tieneRangoTer ? regla.min : 0;
+    const maxTer = tieneRangoTer ? regla.max : "Según matriz";
+    const badgeTer = tieneRangoTer
+        ? `<span class="wiki-badge-ter">Obligatorio (${minTer} a ${maxTer})</span>`
+        : `<span class="wiki-badge-neutral">Opcional / Según matriz</span>`;
+
+    let filasServiciosHTML = "";
+    if (esPaqueteAplicacion) {
+        filasServiciosHTML = `
+            <tr>
+                <td><code>VM</code> (Médica)</td>
+                <td><span class="wiki-badge-req">Obligatorio</span></td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+            </tr>
+            <tr>
+                <td><code>ENF</code> (Enfermería)</td>
+                <td><span class="wiki-badge-req">Obligatorio</span></td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+            </tr>
+            <tr>
+                <td><code>APL</code> (Aplicación Med.)</td>
+                <td><span class="wiki-badge-req">Obligatorio (Dosis)</span></td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+                <td class="wiki-nowrap" style="text-align:center;">Según dosis</td>
+            </tr>
+        `;
+    } else {
+        filasServiciosHTML = `
+            <tr>
+                <td><code>VM</code> (Médica)</td>
+                <td><span class="wiki-badge-req">Obligatorio</span></td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+            </tr>
+            <tr>
+                <td><code>VENF</code> / <code>ENF</code></td>
+                <td><span class="wiki-badge-enf">Al menos 1</span></td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+                <td class="wiki-nowrap" style="text-align:center;">1 c/u</td>
+            </tr>
+            <tr>
+                <td><code>PSI</code> / <code>NUT</code> / <code>TS</code></td>
+                <td><span class="wiki-badge-opt">Elegir solo 1</span></td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+                <td class="wiki-nowrap" style="text-align:center;">1</td>
+            </tr>
+            <tr>
+                <td><code>TF+TR+TRS+FON+TO</code></td>
+                <td>${badgeTer}</td>
+                <td class="wiki-nowrap" style="text-align:center;">${minTer}</td>
+                <td class="wiki-nowrap" style="text-align:center;">${maxTer}</td>
+            </tr>
+        `;
+    }
 
     const html = `
         <div class="paquete-rules-card">
             <div class="rule-group">
-                <span class="rule-label">Archivo Base:</span>
+                <span class="rule-label">Archivo base:</span>
                 <span class="rule-value">Código en <code>2 PAQ.pdf</code></span>
             </div>
-            <div class="rule-group">
-                <span class="rule-label">Obligatorios / Enfermería:</span>
-                <div class="rule-chips">
-                    <span class="rule-chip required">VM: 1</span>
-                    <span class="rule-chip optional">ENF / VENF (1)</span>
-                </div>
-            </div>
-            <div class="rule-group">
-                <span class="rule-label">A Elección (1 solo):</span>
-                <div class="rule-chips">
-                    <span class="rule-chip choice">PSI (1)</span>
-                    <span class="rule-chip choice">NUT (1)</span>
-                    <span class="rule-chip choice">TS (1)</span>
-                </div>
-            </div>
-            <div class="rule-group">
-                <span class="rule-label">Terapias:</span>
-                <span class="rule-value highlight">${terapias}</span>
+            <div class="wiki-table" style="margin: 6px 0 2px 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Servicio</th>
+                            <th>Condición</th>
+                            <th style="text-align:center;">Mín.</th>
+                            <th style="text-align:center;">Máx.</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filasServiciosHTML}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
@@ -63,7 +117,18 @@ export function mostrarModalReglasPaquete(paquete) {
         ? PAQUETES_INFO[pkg]
         : { nombre: `${pkg} - No parametrizado`, descripcion: "No parametrizado" };
     const regla = REGLAS_TERAPIAS_PAQUETES[pkg] || { descripcion: "Sin reglas específicas parametrizadas." };
-    const terapias = regla.descripcion;
+    const tieneRangoTer = regla.permiteTerapias && regla.min !== undefined && regla.max !== undefined && regla.min > 0;
+    const minTer = regla.permiteTerapias === false ? 0 : (regla.min || 0);
+    const maxTer = regla.permiteTerapias === false ? 0 : (regla.max !== undefined && regla.max < 999 ? regla.max : (regla.permiteTerapias ? "Opcional" : 0));
+    
+    let badgeTer = `<span class="wiki-badge-neutral">Opcional / Según matriz</span>`;
+    if (regla.permiteTerapias === false) {
+        badgeTer = `<span class="wiki-badge-danger" style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600;">No Aplica (0 terapias)</span>`;
+    } else if (tieneRangoTer) {
+        badgeTer = `<span class="wiki-badge-ter">Obligatorio (${regla.min} a ${regla.max})</span>`;
+    } else if (regla.terapiasPermitidas) {
+        badgeTer = `<span class="wiki-badge-opt">Opcional (${regla.terapiasPermitidas.join(", ")})</span>`;
+    }
 
     const prev = document.getElementById("modalReglasPaqueteActivo");
     if (prev) prev.remove();
@@ -74,18 +139,109 @@ export function mostrarModalReglasPaquete(paquete) {
 
     const estadoParametrizacionHTML = !estaParametrizado
         ? `<div class="alerta-item" style="margin-bottom: 12px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 6px; padding: 8px 12px; color: #ef4444; font-size: 12px;">
-            ⚠️ <strong>Este código de paquete no se encuentra parametrizado en el sistema.</strong>
+            ⚠️ Este código de paquete no se encuentra parametrizado en el sistema.
            </div>`
         : "";
 
+    const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(pkg);
+    const dosisTexto = pkg === "CPF1102" ? "1 Dosis diaria" : (pkg === "CPF1103" ? "2 o 3 Dosis diarias" : "4 Dosis diarias");
+
+    const tablaModalHTML = esPaqueteAplicacion ? `
+        <table>
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Servicios</th>
+                    <th>Condición</th>
+                    <th style="text-align:center;">Mín.</th>
+                    <th style="text-align:center;">Máx.</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1. Médica</td>
+                    <td class="wiki-nowrap"><code>VM</code></td>
+                    <td><span class="wiki-badge-req">Obligatorio fijo</span></td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td>Exactamente 1 valoración médica.</td>
+                </tr>
+                <tr>
+                    <td>2. Enfermería</td>
+                    <td class="wiki-nowrap"><code>ENF</code></td>
+                    <td><span class="wiki-badge-req">Obligatorio fijo</span></td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td>Exactamente 1 valoración de enfermería (ENF).</td>
+                </tr>
+                <tr>
+                    <td>3. Aplicación</td>
+                    <td class="wiki-nowrap"><code>APL</code></td>
+                    <td><span class="wiki-badge-req">Obligatorio (${dosisTexto})</span></td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td class="wiki-nowrap" style="text-align:center;">Según dosis</td>
+                    <td>Programado en columna '${dosisTexto.replace(" diaria", "").replace(" diarias", "")}' de la matriz, igual a 'Cant Paquete Diario' y verificado en 5 apl.pdf.</td>
+                </tr>
+            </tbody>
+        </table>
+    ` : `
+        <table>
+            <thead>
+                <tr>
+                    <th>Grupo</th>
+                    <th>Servicios</th>
+                    <th>Condición</th>
+                    <th style="text-align:center;">Mín.</th>
+                    <th style="text-align:center;">Máx.</th>
+                    <th>Detalle</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1. Médica</td>
+                    <td class="wiki-nowrap"><code>VM</code></td>
+                    <td><span class="wiki-badge-req">Obligatorio fijo</span></td>
+                    <td class="wiki-nowrap" style="text-align:center;">${(pkg === "CPF1107" || pkg === "CPF1225") ? 2 : 1}</td>
+                    <td class="wiki-nowrap" style="text-align:center;">${(pkg === "CPF1107" || pkg === "CPF1225") ? 2 : 1}</td>
+                    <td>Exactamente ${(pkg === "CPF1107" || pkg === "CPF1225") ? "2 valoraciones médicas" : "1 valoración médica"}.</td>
+                </tr>
+                <tr>
+                    <td>2. Enfermería</td>
+                    <td class="wiki-nowrap">${pkg === "CPF1107" ? "<code>ENF</code>" : "<code>VENF</code>, <code>ENF</code>"}</td>
+                    <td><span class="wiki-badge-enf">${pkg === "CPF1107" ? "Obligatorio fijo" : "Obligatorio (mín. 1)"}</span></td>
+                    <td class="wiki-nowrap" style="text-align:center;">${pkg === "CPF1107" ? 4 : 1}</td>
+                    <td class="wiki-nowrap" style="text-align:center;">${pkg === "CPF1107" ? 4 : "1 c/u"}</td>
+                    <td>${pkg === "CPF1107" ? "Exactamente 4 valoraciones de auxiliar de enfermería (ENF)." : "Válido <code>1 VENF</code>, <code>1 ENF</code> o ambos (<code>1 + 1</code>)."}</td>
+                </tr>
+                <tr>
+                    <td>3. Complementario</td>
+                    <td class="wiki-nowrap"><code>PSI</code>, <code>NUT</code>, <code>TS</code></td>
+                    <td><span class="wiki-badge-opt">A elección (solo 1)</span></td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td class="wiki-nowrap" style="text-align:center;">1</td>
+                    <td>Elegir solo 1 de los tres (los otros dos en 0).</td>
+                </tr>
+                <tr>
+                    <td>4. Terapias</td>
+                    <td class="wiki-nowrap"><code>TF</code>, <code>TR</code>, <code>TRS</code>, <code>FON</code>, <code>TO</code></td>
+                    <td>${badgeTer}</td>
+                    <td class="wiki-nowrap" style="text-align:center;">${minTer}</td>
+                    <td class="wiki-nowrap" style="text-align:center;">${maxTer}</td>
+                    <td>${regla.descripcion} (suma total de terapias).</td>
+                </tr>
+            </tbody>
+        </table>
+    `;
+
     backdrop.innerHTML = `
-        <div class="modal-rules-card" onclick="event.stopPropagation()">
+        <div class="modal-rules-card" style="max-width: 680px;" onclick="event.stopPropagation()">
             <div class="modal-rules-header">
                 <div class="modal-rules-title">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
                     <div>
-                        <div style="font-size:14px; font-weight:700;">${pkg} — ${infoPaquete.descripcion || infoPaquete.nombre}</div>
-                        <div style="font-size:11px; font-weight:500; color:var(--text-muted);">${estaParametrizado ? infoPaquete.nombre : "No parametrizado"}</div>
+                        <div style="font-size:13.5px; font-weight:600;">${pkg} — ${infoPaquete.descripcion || infoPaquete.nombre}</div>
+                        <div style="font-size:11px; font-weight:400; color:var(--text-muted);">${estaParametrizado ? infoPaquete.nombre : "No parametrizado"}</div>
                     </div>
                 </div>
                 <button type="button" class="modal-rules-close" onclick="document.getElementById('modalReglasPaqueteActivo')?.remove()">&times;</button>
@@ -93,32 +249,12 @@ export function mostrarModalReglasPaquete(paquete) {
             <div class="modal-rules-body">
                 ${estadoParametrizacionHTML}
                 <div class="paquete-rules-card">
-                    <div class="rule-group">
-                        <span class="rule-label">Nombre del Paquete:</span>
-                        <span class="rule-value"><strong style="${estaParametrizado ? '' : 'color:#ef4444;'}">${estaParametrizado ? infoPaquete.nombre : 'No parametrizado'}</strong></span>
+                    <div class="rule-group" style="margin-bottom: 8px;">
+                        <span class="rule-label">Soporte base del paquete:</span>
+                        <span class="rule-value">El código <code>${pkg}</code> debe estar incluido en <code>2 PAQ.pdf</code></span>
                     </div>
-                    <div class="rule-group">
-                        <span class="rule-label">Archivo Base:</span>
-                        <span class="rule-value">Código del paquete dentro de <code>2 PAQ.pdf</code></span>
-                    </div>
-                    <div class="rule-group">
-                        <span class="rule-label">Obligatorios / Enfermería:</span>
-                        <div class="rule-chips">
-                            <span class="rule-chip required">🩺 Valoración Médica (1)</span>
-                            <span class="rule-chip optional">💉 ENF / VENF (1 o ambas)</span>
-                        </div>
-                    </div>
-                    <div class="rule-group">
-                        <span class="rule-label">A Elección (1 solo):</span>
-                        <div class="rule-chips">
-                            <span class="rule-chip choice">🧠 Psicología (1)</span>
-                            <span class="rule-chip choice">🥗 Nutrición (1)</span>
-                            <span class="rule-chip choice">👥 Trabajo Social (1)</span>
-                        </div>
-                    </div>
-                    <div class="rule-group">
-                        <span class="rule-label">Terapias:</span>
-                        <span class="rule-value highlight">${terapias}</span>
+                    <div class="wiki-table" style="margin: 4px 0 8px 0;">
+                        ${tablaModalHTML}
                     </div>
                 </div>
             </div>
@@ -644,6 +780,16 @@ export function verProgramadoCarpeta(
             return { ...o, sopCount, sop4, sop5 };
         });
 
+        // 4. Aplicación de Medicamentos (APL)
+        const grupoAplicacion = [
+            { id: "APL", label: "Aplicación Medicamento (APL)", progCount: s.APL || 0 },
+        ].map(a => {
+            const sopCount = calcularSoportesServicio(a.id);
+            const sop4 = buscarSoporte(a.id, "4");
+            const sop5 = buscarSoporte(a.id, "5");
+            return { ...a, sopCount, sop4, sop5 };
+        });
+
         const totalTerapiasProg = mat.totalTerapias !== undefined 
             ? mat.totalTerapias 
             : ((s.TF || 0) + (s.TR || 0) + (s.TRS || s.SUCCION || 0) + (s.FON || 0) + (s.TO || 0));
@@ -710,6 +856,16 @@ export function verProgramadoCarpeta(
                 </div>
                 <div class="prog-category-list">
                     ${grupoOtros.map(renderFilaServicio).join("")}
+                </div>
+            </div>
+
+            <!-- Aplicación de Medicamentos -->
+            <div class="prog-category-block">
+                <div class="prog-category-header">
+                    <span>Aplicación Medicamentos</span>
+                </div>
+                <div class="prog-category-list">
+                    ${grupoAplicacion.map(renderFilaServicio).join("")}
                 </div>
             </div>
 
@@ -959,6 +1115,16 @@ export function mostrarModalProgramadoDetallado(
         return { ...o, sopCount, sop4, sop5 };
     });
 
+    // 4. Aplicación de Medicamentos (APL)
+    const grupoAplicacion = [
+        { id: "APL", label: "Aplicación Medicamento (APL)", progCount: s.APL || 0 },
+    ].map(a => {
+        const sopCount = calcularSoportesServicio(a.id);
+        const sop4 = buscarSoporte(a.id, "4");
+        const sop5 = buscarSoporte(a.id, "5");
+        return { ...a, sopCount, sop4, sop5 };
+    });
+
     const totalTerapiasProg = mat.totalTerapias !== undefined 
         ? mat.totalTerapias 
         : ((s.TF || 0) + (s.TR || 0) + (s.TRS || s.SUCCION || 0) + (s.FON || 0) + (s.TO || 0));
@@ -1031,6 +1197,13 @@ export function mostrarModalProgramadoDetallado(
                     </div>
                 </div>
 
+                <div>
+                    <div style="font-size:11px; font-weight:800; text-transform:uppercase; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.4px;">Aplicación de Medicamentos</div>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        ${grupoAplicacion.map(renderFilaServicioModal).join("")}
+                    </div>
+                </div>
+
                 ${avisosModalHTML}
             </div>
 
@@ -1065,12 +1238,41 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
     const conErrores = diagnosticoGlobal.pacientesConErrores || 0;
     const conformes = totalPacientes - conErrores;
 
-    // Badges de conteo por paquete con los colores oficiales de badges
-    const paquetesHTML = Object.entries(diagnosticoGlobal.conteoPorPaquete || {})
+    // Mapa de errores/alertas por código de paquete para identificar paquetes con problemas
+    const estadoPorPaquete = {};
+    pacientesList.forEach((p) => {
+        const pkg = (p.paquete || p.paqueteRaw || "SIN_PAQUETE").toUpperCase();
+        if (!estadoPorPaquete[pkg]) {
+            estadoPorPaquete[pkg] = { errores: 0, alertas: 0 };
+        }
+        if (p.errores && p.errores.length > 0) estadoPorPaquete[pkg].errores += p.errores.length;
+        if (p.alertas && p.alertas.length > 0) estadoPorPaquete[pkg].alertas += p.alertas.length;
+    });
+
+    // Badges de conteo por paquete ordenados y clickeables para filtrar
+    const paquetesEntries = Object.entries(diagnosticoGlobal.conteoPorPaquete || {});
+    paquetesEntries.sort(([pkgA], [pkgB]) => {
+        const idxA = PAQUETES_SOPORTADOS.indexOf(pkgA.toUpperCase());
+        const idxB = PAQUETES_SOPORTADOS.indexOf(pkgB.toUpperCase());
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return pkgA.localeCompare(pkgB, undefined, { numeric: true, sensitivity: "base" });
+    });
+
+    const paquetesHTML = paquetesEntries
         .map(([pkg, count]) => {
             const pkgCls = `pkg-${pkg.toLowerCase()}`;
+            const pkgState = estadoPorPaquete[pkg.toUpperCase()] || { errores: 0, alertas: 0 };
+            const tieneError = pkgState.errores > 0;
+            const tieneAlerta = !tieneError && pkgState.alertas > 0;
+            const statusCls = tieneError ? "pkg-has-error" : (tieneAlerta ? "pkg-has-warning" : "");
+            const titleMsg = tieneError
+                ? `${pkg}: Contiene novedades/errores en la matriz. Click para filtrar.`
+                : `${pkg}: Todo conforme. Click para filtrar.`;
+
             return `
-                <div class="preval-pkg-chip doc-package-tag ${pkgCls}">
+                <div class="preval-pkg-chip doc-package-tag ${pkgCls} ${statusCls}" data-pkg="${pkg}" role="button" tabindex="0" title="${titleMsg}">
                     <span class="package-name">${pkg}</span>
                     <span class="preval-pkg-count">${count}</span>
                 </div>
@@ -1137,40 +1339,67 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
         // Texto plano del error para el botón de copiar
         const textoErroresRaw = (p.errores || []).join(" | ") || (p.alertas || []).join(" | ") || "Conforme";
         const textoErroresEscaped = textoErroresRaw.replace(/'/g, "\\'");
+        const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(pkgCode);
 
-        // 3 Grupos ordenados, alineados en columnas consistentes
-        const chipsServicios = `
-            <div class="preval-services-structured">
-                <!-- 1. Fijos Obligatorios -->
-                <div class="pserv-group">
-                    <span class="pserv-group-title">Fijos:</span>
-                    <div class="pserv-group-items">
-                        <span class="pserv-tag oblig ${s.VM === 1 ? 'ok' : 'err'}">VM: ${s.VM}</span>
-                        <span class="pserv-tag oblig ${s.VENF === 1 ? 'ok' : 'err'}">VENF: ${s.VENF}</span>
-                        <span class="pserv-tag oblig ${s.ENF === 1 ? 'ok' : 'err'}">ENF: ${s.ENF}</span>
+        // Grupos ordenados, alineados en columnas consistentes
+        let chipsServicios = "";
+        if (esPaqueteAplicacion) {
+            const dosisEsperada = pkgCode === "CPF1102" ? 1 : (pkgCode === "CPF1104" ? 4 : (s.APL === 3 ? 3 : 2));
+            chipsServicios = `
+                <div class="preval-services-structured">
+                    <!-- 1. Fijos Obligatorios -->
+                    <div class="pserv-group">
+                        <span class="pserv-group-title">Fijos:</span>
+                        <div class="pserv-group-items">
+                            <span class="pserv-tag oblig ${s.VM === 1 ? 'ok' : 'err'}">VM: ${s.VM}</span>
+                            <span class="pserv-tag oblig ${s.ENF === 1 ? 'ok' : 'err'}">ENF: ${s.ENF}</span>
+                        </div>
+                    </div>
+
+                    <!-- 2. Aplicación Medicamentos -->
+                    <div class="pserv-group">
+                        <span class="pserv-group-title">Aplicación:</span>
+                        <div class="pserv-group-items">
+                            <span class="pserv-tag oblig ${s.APL > 0 ? 'ok' : 'err'}">APL (Dosis): ${s.APL || 0}</span>
+                            <span class="pserv-tag oblig ${(p.cantPaqDiario > 0 && p.cantPaqDiario === s.APL) ? 'ok' : 'err'}">Paq. Diario: ${p.cantPaqDiario ?? 0}</span>
+                        </div>
                     </div>
                 </div>
+            `;
+        } else {
+            chipsServicios = `
+                <div class="preval-services-structured">
+                    <!-- 1. Fijos Obligatorios -->
+                    <div class="pserv-group">
+                        <span class="pserv-group-title">Fijos:</span>
+                        <div class="pserv-group-items">
+                            <span class="pserv-tag oblig ${s.VM === 1 ? 'ok' : 'err'}">VM: ${s.VM}</span>
+                            <span class="pserv-tag oblig ${s.VENF === 1 ? 'ok' : 'err'}">VENF: ${s.VENF}</span>
+                            <span class="pserv-tag oblig ${s.ENF === 1 ? 'ok' : 'err'}">ENF: ${s.ENF}</span>
+                        </div>
+                    </div>
 
-                <!-- 2. Opcional A Elección -->
-                <div class="pserv-group">
-                    <span class="pserv-group-title">Opcional:</span>
-                    <div class="pserv-group-items">
-                        <span class="pserv-tag opt ${s.PSI > 0 ? 'active' : 'dim'}">PSI: ${s.PSI}</span>
-                        <span class="pserv-tag opt ${s.NUT > 0 ? 'active' : 'dim'}">NUT: ${s.NUT}</span>
-                        <span class="pserv-tag opt ${s.TS > 0 ? 'active' : 'dim'}">TS: ${s.TS}</span>
+                    <!-- 2. Opcional A Elección -->
+                    <div class="pserv-group">
+                        <span class="pserv-group-title">Opcional:</span>
+                        <div class="pserv-group-items">
+                            <span class="pserv-tag opt ${s.PSI > 0 ? 'active' : 'dim'}">PSI: ${s.PSI}</span>
+                            <span class="pserv-tag opt ${s.NUT > 0 ? 'active' : 'dim'}">NUT: ${s.NUT}</span>
+                            <span class="pserv-tag opt ${s.TS > 0 ? 'active' : 'dim'}">TS: ${s.TS}</span>
+                        </div>
+                    </div>
+
+                    <!-- 3. Terapias con Desglose y Suma -->
+                    <div class="pserv-group">
+                        <span class="pserv-group-title">Terapias:</span>
+                        <div class="pserv-group-items">
+                            <span class="pserv-tag ter-total">Total: ${p.totalTerapias}</span>
+                            <div class="pserv-tag ter-detail">${terapiasDetalleChips}</div>
+                        </div>
                     </div>
                 </div>
-
-                <!-- 3. Terapias con Desglose y Suma -->
-                <div class="pserv-group">
-                    <span class="pserv-group-title">Terapias:</span>
-                    <div class="pserv-group-items">
-                        <span class="pserv-tag ter-total">Total: ${p.totalTerapias}</span>
-                        <div class="pserv-tag ter-detail">${terapiasDetalleChips}</div>
-                    </div>
-                </div>
-            </div>
-        `;
+            `;
+        }
 
         return `
             <tr class="preval-row ${p.valido ? 'valido' : 'con-novedad'}" data-doc="${p.documento || ''}" data-nombre="${(p.nombre || '').toLowerCase()}" data-pkg="${pkgCode}" data-estado="${p.valido ? 'conforme' : 'novedades'}">
@@ -1208,7 +1437,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
 
     backdrop.innerHTML = `
         <div class="preval-modal-card" onclick="event.stopPropagation()">
-            <!-- Modal Header Compacto -->
+            <!-- Modal Header Compacto con KPIs Integrados -->
             <div class="preval-modal-header">
                 <div class="preval-title-group">
                     <div class="preval-header-icon">
@@ -1219,13 +1448,8 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                         <p class="preval-modal-subtitle">Verificación automática de reglas de paquete antes de la auditoría</p>
                     </div>
                 </div>
-                <button type="button" class="modal-rules-close" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()" title="Cerrar">&times;</button>
-            </div>
 
-            <!-- Modal Content Body -->
-            <div class="preval-modal-body">
-                <!-- Ribbon Stats y Chips de Paquete Ultra Compactos en 1 Sola Línea -->
-                <div class="preval-top-toolbar">
+                <div class="preval-header-actions">
                     <div class="preval-kpi-compact">
                         <span class="kpi-tag total">Total <strong>${totalPacientes}</strong></span>
                         <span class="kpi-tag ok">Conformes <strong>${conformes}</strong></span>
@@ -1234,12 +1458,19 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                             <button type="button" id="btnCopiarTodasNovedadesMatriz" class="btn-copy-kpi" title="Copiar todas las novedades visibles de la matriz">📋 Copiar</button>
                         </span>
                     </div>
+                    <button type="button" class="modal-rules-close" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()" title="Cerrar">&times;</button>
+                </div>
+            </div>
 
-                    <div class="preval-divider-vertical"></div>
-
+            <!-- Modal Content Body -->
+            <div class="preval-modal-body">
+                <!-- Barra de Paquetes con Ancho Completo -->
+                <div class="preval-top-toolbar">
                     <div class="preval-pkg-section">
                         <span class="preval-pkg-section-label">Paquetes:</span>
-                        <div class="preval-pkg-cluster">${paquetesHTML}</div>
+                        <div class="preval-pkg-cluster-scroll">
+                            <div class="preval-pkg-cluster">${paquetesHTML}</div>
+                        </div>
                     </div>
                 </div>
 
@@ -1322,9 +1553,11 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
     // ================= FUNCIONALIDAD DE FILTRADO DINÁMICO =================
     const buscarInput = document.getElementById("prevalBuscarInput");
     const filtroEstadoBtns = document.querySelectorAll("#prevalFiltroEstadoGroup .btn-segmented");
+    const pkgChips = document.querySelectorAll(".preval-pkg-chip[data-pkg]");
     const tbody = document.getElementById("prevalTableBody");
 
     let estadoActivo = "";
+    let paqueteActivo = "";
 
     const aplicarFiltrosModal = () => {
         if (!tbody) return;
@@ -1335,11 +1568,13 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             const doc = tr.getAttribute("data-doc") || "";
             const nombre = tr.getAttribute("data-nombre") || "";
             const estado = tr.getAttribute("data-estado") || "";
+            const pkg = tr.getAttribute("data-pkg") || "";
 
             const matchTexto = !q || doc.includes(q) || nombre.includes(q);
             const matchEstado = !estadoActivo || estado === estadoActivo;
+            const matchPaquete = !paqueteActivo || pkg.toUpperCase() === paqueteActivo.toUpperCase();
 
-            if (matchTexto && matchEstado) {
+            if (matchTexto && matchEstado && matchPaquete) {
                 tr.style.display = "";
             } else {
                 tr.style.display = "none";
@@ -1358,6 +1593,41 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                 btn.classList.add("active");
                 estadoActivo = btn.getAttribute("data-filter-estado") || "";
                 aplicarFiltrosModal();
+            });
+        });
+    }
+
+    // Toggle de filtrado por chip de paquete
+    if (pkgChips) {
+        pkgChips.forEach((chip) => {
+            const togglePkg = () => {
+                const pkg = chip.getAttribute("data-pkg");
+                if (paqueteActivo === pkg) {
+                    // Quitar filtro si se vuelve a hacer click en el mismo
+                    paqueteActivo = "";
+                    pkgChips.forEach((c) => c.classList.remove("active-filter", "dimmed-filter"));
+                } else {
+                    // Aplicar filtro al paquete seleccionado
+                    paqueteActivo = pkg;
+                    pkgChips.forEach((c) => {
+                        if (c.getAttribute("data-pkg") === pkg) {
+                            c.classList.add("active-filter");
+                            c.classList.remove("dimmed-filter");
+                        } else {
+                            c.classList.remove("active-filter");
+                            c.classList.add("dimmed-filter");
+                        }
+                    });
+                }
+                aplicarFiltrosModal();
+            };
+
+            chip.addEventListener("click", togglePkg);
+            chip.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    togglePkg();
+                }
             });
         });
     }
@@ -1588,6 +1858,153 @@ export function cerrarUnPopupActivoConEscape() {
 
 // Alias para compatibilidad
 export const cerrarTodosLosPopupsYModales = cerrarUnPopupActivoConEscape;
+
+/**
+ * Solicita interactivamente el rango de periodos permitidos (Desde mes/año hasta mes/año)
+ * Retorna una promesa que resuelve con { desde: "YYYY-MM", hasta: "YYYY-MM" } o null si cancela.
+ */
+export function solicitarPeriodoPermitidoModal({ desdeInicial = "", hastaInicial = "", sugerenciaNombre = "" } = {}) {
+    return new Promise((resolve) => {
+        // Eliminar modal previo si existe
+        const prev = document.getElementById("periodoPermitidoModalOverlay");
+        if (prev) prev.remove();
+
+        const hoy = new Date();
+        const añoActual = hoy.getFullYear();
+        const mesActual = String(hoy.getMonth() + 1).padStart(2, "0");
+        const defaultMes = `${añoActual}-${mesActual}`;
+
+        const valorDesde = desdeInicial || defaultMes;
+        const valorHasta = hastaInicial || desdeInicial || defaultMes;
+
+        const overlay = document.createElement("div");
+        overlay.id = "periodoPermitidoModalOverlay";
+        overlay.className = "periodo-modal-overlay";
+
+        overlay.innerHTML = `
+            <div class="periodo-modal-box" role="dialog" aria-labelledby="periodoModalTitle">
+                <div class="periodo-modal-header">
+                    <span class="periodo-modal-title" id="periodoModalTitle">
+                        <span>📅</span> Configurar Periodo Permitido
+                    </span>
+                    <button type="button" class="btn-wiki-action" id="btnCerrarPeriodoModal" title="Cerrar (Esc)">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px;height:14px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    </button>
+                </div>
+                <div class="periodo-modal-body">
+                    <p class="periodo-modal-desc">
+                        Indica los meses autorizados para la facturación. Cualquier evolución o soporte médico fuera de este rango se marcará como <strong>error estricto</strong>.
+                    </p>
+
+                    <div class="periodo-grid-inputs">
+                        <div class="periodo-input-group">
+                            <label for="inputPeriodoDesde">Desde (Mes Inicial):</label>
+                            <input type="month" id="inputPeriodoDesde" class="periodo-month-input" value="${valorDesde}" />
+                        </div>
+                        <div class="periodo-input-group">
+                            <label for="inputPeriodoHasta">Hasta (Mes Final):</label>
+                            <input type="month" id="inputPeriodoHasta" class="periodo-month-input" value="${valorHasta}" />
+                        </div>
+                    </div>
+
+                    <div class="periodo-quick-shortcuts">
+                        <span style="font-size:11px;color:var(--text-muted);align-self:center;">Atajos:</span>
+                        <button type="button" class="btn-periodo-shortcut" id="btnPeriodoUnSoloMes">Mismo mes (Desde)</button>
+                        <button type="button" class="btn-periodo-shortcut" id="btnPeriodoMesActual">Mes actual</button>
+                        <button type="button" class="btn-periodo-shortcut" id="btnPeriodoMesAnterior">Mes anterior</button>
+                        <button type="button" class="btn-periodo-shortcut" id="btnPeriodoSinLimite" title="Permitir todas las fechas sin marcar error">Sin restricción</button>
+                    </div>
+                </div>
+                <div class="periodo-modal-footer">
+                    <button type="button" class="btn-periodo-cancel" id="btnPeriodoCancelar">Cancelar</button>
+                    <button type="button" class="btn-periodo-submit" id="btnPeriodoConfirmar">Continuar y Validar</button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const inputDesde = overlay.querySelector("#inputPeriodoDesde");
+        const inputHasta = overlay.querySelector("#inputPeriodoHasta");
+        const btnCerrar = overlay.querySelector("#btnCerrarPeriodoModal");
+        const btnCancelar = overlay.querySelector("#btnPeriodoCancelar");
+        const btnConfirmar = overlay.querySelector("#btnPeriodoConfirmar");
+        const btnUnSoloMes = overlay.querySelector("#btnPeriodoUnSoloMes");
+        const btnMesActual = overlay.querySelector("#btnPeriodoMesActual");
+        const btnMesAnterior = overlay.querySelector("#btnPeriodoMesAnterior");
+        const btnSinLimite = overlay.querySelector("#btnPeriodoSinLimite");
+
+        inputDesde.focus();
+
+        const cerrarConRespuesta = (respuesta) => {
+            overlay.remove();
+            resolve(respuesta);
+        };
+
+        btnCerrar.addEventListener("click", () => cerrarConRespuesta(null));
+        btnCancelar.addEventListener("click", () => cerrarConRespuesta(null));
+
+        btnUnSoloMes.addEventListener("click", () => {
+            if (inputDesde.value) {
+                inputHasta.value = inputDesde.value;
+            }
+        });
+
+        btnMesActual.addEventListener("click", () => {
+            inputDesde.value = defaultMes;
+            inputHasta.value = defaultMes;
+        });
+
+        btnMesAnterior.addEventListener("click", () => {
+            const fechaAnt = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+            const aAnt = fechaAnt.getFullYear();
+            const mAnt = String(fechaAnt.getMonth() + 1).padStart(2, "0");
+            const mesAntStr = `${aAnt}-${mAnt}`;
+            inputDesde.value = mesAntStr;
+            inputHasta.value = mesAntStr;
+        });
+
+        btnSinLimite.addEventListener("click", () => {
+            inputDesde.value = "";
+            inputHasta.value = "";
+            cerrarConRespuesta({ desde: "", hasta: "" });
+        });
+
+        // Asegurar que si cambia "Desde" y "Hasta" es menor, se ajuste
+        inputDesde.addEventListener("change", () => {
+            if (inputHasta.value && inputDesde.value > inputHasta.value) {
+                inputHasta.value = inputDesde.value;
+            }
+        });
+
+        const confirmar = () => {
+            let desde = inputDesde.value.trim();
+            let hasta = inputHasta.value.trim();
+
+            if (desde && hasta && desde > hasta) {
+                // Invertir si el usuario puso al revés
+                const temp = desde;
+                desde = hasta;
+                hasta = temp;
+            }
+
+            cerrarConRespuesta({ desde, hasta });
+        };
+
+        btnConfirmar.addEventListener("click", confirmar);
+
+        // Teclado
+        overlay.addEventListener("keydown", (e) => {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                confirmar();
+            } else if (e.key === "Escape") {
+                e.preventDefault();
+                cerrarConRespuesta(null);
+            }
+        });
+    });
+}
 
 /**
  * Inicializa el listener global para cerrar de a una ventana con la tecla Escape

@@ -1,4 +1,4 @@
-import { REGLAS_TERAPIAS_PAQUETES } from "../config/constants.js";
+import { REGLAS_TERAPIAS_PAQUETES, PAQUETES_SOPORTADOS } from "../config/constants.js";
 
 /**
  * Mapeo de columnas esperadas
@@ -25,6 +25,92 @@ export const MAPEO_COLUMNAS_MATRIZ = {
     TS: 15,            // Col P: Paq. Trabajo Social
     PSI: 16,           // Col Q: Paq. Psicología
 };
+
+/**
+ * Normaliza texto de encabezado para búsqueda insensible a acentos, mayúsculas y caracteres especiales
+ */
+function normalizarEncabezado(str) {
+    if (!str) return "";
+    return String(str)
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+}
+
+/**
+ * Detecta dinámicamente las columnas de la matriz a partir de las filas de encabezado (Fila 1 y Fila 2)
+ */
+function detectarColumnasMatriz(rawRows) {
+    const mapeo = { ...MAPEO_COLUMNAS_MATRIZ };
+    let colCantDiario = -1;
+    let colApl1 = -1;
+    let colApl2 = -1;
+    let colApl3 = -1;
+    let colApl4 = -1;
+
+    const filasHeaders = [rawRows[0] || [], rawRows[1] || []];
+
+    filasHeaders.forEach((fila) => {
+        if (!Array.isArray(fila)) return;
+        fila.forEach((celda, idx) => {
+            const h = normalizarEncabezado(celda);
+            if (!h) return;
+
+            // Cant Paquete Diario
+            if (
+                h.includes("cant paquete diario") ||
+                h.includes("cantidad paquete diario") ||
+                (h.includes("paquete diario") && h.includes("cant"))
+            ) {
+                if (colCantDiario === -1) colCantDiario = idx;
+            }
+
+            // Paq. Aplicación Medicamento 1 Dosis
+            if (
+                (h.includes("aplicacion") || h.includes("medicamento")) &&
+                (h.includes("1 dosis") || h.includes("1dosis") || h.includes("dosis 1"))
+            ) {
+                if (colApl1 === -1) colApl1 = idx;
+            }
+
+            // Paq. Aplicación Medicamento 2 Dosis
+            if (
+                (h.includes("aplicacion") || h.includes("medicamento")) &&
+                (h.includes("2 dosis") || h.includes("2dosis") || h.includes("dosis 2"))
+            ) {
+                if (colApl2 === -1) colApl2 = idx;
+            }
+
+            // Paq. Aplicación Medicamento 3 Dosis
+            if (
+                (h.includes("aplicacion") || h.includes("medicamento")) &&
+                (h.includes("3 dosis") || h.includes("3dosis") || h.includes("dosis 3"))
+            ) {
+                if (colApl3 === -1) colApl3 = idx;
+            }
+
+            // Paq. Aplicación Medicamento 4 Dosis
+            if (
+                (h.includes("aplicacion") || h.includes("medicamento")) &&
+                (h.includes("4 dosis") || h.includes("4dosis") || h.includes("dosis 4"))
+            ) {
+                if (colApl4 === -1) colApl4 = idx;
+            }
+        });
+    });
+
+    return {
+        ...mapeo,
+        CANT_PAQ_DIARIO: colCantDiario,
+        APL_1_DOSIS: colApl1,
+        APL_2_DOSIS: colApl2,
+        APL_3_DOSIS: colApl3,
+        APL_4_DOSIS: colApl4,
+    };
+}
 
 /**
  * Obtiene la instancia de XLSX de forma segura (window.XLSX o import dinámico)
@@ -122,6 +208,7 @@ export function parsearMatriz(rawRows) {
         };
     }
 
+    const columnasDetectadas = detectarColumnasMatriz(rawRows);
     const conteoPorPaquete = {};
 
     for (let i = 2; i < rawRows.length; i++) {
@@ -129,12 +216,12 @@ export function parsearMatriz(rawRows) {
         if (!fila || fila.length === 0) continue;
 
         const filaExcel = i + 1;
-        const tipoDoc = String(fila[MAPEO_COLUMNAS_MATRIZ.TIPO_DOC] || "").trim();
-        const docRaw = fila[MAPEO_COLUMNAS_MATRIZ.DOCUMENTO];
+        const tipoDoc = String(fila[columnasDetectadas.TIPO_DOC] || "").trim();
+        const docRaw = fila[columnasDetectadas.DOCUMENTO];
         const documento = normalizarDocumentoMatriz(docRaw);
-        const nombre = String(fila[MAPEO_COLUMNAS_MATRIZ.NOMBRE] || "").trim();
-        const paqueteRaw = String(fila[MAPEO_COLUMNAS_MATRIZ.PAQUETE] || "").trim().toUpperCase();
-        const facturarEventoRaw = String(fila[MAPEO_COLUMNAS_MATRIZ.FACTURAR_EVENTO] || "").trim().toUpperCase();
+        const nombre = String(fila[columnasDetectadas.NOMBRE] || "").trim();
+        const paqueteRaw = String(fila[columnasDetectadas.PAQUETE] || "").trim().toUpperCase();
+        const facturarEventoRaw = String(fila[columnasDetectadas.FACTURAR_EVENTO] || "").trim().toUpperCase();
 
         // Si la fila está completamente vacía, ignorar
         if (!documento && !nombre && !paqueteRaw && !facturarEventoRaw) continue;
@@ -146,7 +233,7 @@ export function parsearMatriz(rawRows) {
             erroresFila.push(`Fila ${filaExcel}: Documento vacío.`);
         }
 
-        // Determinar código de paquete normalizado (ej. CPF1105, CPF1107, CPF1111, CPF1112, etc.)
+        // Determinar código de paquete normalizado (ej. CPF1102, CPF1103, CPF1104, CPF1105, etc.)
         let paquete = paqueteRaw;
         const matchPaq = paqueteRaw.match(/(CPF\s*\d+)/i) || paqueteRaw.match(/(CPF[A-Za-z0-9]+)/i);
         if (matchPaq) {
@@ -167,23 +254,45 @@ export function parsearMatriz(rawRows) {
         }
 
         // Parsear servicios
-        const vm = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.VM]);
-        const venf = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.ENF_PROF]); // Col H: Paq. Enfermería Profesional (VENF)
-        const enf = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.ENF_AUX]);   // Col I: Paq. Aux Enfermeria (ENF)
+        const vm = parseCantidad(fila[columnasDetectadas.VM]);
+        const venf = parseCantidad(fila[columnasDetectadas.ENF_PROF]); // Col H: Paq. Enfermería Profesional (VENF)
+        const enf = parseCantidad(fila[columnasDetectadas.ENF_AUX]);   // Col I: Paq. Aux Enfermeria (ENF)
 
-        const tf = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.TF]);
-        const tr = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.TR]);
-        const trs = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.TRS]);
-        const fon = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.FON]);
-        const to = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.TO]);
-        const nut = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.NUT]);
-        const ts = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.TS]);
-        const psi = parseCantidad(fila[MAPEO_COLUMNAS_MATRIZ.PSI]);
+        const tf = parseCantidad(fila[columnasDetectadas.TF]);
+        const tr = parseCantidad(fila[columnasDetectadas.TR]);
+        const trs = parseCantidad(fila[columnasDetectadas.TRS]);
+        const fon = parseCantidad(fila[columnasDetectadas.FON]);
+        const to = parseCantidad(fila[columnasDetectadas.TO]);
+        const nut = parseCantidad(fila[columnasDetectadas.NUT]);
+        const ts = parseCantidad(fila[columnasDetectadas.TS]);
+        const psi = parseCantidad(fila[columnasDetectadas.PSI]);
+
+        // Parsear datos de paquete diario y aplicación de medicamento (APL)
+        const cantPaqDiario = columnasDetectadas.CANT_PAQ_DIARIO !== -1 ? parseCantidad(fila[columnasDetectadas.CANT_PAQ_DIARIO]) : 0;
+        const apl1 = columnasDetectadas.APL_1_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_1_DOSIS]) : 0;
+        const apl2 = columnasDetectadas.APL_2_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_2_DOSIS]) : 0;
+        const apl3 = columnasDetectadas.APL_3_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_3_DOSIS]) : 0;
+        const apl4 = columnasDetectadas.APL_4_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_4_DOSIS]) : 0;
+
+        let aplEsperado = 0;
+        let dosisNombre = "";
+
+        if (paquete === "CPF1102") {
+            aplEsperado = apl1;
+            dosisNombre = "1 Dosis";
+        } else if (paquete === "CPF1103") {
+            aplEsperado = apl2 > 0 ? apl2 : apl3;
+            dosisNombre = apl2 > 0 ? "2 Dosis" : (apl3 > 0 ? "3 Dosis" : "2 o 3 Dosis");
+        } else if (paquete === "CPF1104") {
+            aplEsperado = apl4;
+            dosisNombre = "4 Dosis";
+        }
 
         const servicios = {
             VM: vm,
             VENF: venf,
             ENF: enf,
+            APL: aplEsperado,
             TF: tf,
             TR: tr,
             TRS: trs,
@@ -199,19 +308,124 @@ export function parsearMatriz(rawRows) {
         const totalTerapias = tf + tr + trs + fon + to;
 
         // Pre-validar según reglas de paquetes actuales
-        if (paquete && paquete.startsWith("CPF")) {
-            // 1. Validar Fijos Obligatorios: exactamente 1 VM, y al menos 1 servicio de enfermería (VENF, ENF o ambos)
+        const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(paquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[paquete]);
+        const esPaqueteMedicamento = paquete === "CPF1102" || paquete === "CPF1103" || paquete === "CPF1104";
+
+        if (paquete && paquete !== "EVENTO" && !esPaqueteParametrizado) {
+            // Si el código de paquete no está parametrizado en el sistema, solo indicar ese error y no inventar ni exigir reglas por defecto
+            erroresFila.push(`Paquete ${paquete}: Código de paquete no parametrizado en el sistema.`);
+        } else if (esPaqueteMedicamento) {
+            // Regla específica para CPF1102, CPF1103 y CPF1104:
+            // Solo requiere 1 VM, 1 ENF y APL (según dosis y Cant Paquete Diario)
             if (vm !== 1) {
                 erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
             }
-            if (venf === 0 && enf === 0) {
-                erroresFila.push(`VENF o ENF: Requiere al menos 1 servicio`);
-            } else {
-                if (venf !== 0 && venf !== 1) {
-                    erroresFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
+            if (enf !== 1) {
+                erroresFila.push(`ENF: Requiere 1 (tiene ${enf})`);
+            }
+
+            // Validar asignación de dosis correspondiente
+            if (paquete === "CPF1102") {
+                if (apl1 <= 0) {
+                    erroresFila.push(`CPF1102: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 1 Dosis' (tiene 0)`);
                 }
-                if (enf !== 0 && enf !== 1) {
-                    erroresFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
+                if (apl2 > 0 || apl3 > 0 || apl4 > 0) {
+                    erroresFila.push(`CPF1102: Solo debe marcar 1 Dosis (tiene valores en otras dosis: 2D:${apl2}, 3D:${apl3}, 4D:${apl4})`);
+                }
+            } else if (paquete === "CPF1103") {
+                const tieneDosisValida = (apl2 > 0 && apl3 === 0) || (apl3 > 0 && apl2 === 0);
+                if (apl2 <= 0 && apl3 <= 0) {
+                    erroresFila.push(`CPF1103: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 2 Dosis' o '3 Dosis' (tiene 0)`);
+                } else if (!tieneDosisValida) {
+                    erroresFila.push(`CPF1103: Debe elegir solo una dosis entre 2 Dosis o 3 Dosis (tiene 2D:${apl2}, 3D:${apl3})`);
+                }
+                if (apl1 > 0 || apl4 > 0) {
+                    erroresFila.push(`CPF1103: No debe marcar 1 Dosis ni 4 Dosis (tiene 1D:${apl1}, 4D:${apl4})`);
+                }
+            } else if (paquete === "CPF1104") {
+                if (apl4 <= 0) {
+                    erroresFila.push(`CPF1104: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 4 Dosis' (tiene 0)`);
+                }
+                if (apl1 > 0 || apl2 > 0 || apl3 > 0) {
+                    erroresFila.push(`CPF1104: Solo debe marcar 4 Dosis (tiene valores en otras dosis: 1D:${apl1}, 2D:${apl2}, 3D:${apl3})`);
+                }
+            }
+
+            // Prohibir servicios complementarios (PSI, NUT, TS) en paquetes de medicamento
+            if (psi > 0 || nut > 0 || ts > 0) {
+                const opcs = [];
+                if (psi > 0) opcs.push(`PSI:${psi}`);
+                if (nut > 0) opcs.push(`NUT:${nut}`);
+                if (ts > 0) opcs.push(`TS:${ts}`);
+                erroresFila.push(`${paquete}: No permite servicios opcionales (tiene ${opcs.join(", ")})`);
+            }
+
+            // Prohibir terapias en paquetes de medicamento
+            if (totalTerapias > 0) {
+                const ter = [];
+                if (tf > 0) ter.push(`TF:${tf}`);
+                if (tr > 0) ter.push(`TR:${tr}`);
+                if (trs > 0) ter.push(`TRS:${trs}`);
+                if (fon > 0) ter.push(`FON:${fon}`);
+                if (to > 0) ter.push(`TO:${to}`);
+                erroresFila.push(`${paquete}: No contempla terapias (tiene ${ter.join(", ")})`);
+            }
+        } else if (paquete && paquete.startsWith("CPF")) {
+            // Reglas generales para el resto de paquetes CPF
+            // 0. Prohibir columnas de dosis de medicamentos (APL) si no es paquete de medicamentos
+            if (apl1 > 0 || apl2 > 0 || apl3 > 0 || apl4 > 0) {
+                erroresFila.push(`${paquete}: No contempla servicio de aplicación de medicamentos (APL)`);
+            }
+
+            // Validar 'Cant Paquete Diario':
+            // En paquetes diarios (como CPF1225) es válido registrar días y NO va ligado a otra columna.
+            // En paquetes mensuales no debe marcarse Cant Paquete Diario.
+            const esPaqueteDiario = paquete === "CPF1225";
+            if (!esPaqueteDiario && cantPaqDiario > 0) {
+                erroresFila.push(`${paquete}: Es paquete mensual, no debe registrar 'Cant Paquete Diario' (tiene ${cantPaqDiario})`);
+            }
+
+            // 1. Validar Fijos Obligatorios de Médica (VM) y Enfermería (VENF / ENF)
+            if (paquete === "CPF1107") {
+                // CPF1107: Debe tener 2 VM y 4 ENF
+                if (vm !== 2) {
+                    erroresFila.push(`VM: Requiere 2 (tiene ${vm})`);
+                }
+                if (enf !== 4) {
+                    erroresFila.push(`ENF: Requiere 4 (tiene ${enf})`);
+                }
+                if (venf !== 0) {
+                    erroresFila.push(`VENF: Requiere 0 (tiene ${venf})`);
+                }
+            } else if (paquete === "CPF1225") {
+                // CPF1225: Debe tener 2 VM
+                if (vm !== 2) {
+                    erroresFila.push(`VM: Requiere 2 (tiene ${vm})`);
+                }
+                if (venf === 0 && enf === 0) {
+                    erroresFila.push(`VENF o ENF: Requiere al menos 1 servicio`);
+                } else {
+                    if (venf !== 0 && venf !== 1) {
+                        erroresFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
+                    }
+                    if (enf !== 0 && enf !== 1) {
+                        erroresFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
+                    }
+                }
+            } else {
+                // Resto de paquetes estándar CPF (1 VM, y al menos 1 VENF o ENF)
+                if (vm !== 1) {
+                    erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
+                }
+                if (venf === 0 && enf === 0) {
+                    erroresFila.push(`VENF o ENF: Requiere al menos 1 servicio`);
+                } else {
+                    if (venf !== 0 && venf !== 1) {
+                        erroresFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
+                    }
+                    if (enf !== 0 && enf !== 1) {
+                        erroresFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
+                    }
                 }
             }
 
@@ -233,9 +447,36 @@ export function parsearMatriz(rawRows) {
                 }
             }
 
-            // 3. Validar Terapias sumadas según rango del paquete
+            // 3. Validar Terapias según reglas específicas del paquete
             const regla = REGLAS_TERAPIAS_PAQUETES[paquete];
-            if (regla && (regla.min > 0 || regla.max > 0)) {
+
+            // 3.1 Paquetes que NO contemplan terapias (ej: CPF1108, CPF1111, CPF1112, CPF1113)
+            if (regla && regla.permiteTerapias === false) {
+                if (totalTerapias > 0) {
+                    const ter = [];
+                    if (tf > 0) ter.push(`TF:${tf}`);
+                    if (tr > 0) ter.push(`TR:${tr}`);
+                    if (trs > 0) ter.push(`TRS:${trs}`);
+                    if (fon > 0) ter.push(`FON:${fon}`);
+                    if (to > 0) ter.push(`TO:${to}`);
+                    erroresFila.push(`${paquete}: No contempla terapias y registra ${totalTerapias} (${ter.join(", ")})`);
+                }
+            } 
+            // 3.2 Paquetes con restricción de terapias específicas (ej: CPF1107: solo TF, TR, TRS)
+            else if (regla && regla.terapiasPermitidas && Array.isArray(regla.terapiasPermitidas)) {
+                const noPermitidas = [];
+                if (fon > 0 && !regla.terapiasPermitidas.includes("FON")) noPermitidas.push(`FON:${fon}`);
+                if (to > 0 && !regla.terapiasPermitidas.includes("TO")) noPermitidas.push(`TO:${to}`);
+                if (tf > 0 && !regla.terapiasPermitidas.includes("TF")) noPermitidas.push(`TF:${tf}`);
+                if (tr > 0 && !regla.terapiasPermitidas.includes("TR")) noPermitidas.push(`TR:${tr}`);
+                if (trs > 0 && !regla.terapiasPermitidas.includes("TRS")) noPermitidas.push(`TRS:${trs}`);
+
+                if (noPermitidas.length > 0) {
+                    erroresFila.push(`${paquete}: Solo permite ${regla.terapiasPermitidas.join(", ")}. No admite: ${noPermitidas.join(", ")}`);
+                }
+            } 
+            // 3.3 Paquetes con rangos obligatorios de terapias (ej: CPF1105, CPF1106, CPF1109, CPF1110)
+            else if (regla && regla.permiteTerapias && (regla.min > 0 || (regla.max > 0 && regla.max < 999))) {
                 if (totalTerapias < regla.min || totalTerapias > regla.max) {
                     const terapiasActivas = [];
                     if (tf > 0) terapiasActivas.push(`${tf} TF`);
@@ -264,6 +505,15 @@ export function parsearMatriz(rawRows) {
             paquete,
             facturarEventoRaw,
             esFacturarEvento: esFacturarEventoSi,
+            cantPaqDiario,
+            aplDosis: {
+                dosis1: apl1,
+                dosis2: apl2,
+                dosis3: apl3,
+                dosis4: apl4,
+                esperado: aplEsperado,
+                nombre: dosisNombre,
+            },
             servicios,
             totalTerapias,
             errores: erroresFila,

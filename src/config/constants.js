@@ -17,6 +17,7 @@ export const ALLOWED_TYPES = [
     "FON",
     "NUT",
     "VENF",
+    "APL",
 ];
 
 export const SERVICIOS_TERAPIA = ["TF", "TR", "SUCCION", "TO", "FON"];
@@ -99,19 +100,19 @@ export const PAQUETES_INFO = {
 };
 
 export const REGLAS_TERAPIAS_PAQUETES = {
-    CPF1102: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
-    CPF1103: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
-    CPF1104: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
-    CPF1105: { min: 12, max: 30, descripcion: "Entre 12 y 30 evoluciones sumadas en total." },
-    CPF1106: { min: 12, max: 30, descripcion: "Entre 12 y 30 evoluciones sumadas en total." },
-    CPF1107: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
-    CPF1108: { min: 0, max: 0, descripcion: "Sin requisitos específicos de terapias." },
-    CPF1109: { min: 6, max: 12, descripcion: "Entre 6 y 12 evoluciones sumadas en total." },
-    CPF1110: { min: 12, max: 20, descripcion: "Entre 12 y 20 evoluciones sumadas en total." },
-    CPF1111: { min: 0, max: 0, descripcion: "Atención Integral Heridas." },
-    CPF1112: { min: 0, max: 0, descripcion: "Heridas Complejas." },
-    CPF1113: { min: 0, max: 0, descripcion: "Heridas de Baja Complejidad." },
-    CPF1225: { min: 0, max: 0, descripcion: "Ventilación Mecánica Paciente Crónico." },
+    CPF1102: { min: 0, max: 0, permiteTerapias: false, descripcion: "1 VM, 1 ENF y APL (1 Dosis = Cant Paquete Diario). Sin terapias." },
+    CPF1103: { min: 0, max: 0, permiteTerapias: false, descripcion: "1 VM, 1 ENF y APL (2 o 3 Dosis = Cant Paquete Diario). Sin terapias." },
+    CPF1104: { min: 0, max: 0, permiteTerapias: false, descripcion: "1 VM, 1 ENF y APL (4 Dosis = Cant Paquete Diario). Sin terapias." },
+    CPF1105: { min: 12, max: 30, permiteTerapias: true, descripcion: "Entre 12 y 30 evoluciones sumadas en total (TF, TR, TRS, FON, TO)." },
+    CPF1106: { min: 12, max: 30, permiteTerapias: true, descripcion: "Entre 12 y 30 evoluciones sumadas en total (TF, TR, TRS, FON, TO)." },
+    CPF1107: { min: 0, max: 999, permiteTerapias: true, terapiasPermitidas: ["TF", "TR", "TRS"], descripcion: "Terapias opcionales (únicamente TF, TR y TRS/Succión)." },
+    CPF1108: { min: 0, max: 0, permiteTerapias: false, descripcion: "No contempla terapias (0 terapias)." },
+    CPF1109: { min: 6, max: 12, permiteTerapias: true, descripcion: "Entre 6 y 12 evoluciones sumadas en total (TF, TR, TRS, FON, TO)." },
+    CPF1110: { min: 12, max: 20, permiteTerapias: true, descripcion: "Entre 12 y 20 evoluciones sumadas en total (TF, TR, TRS, FON, TO)." },
+    CPF1111: { min: 0, max: 0, permiteTerapias: false, descripcion: "Heridas Alta Complejidad. No contempla terapias (0 terapias)." },
+    CPF1112: { min: 0, max: 0, permiteTerapias: false, descripcion: "Heridas Mediana Complejidad. No contempla terapias (0 terapias)." },
+    CPF1113: { min: 0, max: 0, permiteTerapias: false, descripcion: "Heridas Baja Complejidad. No contempla terapias (0 terapias)." },
+    CPF1225: { min: 0, max: 999, permiteTerapias: true, descripcion: "Ventilación Mecánica Crónica. Contempla todas las terapias según programación." },
     EVENTO: { min: 0, max: 0, descripcion: "Servicios individuales facturados y validados por evento." },
     auto: { min: 0, max: 0, descripcion: "Detección automática por carpeta para cada paciente." },
 };
@@ -120,6 +121,7 @@ export const ORDEN_SERVICIOS_CLINICOS = [
     "General",
     "VM",
     "ENF",
+    "APL",
     "ENF12",
     "CH",
     "NUT",
@@ -161,7 +163,7 @@ export function obtenerTextoServicioFomag(servicio) {
 export const IGNORAR_ARCHIVOS = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 
 export const REGEX_SERVICIO_ARCHIVO =
-    /^[2-5]\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i;
+    /^[2-5]\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
 
 /**
  * Obtiene el icono, tipo y estado de reconocimiento de un archivo de soporte
@@ -177,19 +179,19 @@ export function obtenerInfoSoporte(nombreArchivo) {
 
     // Archivos numéricos clásicos sin servicio
     if (/^2\.pdf$/i.test(nombre)) return { icono: "📄", tipo: "Autorización / Factura (2.pdf)", reconocido: true };
-    if (/^3\.pdf$/i.test(nombre)) return { icono: "📋", tipo: "Epicrisis (3.pdf)", reconocido: true };
+    if (/^3\.pdf$/i.test(nombre)) return { icono: "📋", tipo: "ADRES (3.pdf)", reconocido: true };
     if (/^4\.pdf$/i.test(nombre)) return { icono: "✍️", tipo: "Planilla de Firmas (4.pdf)", reconocido: true };
     if (/^5\.pdf$/i.test(nombre)) return { icono: "📑", tipo: "Evolución Clínica (5.pdf)", reconocido: true };
 
     // Archivos con servicio: [2-5] [servicio].pdf
-    const match = nombre.match(/^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i);
+    const match = nombre.match(/^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i);
     if (match) {
         const num = match[1];
         let s = match[2].toUpperCase();
         if (s === "SUC") s = "SUCCION";
 
         if (num === "2") return { icono: "📄", tipo: `Autorización ${s}`, reconocido: true };
-        if (num === "3") return { icono: "📋", tipo: `Epicrisis ${s}`, reconocido: true };
+        if (num === "3") return { icono: "📋", tipo: `ADRES ${s}`, reconocido: true };
         if (num === "4") return { icono: "✍️", tipo: `Firmas ${s}`, reconocido: true };
 
         // num === "5"
@@ -198,6 +200,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
             VENF: "🩺",
             ENF: "💉",
             ENF12: "💉",
+            APL: "💊",
             CH: "🩹",
             TF: "🏃",
             TR: "🫁",
@@ -210,7 +213,9 @@ export function obtenerInfoSoporte(nombreArchivo) {
             NUT: "🥗",
         };
         const icono = iconosServicios[s] || "📑";
-        const tipoDesc = s === "CH" ? "Curación de Heridas (CH)" : s;
+        let tipoDesc = s;
+        if (s === "CH") tipoDesc = "Curación de Heridas (CH)";
+        else if (s === "APL") tipoDesc = "Aplicación de Medicamentos (APL)";
         return { icono, tipo: `Evolución ${tipoDesc}`, reconocido: true };
     }
 
@@ -219,9 +224,10 @@ export function obtenerInfoSoporte(nombreArchivo) {
 
 export const SERVICIOS_NOMBRES = {
     General: "📦 Paquete",
-    VM: "🩺 Valoración Médica (1)",
-    VENF: "🩺 Enfermería Profesional (1)",
-    ENF: "💉 Auxiliar de Enfermería (1)",
+    VM: "🩺 Valoración Médica",
+    VENF: "🩺 Enfermería Profesional",
+    ENF: "💉 Auxiliar de Enfermería",
+    APL: "💊 Aplicación Medicamentos (APL)",
     ENF12: "💉 Enfermería 12h",
     CH: "🩹 Curación de Heridas",
     TF: "🏃 Terapia Física",

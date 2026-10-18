@@ -9,11 +9,14 @@ import {
     normalizeForSearch,
     escapeRegExp,
     extraerNumeroDelTexto,
+    estaFechaEnPeriodo,
+    formatearPeriodoLegible,
 } from "../utils/textUtils.js";
 import {
     extraerTextoPDF,
     extraerTextoOCRDePDF,
     extraerFechas,
+    validarOrdenFechas,
 } from "../utils/pdfUtils.js";
 
 /**
@@ -97,7 +100,8 @@ export async function validarPDF(
     carpeta,
     nroDocumento,
     resultados,
-    convenio = "capital-salud"
+    convenio = "capital-salud",
+    periodoPermitido = null
 ) {
     // console.log(`\n🔍 Validando evento`);
     // console.log(`   Carpeta: ${carpeta}`);
@@ -160,6 +164,69 @@ export async function validarPDF(
                 resultados[carpeta].fechasPorServicio[servicioUpper].push(
                     ...fechasServicio
                 );
+
+                if (fechasServicio.length > 0) {
+                    const { duplicadas, desordenadas, fechasDesordenadas } =
+                        validarOrdenFechas(fechasServicio);
+
+                    if (duplicadas.length > 0) {
+                        resultados[carpeta].alertasPorServicio =
+                            resultados[carpeta].alertasPorServicio || {};
+                        resultados[carpeta].alertasPorServicio[servicioUpper] =
+                            resultados[carpeta].alertasPorServicio[servicioUpper] || [];
+                        resultados[carpeta].alertasPorServicio[servicioUpper].push(
+                            `5.pdf: Fechas duplicadas: ${duplicadas.join(", ")}`
+                        );
+                    }
+
+                    if (desordenadas) {
+                        resultados[carpeta].alertasPorServicio =
+                            resultados[carpeta].alertasPorServicio || {};
+                        resultados[carpeta].alertasPorServicio[servicioUpper] =
+                            resultados[carpeta].alertasPorServicio[servicioUpper] || [];
+                        const detalleDesorden = fechasDesordenadas?.length > 0
+                            ? ` (${fechasDesordenadas.join(", ")})`
+                            : "";
+                        resultados[carpeta].alertasPorServicio[servicioUpper].push(
+                            `5.pdf: Fechas no están en orden cronológico${detalleDesorden}`
+                        );
+                    }
+                }
+            }
+
+            // Validar periodo permitido para archivo 5 de servicio
+            if (periodoPermitido && (periodoPermitido.desde || periodoPermitido.hasta) && numeroArchivo === "5") {
+                const fechasAValidar = servicioUpper === "PSI" ? fechas.slice(0, 1) : fechas;
+                const fechasFuera = fechasAValidar.filter(
+                    (f) => !estaFechaEnPeriodo(f, periodoPermitido.desde, periodoPermitido.hasta)
+                );
+                if (fechasFuera.length > 0) {
+                    const periodoTextoCorto = formatearPeriodoLegible(periodoPermitido.desde, periodoPermitido.hasta, true);
+                    const unicasFuera = [...new Set(fechasFuera)];
+                    resultados[carpeta].erroresPorServicio[servicioUpper] =
+                        resultados[carpeta].erroresPorServicio[servicioUpper] || [];
+                    resultados[carpeta].erroresPorServicio[servicioUpper].push(
+                        `5.pdf: Fuera del periodo permitido ${periodoTextoCorto} (${unicasFuera.join(", ")})`
+                    );
+                    if (resultados[carpeta].pdfs?.[file.name] !== undefined) {
+                        resultados[carpeta].pdfs[file.name] = "❌";
+                    }
+                }
+            }
+        } else if (file.name === "5.pdf" && periodoPermitido && (periodoPermitido.desde || periodoPermitido.hasta)) {
+            // Validar archivo 5.pdf genérico
+            const fechasFuera = fechas.filter(
+                (f) => !estaFechaEnPeriodo(f, periodoPermitido.desde, periodoPermitido.hasta)
+            );
+            if (fechasFuera.length > 0) {
+                const periodoTextoCorto = formatearPeriodoLegible(periodoPermitido.desde, periodoPermitido.hasta, true);
+                const unicasFuera = [...new Set(fechasFuera)];
+                resultados[carpeta].errores.push(
+                    `5.pdf: Fuera del periodo permitido ${periodoTextoCorto} (${unicasFuera.join(", ")})`
+                );
+                if (resultados[carpeta].pdfs?.[file.name] !== undefined) {
+                    resultados[carpeta].pdfs[file.name] = "❌";
+                }
             }
         }
 

@@ -1344,6 +1344,24 @@ td.missing {
     letter-spacing: 0.2px;
 }
 
+.pdf-floating-fecha-pill.fecha-desordenada {
+    background: rgba(245, 158, 11, 0.25) !important;
+    border-color: #f59e0b !important;
+    color: #fef08a !important;
+}
+
+.pdf-floating-fecha-pill.fecha-duplicada {
+    background: rgba(239, 68, 68, 0.25) !important;
+    border-color: #ef4444 !important;
+    color: #fecaca !important;
+}
+
+.pdf-floating-fecha-pill.fecha-desordenada.fecha-duplicada {
+    background: rgba(225, 29, 72, 0.35) !important;
+    border-color: #f43f5e !important;
+    color: #ffe4e6 !important;
+}
+
 .pdf-floating-empty {
     font-size: 11.5px;
     color: #94a3b8;
@@ -1374,42 +1392,110 @@ td.missing {
 .wiki-modal-wrapper {
     background: var(--bg-card);
     border: 1px solid var(--border-subtle);
-    width: 90vw;
-    max-width: 1020px;
-    height: 82vh;
-    max-height: 760px;
+    width: 98vw;
+    max-width: 1650px;
+    height: 92vh;
+    max-height: 940px;
     border-radius: var(--radius-xl);
     display: flex;
+    flex-direction: column;
     overflow: hidden;
     box-shadow: var(--shadow-modal);
+    position: relative;
+}
+
+.wiki-modal-header {
+    padding: 10px 16px;
+    background: var(--bg-sidebar);
+    border-bottom: 1px solid var(--border-subtle);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+.wiki-modal-header-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.wiki-modal-title {
+    font-size: 13.5px;
+    font-weight: 700;
+    color: var(--text-pure);
+    letter-spacing: -0.1px;
+}
+
+.btn-wiki-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-card);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-wiki-action:hover {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.wiki-modal-main {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    overflow: hidden;
+    position: relative;
 }
 
 .wiki-sidebar {
-    width: 240px;
-    min-width: 240px;
+    width: 250px;
+    min-width: 250px;
     flex-shrink: 0;
     background: var(--bg-sidebar);
     border-right: 1px solid var(--border-subtle);
     display: flex;
     flex-direction: column;
+    transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    white-space: nowrap;
 }
 
-.wiki-sidebar-header {
-    padding: 12px 16px;
-    border-bottom: 1px solid var(--border-subtle);
-    display: flex;
-    justify-content: space-between;
+/* Modo colapsado: barra delgada de 48px que muestra SOLO los iconos */
+.wiki-sidebar.collapsed {
+    width: 48px !important;
+    min-width: 48px !important;
+}
+
+.wiki-sidebar.collapsed .wiki-nav-section {
+    display: none !important;
+}
+
+.wiki-sidebar.collapsed .wiki-nav-text {
+    display: none !important;
+}
+
+.wiki-sidebar.collapsed .wiki-nav {
+    padding: 8px 4px !important;
     align-items: center;
 }
 
-.wiki-sidebar-header h3 {
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--text-pure);
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 6px;
+.wiki-sidebar.collapsed .wiki-nav-item {
+    padding: 7px 0 !important;
+    width: 36px !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center;
 }
 
 .wiki-close {
@@ -1443,10 +1529,10 @@ td.missing {
 }
 
 .wiki-nav-section {
-    font-size: 9.5px;
-    font-weight: 800;
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: 0.1px;
     color: var(--text-muted);
     margin: 12px 8px 4px 8px;
 }
@@ -1455,15 +1541,32 @@ td.missing {
     padding: 6px 10px;
     border-radius: var(--radius-sm);
     font-size: 11.5px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--text-secondary);
     text-decoration: none;
     transition: var(--transition);
-    display: block;
+    display: flex;
+    align-items: center;
+    gap: 8px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     border: 1px solid transparent;
+}
+
+.wiki-nav-icon {
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    flex-shrink: 0;
+}
+
+.wiki-nav-text {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .wiki-nav-item:hover {
@@ -1475,15 +1578,15 @@ td.missing {
     background: var(--accent-glow);
     color: var(--accent-text);
     border-color: var(--accent-border);
+    font-weight: 600;
 }
 
 .wiki-content {
     flex: 1;
     min-width: 0;
-    padding: 24px 32px;
+    padding: 22px 28px;
     overflow-y: auto;
     overflow-x: hidden;
-    word-break: break-word;
 }
 
 .wiki-article {
@@ -1493,47 +1596,47 @@ td.missing {
 
 .wiki-article h1 {
     font-family: var(--font-heading);
-    font-size: 16.5px;
-    font-weight: 700;
-    margin: 0 0 14px 0;
+    font-size: 15px;
+    font-weight: 600;
+    margin: 0 0 12px 0;
     padding-bottom: 8px;
     border-bottom: 1px solid var(--border-subtle);
     color: var(--text-pure);
-    letter-spacing: -0.2px;
+    letter-spacing: -0.1px;
 }
 
 .wiki-article h2 {
     font-family: var(--font-heading);
-    font-size: 13.5px;
-    font-weight: 700;
-    margin: 20px 0 8px 0;
+    font-size: 13px;
+    font-weight: 600;
+    margin: 18px 0 8px 0;
     color: var(--text-primary);
 }
 
 .wiki-article h3 {
     font-family: var(--font-heading);
     font-size: 12px;
-    font-weight: 700;
-    margin: 14px 0 6px 0;
+    font-weight: 600;
+    margin: 12px 0 6px 0;
     color: var(--text-primary);
 }
 
 .wiki-article p {
-    font-size: 12px;
+    font-size: 11.5px;
     line-height: 1.55;
     color: var(--text-secondary);
     margin: 0 0 10px 0;
 }
 
 .wiki-intro {
-    font-size: 12.5px;
+    font-size: 12px;
     color: var(--text-secondary);
-    line-height: 1.6;
-    margin-bottom: 16px;
+    line-height: 1.55;
+    margin-bottom: 14px;
 }
 
 .wiki-list {
-    font-size: 12px;
+    font-size: 11.5px;
     line-height: 1.55;
     color: var(--text-secondary);
     padding-left: 20px;
@@ -1553,13 +1656,13 @@ td.missing {
 
 .wiki-article code {
     font-family: var(--font-mono);
-    font-size: 11px;
+    font-size: 10.5px;
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
-    padding: 1.5px 5px;
+    padding: 1px 5px;
     border-radius: 4px;
     color: var(--accent-text);
-    word-break: break-word;
+    white-space: nowrap;
 }
 
 .wiki-quick-links {
@@ -1577,8 +1680,8 @@ td.missing {
 }
 
 .wiki-card h3 {
-    font-size: 12.5px;
-    font-weight: 700;
+    font-size: 12px;
+    font-weight: 600;
     color: var(--text-primary);
     margin: 0 0 8px 0;
 }
@@ -1587,7 +1690,7 @@ td.missing {
 .wiki-card ol {
     padding-left: 18px;
     margin: 0;
-    font-size: 12px;
+    font-size: 11.5px;
     line-height: 1.55;
     color: var(--text-secondary);
 }
@@ -1596,14 +1699,16 @@ td.missing {
     margin-bottom: 4px;
 }
 
-.wiki-card a {
+.wiki-card a,
+.wiki-table a {
     color: var(--accent-text);
     text-decoration: none;
-    font-weight: 600;
+    font-weight: 500;
     cursor: pointer;
 }
 
-.wiki-card a:hover {
+.wiki-card a:hover,
+.wiki-table a:hover {
     text-decoration: underline;
 }
 
@@ -1621,10 +1726,57 @@ td.missing {
     border-radius: 4px;
     font-size: 11px;
     font-family: var(--font-mono);
-    font-weight: 600;
+    font-weight: 500;
     background: var(--bg-subtle);
     border: 1px solid var(--border-subtle);
     color: var(--text-primary);
+}
+
+.wiki-badge-req,
+.wiki-badge-enf,
+.wiki-badge-opt,
+.wiki-badge-ter,
+.wiki-badge-neutral {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 10.5px;
+    font-weight: 500;
+    text-transform: none;
+    white-space: nowrap;
+    line-height: 1.3;
+}
+
+.wiki-badge-req {
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: #10b981;
+}
+
+.wiki-badge-enf {
+    background: rgba(59, 130, 246, 0.12);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    color: #3b82f6;
+}
+
+.wiki-badge-opt {
+    background: rgba(245, 158, 11, 0.12);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    color: #f59e0b;
+}
+
+.wiki-badge-ter {
+    background: rgba(168, 85, 247, 0.12);
+    border: 1px solid rgba(168, 85, 247, 0.3);
+    color: #a855f7;
+}
+
+.wiki-badge-neutral {
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    color: var(--text-secondary);
 }
 
 .wiki-note {
@@ -1635,7 +1787,6 @@ td.missing {
     margin: 10px 0;
     border: 1px solid var(--border-subtle);
     border-left-width: 3px;
-    word-break: break-word;
 }
 
 .wiki-note.info {
@@ -1676,7 +1827,6 @@ td.missing {
     color: var(--text-secondary);
     margin: 8px 0 12px 0;
     line-height: 1.5;
-    word-break: break-word;
 }
 
 .wiki-error-item {
@@ -1684,7 +1834,7 @@ td.missing {
     border: 1px solid var(--border-subtle);
     border-left: 3px solid var(--danger);
     border-radius: var(--radius-md);
-    padding: 9px 12px;
+    padding: 8px 12px;
     margin-bottom: 8px;
     font-size: 11.5px;
 }
@@ -1692,14 +1842,15 @@ td.missing {
 .wiki-error-item strong {
     display: block;
     color: var(--text-pure);
-    font-size: 12px;
+    font-size: 11.5px;
+    font-weight: 600;
     margin-bottom: 2px;
 }
 
 .wiki-error-item p {
     margin: 0;
     color: var(--text-secondary);
-    font-size: 11.5px;
+    font-size: 11px;
     line-height: 1.45;
 }
 
@@ -1716,7 +1867,7 @@ td.missing {
 .wiki-table table {
     width: 100%;
     border-collapse: collapse;
-    font-size: 11.5px;
+    font-size: 11px;
     text-align: left;
     margin: 0;
 }
@@ -1724,23 +1875,35 @@ td.missing {
 .wiki-table th {
     background: var(--bg-sidebar);
     padding: 7px 10px;
-    font-weight: 700;
+    font-weight: 600;
     font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.4px;
-    color: var(--text-muted);
+    text-transform: none;
+    letter-spacing: 0;
+    color: var(--text-secondary);
     border-bottom: 1px solid var(--border-subtle);
     border-right: 1px solid var(--border-subtle);
     white-space: nowrap;
 }
 
 .wiki-table td {
-    padding: 7px 10px;
+    padding: 6px 10px;
+    font-size: 11px;
+    font-weight: 400;
+    line-height: 1.45;
     border-bottom: 1px solid var(--border-subtle);
     border-right: 1px solid var(--border-subtle);
     color: var(--text-primary);
     vertical-align: middle;
-    word-break: break-word;
+}
+
+.wiki-table td:first-child,
+.wiki-nowrap {
+    white-space: nowrap;
+}
+
+.wiki-table td strong,
+.wiki-article strong {
+    font-weight: 600;
 }
 
 .wiki-table th:last-child,
@@ -2315,8 +2478,8 @@ td.servicio-nombre {
 
 /* ================= EVOLUCIONES DETALLE: ANCHO FIJO CON SCROLL DISCRETO ================= */
 td.fechas {
-    max-width: 160px !important;
-    width: 160px !important;
+    max-width: 380px !important;
+    width: 380px !important;
     overflow: hidden;
 }
 
@@ -2325,7 +2488,7 @@ td.fechas {
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: 4px;
-    max-width: 160px;
+    max-width: 350px;
     padding-bottom: 2px;
     scrollbar-width: thin;
 }
@@ -3042,8 +3205,8 @@ td.count-evol-cell {
 /* Columna 5: Fechas */
 #tabla th:nth-child(5),
 #tabla td.fechas {
-    width: 165px;
-    max-width: 165px;
+    width: 380px;
+    max-width: 380px;
     text-align: left;
     vertical-align: middle;
 }
@@ -3096,8 +3259,8 @@ td.servicio-nombre {
 
 #tabla.modo-paquete-dinamico th:nth-child(5),
 #tabla.modo-paquete-dinamico td.fechas {
-    width: 160px;
-    max-width: 160px;
+    width: 380px;
+    max-width: 380px;
 }
 /* ================= FILA CABECERA DE LOTE Y SUB-FILAS ================= */
 .lote-header-row {
@@ -3171,16 +3334,38 @@ body.theme-dark .fecha-text {
     border-color: var(--border-subtle) !important;
 }
 /* ================= FECHAS ULTRA DISCRETAS Y MINIMALISTAS ================= */
+.fecha-item-wrapper {
+    display: inline-flex !important;
+    align-items: center !important;
+    white-space: nowrap !important;
+    flex-shrink: 0 !important;
+    scroll-snap-align: start !important;
+}
+
+.fecha-item-wrapper .fecha-text:not(:last-child)::after {
+    display: none !important;
+}
+
+.fecha-sep {
+    color: var(--text-muted) !important;
+    margin-right: 4px !important;
+    font-size: 11px !important;
+    font-family: var(--font-mono) !important;
+    display: inline-block !important;
+    user-select: none;
+}
+
 .fecha-text {
     background: transparent !important;
     color: var(--text-secondary) !important;
     border: none !important;
-    padding: 0 4px 0 0 !important;
+    padding: 0 2px !important;
     font-size: 11px !important;
     font-family: var(--font-mono) !important;
     font-weight: 400 !important;
     letter-spacing: -0.2px !important;
     white-space: nowrap !important;
+    transition: all 0.15s ease;
 }
 
 .fecha-text:not(:last-child)::after {
@@ -3189,10 +3374,332 @@ body.theme-dark .fecha-text {
     margin-right: 2px;
 }
 
+/* Fechas fuera de orden cronológico */
+.fecha-text.fecha-desordenada {
+    background: #fef3c7 !important;
+    color: #92400e !important;
+    border: 1px solid #f59e0b !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: help;
+}
+
+/* Fechas duplicadas */
+.fecha-text.fecha-duplicada {
+    background: #fee2e2 !important;
+    color: #991b1b !important;
+    border: 1px solid #ef4444 !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-weight: 600 !important;
+    box-shadow: 0 1px 2px rgba(239, 68, 68, 0.2) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: help;
+}
+
+/* Fechas desordenadas Y duplicadas */
+.fecha-text.fecha-desordenada.fecha-duplicada {
+    background: #ffe4e6 !important;
+    color: #881337 !important;
+    border: 1px solid #e11d48 !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 3px rgba(225, 29, 72, 0.25) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: help;
+}
+
+/* Fechas fuera del periodo permitido */
+.fecha-text.fecha-fuera-periodo {
+    background: #fdf2f8 !important;
+    color: #be123c !important;
+    border: 1px solid #f43f5e !important;
+    border-radius: 4px !important;
+    padding: 1px 5px !important;
+    font-weight: 700 !important;
+    box-shadow: 0 1px 3px rgba(244, 63, 94, 0.3) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    cursor: help;
+}
+
 body.theme-dark .fecha-text {
     background: transparent !important;
     color: var(--text-secondary) !important;
     border: none !important;
+}
+
+body.theme-dark .fecha-text.fecha-desordenada {
+    background: rgba(245, 158, 11, 0.22) !important;
+    color: #fbbf24 !important;
+    border-color: #d97706 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.theme-dark .fecha-text.fecha-duplicada {
+    background: rgba(239, 68, 68, 0.25) !important;
+    color: #f87171 !important;
+    border-color: #dc2626 !important;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4) !important;
+}
+
+body.theme-dark .fecha-text.fecha-desordenada.fecha-duplicada {
+    background: rgba(225, 29, 72, 0.3) !important;
+    color: #fb7185 !important;
+    border-color: #e11d48 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+body.theme-dark .fecha-text.fecha-fuera-periodo {
+    background: rgba(244, 63, 94, 0.25) !important;
+    color: #fda4af !important;
+    border-color: #f43f5e !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5) !important;
+}
+
+/* Tarjeta de Periodo en Sidebar */
+.periodo-sidebar-card {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    transition: var(--transition);
+}
+
+.periodo-sidebar-card:hover {
+    border-color: var(--border-highlight);
+}
+
+.periodo-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+}
+
+.periodo-card-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.periodo-card-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.periodo-card-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    letter-spacing: 0.3px;
+}
+
+.periodo-card-val {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--accent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.btn-periodo-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-subtle);
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+
+.btn-periodo-edit:hover {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+/* Modal de Selección de Periodo Permitido */
+.periodo-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 15, 29, 0.72);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10050;
+    animation: wikiFadeIn 0.18s ease-out;
+}
+
+.periodo-modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    width: 92vw;
+    max-width: 480px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.periodo-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-subtle);
+    background: var(--bg-sidebar);
+}
+
+.periodo-modal-title {
+    font-size: 14.5px;
+    font-weight: 700;
+    color: var(--text-pure);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.periodo-modal-body {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.periodo-modal-desc {
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.periodo-grid-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.periodo-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.periodo-input-group label {
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--text-muted);
+}
+
+.periodo-month-input {
+    width: 100%;
+    padding: 8px 10px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-pure);
+    font-size: 13px;
+    font-family: inherit;
+    outline: none;
+    transition: var(--transition);
+}
+
+.periodo-month-input:focus {
+    border-color: var(--accent);
+    background: var(--bg-card);
+}
+
+.periodo-quick-shortcuts {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.btn-periodo-shortcut {
+    font-size: 11px;
+    padding: 4px 8px;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-periodo-shortcut:hover {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.periodo-modal-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 14px 20px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-sidebar);
+}
+
+.btn-periodo-cancel {
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    background: transparent;
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    color: var(--text-muted);
+    cursor: pointer;
+}
+
+.btn-periodo-cancel:hover {
+    color: var(--text-primary);
+    border-color: var(--border-highlight);
+}
+
+.btn-periodo-submit {
+    padding: 8px 16px;
+    font-size: 12.5px;
+    font-weight: 700;
+    background: var(--accent);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #ffffff;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgba(0, 102, 255, 0.3);
+    transition: var(--transition);
+}
+
+.btn-periodo-submit:hover {
+    filter: brightness(1.1);
+}
+
+body.theme-dark .fecha-sep {
+    color: var(--text-muted) !important;
 }
 
 .fechas-list {
@@ -3200,7 +3707,7 @@ body.theme-dark .fecha-text {
     flex-wrap: nowrap;
     overflow-x: auto;
     gap: 0px !important;
-    max-width: 160px;
+    max-width: 350px;
     padding: 2px 0;
     scrollbar-width: none; /* Scroll discreto sin barra visible */
 }
@@ -3213,7 +3720,7 @@ body.theme-dark .fecha-text {
     display: inline-flex;
     align-items: center;
     gap: 3px;
-    max-width: 160px;
+    max-width: 375px;
 }
 
 .btn-scroll-fecha {
@@ -3264,12 +3771,12 @@ body.theme-dark .fecha-text {
     white-space: nowrap !important;
     line-height: 1.2 !important;
 }
-/* ================= VISOR DE AL MENOS 3 FECHAS COMPLETAS ================= */
+/* ================= VISOR DE FECHAS AMPLIO Y CONFORTABLE ================= */
 #tabla.modo-paquete-dinamico th:nth-child(5),
 #tabla.modo-paquete-dinamico td.fechas {
-    width: 285px !important;
-    min-width: 285px !important;
-    max-width: 285px !important;
+    width: 380px !important;
+    min-width: 380px !important;
+    max-width: 380px !important;
     text-align: left !important;
 }
 
@@ -3278,12 +3785,12 @@ body.theme-dark .fecha-text {
     align-items: center !important;
     gap: 4px !important;
     width: 100% !important;
-    max-width: 280px !important;
+    max-width: 375px !important;
 }
 
 .fechas-slider-wrapper .fechas-list {
-    width: 250px !important; /* Espacio para mostrar al menos 3 fechas completas sin recortes */
-    max-width: 250px !important;
+    width: 345px !important; /* Espacio amplio para mostrar al menos 4-5 fechas completas */
+    max-width: 345px !important;
     overflow-x: hidden !important;
     scroll-snap-type: x mandatory !important;
 }
@@ -3536,9 +4043,9 @@ body.theme-dark .fecha-text {
 
 #tabla th:nth-child(5),
 #tabla td.fechas {
-    width: 285px !important;
-    min-width: 285px !important;
-    max-width: 285px !important;
+    width: 380px !important;
+    min-width: 380px !important;
+    max-width: 380px !important;
 }
 
 #tabla th:nth-child(6),
@@ -3554,12 +4061,12 @@ tr.processing td {
 }
 
 .fechas-slider-wrapper {
-    max-width: 280px !important;
+    max-width: 375px !important;
 }
 
 .fechas-slider-wrapper .fechas-list {
-    width: 250px !important;
-    max-width: 250px !important;
+    width: 345px !important;
+    max-width: 345px !important;
 }
 /* ================= SIDEBAR MÁS DELGADO Y RESPONSIVE ================= */
 .sidebar-panel {
@@ -4296,9 +4803,9 @@ body.theme-dark .doc-package-tag.pkg-cpf1106 {
 }
 
 .paquete-row td.fechas {
-    width: 285px !important;
-    min-width: 285px !important;
-    max-width: 285px !important;
+    width: 380px !important;
+    min-width: 380px !important;
+    max-width: 380px !important;
     text-align: left !important;
 }
 
@@ -4693,17 +5200,25 @@ body.theme-dark .preval-modal-card {
 }
 
 .preval-modal-header {
-    padding: 12px 18px;
+    padding: 10px 18px;
     border-bottom: 1px solid var(--border-subtle, #dbe1ec);
     display: flex;
     align-items: center;
     justify-content: space-between;
+    gap: 16px;
     background: var(--bg-subtle, #f8fafc);
 }
 
 body.theme-dark .preval-modal-header {
     background: var(--bg-subtle, #1c263a);
     border-color: var(--border-subtle, #232f46);
+}
+
+.preval-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
 }
 
 .preval-title-group {
@@ -4745,18 +5260,19 @@ body.theme-dark .preval-modal-header {
     gap: 10px;
 }
 
-/* Top Toolbar con Stats Cluster y Chips - Versión Ultra Compacta en 1 Sola Línea */
 .preval-top-toolbar {
     display: flex;
     align-items: center;
     justify-content: flex-start;
-    gap: 10px;
-    padding: 3px 8px;
+    gap: 8px;
+    padding: 5px 10px;
     background: var(--bg-subtle, #f8fafc);
     border: 1px solid var(--border-subtle, #dbe1ec);
     border-radius: 6px;
-    flex-wrap: wrap;
-    min-height: 28px;
+    min-height: 32px;
+    width: 100%;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 body.theme-dark .preval-top-toolbar {
@@ -4784,6 +5300,7 @@ body.theme-dark .preval-top-toolbar {
     border: 1px solid transparent;
     color: var(--text-muted);
     background: var(--bg-card);
+    white-space: nowrap;
 }
 
 .kpi-tag strong {
@@ -4832,7 +5349,7 @@ body.theme-dark .preval-top-toolbar {
 
 .preval-divider-vertical {
     width: 1px;
-    height: 16px;
+    height: 18px;
     background: var(--border-subtle, #dbe1ec);
     flex-shrink: 0;
 }
@@ -4840,9 +5357,10 @@ body.theme-dark .preval-top-toolbar {
 .preval-pkg-section {
     display: flex;
     align-items: center;
-    gap: 5px;
-    flex-wrap: wrap;
+    gap: 6px;
     flex: 1;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .preval-pkg-section-label {
@@ -4854,33 +5372,106 @@ body.theme-dark .preval-top-toolbar {
     flex-shrink: 0;
 }
 
+.preval-pkg-cluster-scroll {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 3px 4px;
+    scrollbar-width: thin;
+}
+
+.preval-pkg-cluster-scroll::-webkit-scrollbar {
+    height: 4px;
+}
+
+.preval-pkg-cluster-scroll::-webkit-scrollbar-thumb {
+    background: var(--border-strong, #cbd5e1);
+    border-radius: 3px;
+}
+
 .preval-pkg-cluster {
     display: flex;
-    gap: 3px;
-    flex-wrap: wrap;
+    gap: 5px;
     align-items: center;
+    flex-wrap: nowrap;
+    white-space: nowrap;
+    padding: 2px 2px;
 }
 
 .preval-pkg-chip {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 3px !important;
-    padding: 0px 4px !important;
-    font-size: 9px !important;
-    border-radius: 3px !important;
+    gap: 4px !important;
+    padding: 1.5px 6px !important;
+    font-size: 9.5px !important;
+    border-radius: 4px !important;
     font-family: var(--font-mono);
     line-height: 1.3 !important;
+    cursor: pointer !important;
+    user-select: none;
+    box-sizing: border-box;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
 }
 
+.preval-pkg-chip:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Estado activo/seleccionado sin recortar el borde */
+.preval-pkg-chip.active-filter {
+    box-shadow: 0 0 0 2px var(--accent, #2563eb) !important;
+    transform: translateY(-0.5px);
+}
+
+.preval-pkg-chip.dimmed-filter {
+    opacity: 0.3;
+    filter: grayscale(40%);
+}
+
+/* Código del paquete: SIN negrilla */
 .preval-pkg-chip .package-name {
-    font-size: 9px !important;
+    font-size: 9.5px !important;
+    font-weight: 500 !important;
+    opacity: 0.9;
 }
 
+/* Cantidad de pacientes: CON negrilla */
 .preval-pkg-count {
-    font-weight: 800;
-    font-size: 9px;
-    opacity: 0.95;
-    padding-left: 1px;
+    font-size: 9.5px !important;
+    font-weight: 800 !important;
+    opacity: 1;
+    padding-left: 2px;
+}
+
+/* Paquete con errores / novedades: Marcado diferencial */
+.preval-pkg-chip.pkg-has-error {
+    border-color: #ef4444 !important;
+    background: rgba(239, 68, 68, 0.1) !important;
+    color: #dc2626 !important;
+}
+
+.preval-pkg-chip.pkg-has-error .preval-pkg-count {
+    color: #dc2626 !important;
+    text-decoration: underline;
+}
+
+.preval-pkg-chip.pkg-has-error::after {
+    content: "•";
+    color: #ef4444;
+    font-weight: 900;
+    font-size: 11px;
+    margin-left: -1px;
+    line-height: 0;
+}
+
+.preval-pkg-chip.pkg-has-warning {
+    border-color: #f59e0b !important;
+    background: rgba(245, 158, 11, 0.1) !important;
+    color: #d97706 !important;
 }
 
 /* Barra de Filtros y Búsqueda del Modal Moderna y Limpia */

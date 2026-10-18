@@ -82,6 +82,10 @@ const REGLAS_ARCHIVO_5 = {
         debeContener: ["Registro De Nutrición"],
         igualarConFechas: true,
     },
+    APL: {
+        debeContener: ["Registro De Enfermería"],
+        igualarConFechas: true,
+    },
 };
 
 // ========================================
