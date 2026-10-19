@@ -803,14 +803,16 @@ export function verProgramadoCarpeta(
             `;
         }
         if ((mat.errores && mat.errores.length > 0) || (mat.alertas && mat.alertas.length > 0)) {
+            const tieneErr = mat.errores && mat.errores.length > 0;
             const errs = (mat.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
             const alts = (mat.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
             avisosHTML += `
-                <div class="prog-section-title" style="color:#ef4444; margin-top:6px;">Novedades Matriz</div>
+                <div class="prog-section-title" style="color:${tieneErr ? '#ef4444' : '#d97706'}; margin-top:6px;">${tieneErr ? 'Novedades Matriz' : 'Alertas Matriz'}</div>
                 <div class="prog-err-container">${errs}${alts}</div>
             `;
         }
 
+        const pkgNombreDesc = (PAQUETES_INFO[pkgCode] || {}).descripcion || (PAQUETES_INFO[pkgCode] || {}).nombre || "";
         const metaPaqueteHTML = paqueteMismatch
             ? `<div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
                     <span class="doc-package-tag pkg-${pkgCarpeta.toLowerCase()} prog-pkg-badge" title="Paquete en Carpeta de soportes">📁 ${pkgCarpeta}</span>
@@ -826,6 +828,7 @@ export function verProgramadoCarpeta(
                     ${mat.filaExcel ? `<span class="prog-meta-badge">Fila: <strong>#${mat.filaExcel}</strong></span>` : ''}
                     ${metaPaqueteHTML}
                 </div>
+                ${pkgNombreDesc ? `<div style="font-size:10px; font-weight:600; color:var(--text-secondary); line-height:1.3; margin-top:2px;">${pkgNombreDesc}</div>` : ''}
             </div>
 
             <!-- Servicios Fijos -->
@@ -1138,14 +1141,16 @@ export function mostrarModalProgramadoDetallado(
         `;
     }
     if ((mat.errores && mat.errores.length > 0) || (mat.alertas && mat.alertas.length > 0)) {
+        const tieneErr = mat.errores && mat.errores.length > 0;
         const errs = (mat.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
         const alts = (mat.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
         avisosModalHTML += `
-            <div style="font-size:12px; font-weight:700; color:#ef4444; margin-top:10px;">Novedades Detectadas en la Matriz</div>
+            <div style="font-size:12px; font-weight:700; color:${tieneErr ? '#ef4444' : '#d97706'}; margin-top:10px;">${tieneErr ? 'Novedades Detectadas en la Matriz' : 'Alertas Detectadas en la Matriz'}</div>
             <div class="prog-err-container" style="padding:8px 10px; font-size:11.5px;">${errs}${alts}</div>
         `;
     }
 
+    const pkgNombreFull = (PAQUETES_INFO[pkgCode] || {}).nombre || (PAQUETES_INFO[pkgCode] || {}).descripcion || "";
     const metaPaqueteModalHTML = paqueteMismatch
         ? `<div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                 <span class="doc-package-tag pkg-${pkgCarpeta.toLowerCase()} prog-pkg-badge" style="font-size:10.5px !important; padding:2px 8px !important;" title="Paquete en Carpeta de soportes">📁 Carpeta: ${pkgCarpeta}</span>
@@ -1154,7 +1159,7 @@ export function mostrarModalProgramadoDetallado(
         : `<span class="doc-package-tag ${pkgCls} prog-pkg-badge" style="font-size:10px !important; padding:2px 8px !important;">${pkgCode}</span>`;
 
     backdrop.innerHTML = `
-        <div class="modal-rules-card" style="max-width: 640px; width: 95%; max-height: 85vh; display:flex; flex-direction:column; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
+        <div class="modal-rules-card" style="max-width: 760px; width: 95%; max-height: 88vh; display:flex; flex-direction:column; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
             <div class="modal-rules-header" style="padding:14px 18px;">
                 <div style="display:flex; align-items:center; gap:10px;">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:16px;height:16px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
@@ -1170,6 +1175,7 @@ export function mostrarModalProgramadoDetallado(
                         <span class="prog-meta-badge" style="padding:2px 6px;">Doc: <strong>${mat.documento || carpeta}</strong></span>
                         ${mat.filaExcel ? `<span class="prog-meta-badge" style="padding:2px 6px;">Fila: <strong>#${mat.filaExcel}</strong></span>` : ''}
                         ${metaPaqueteModalHTML}
+                        ${pkgNombreFull ? `<span style="font-size:11.5px; font-weight:600; color:var(--text-secondary);">${pkgNombreFull}</span>` : ''}
                     </div>
                 </div>
 
@@ -1220,6 +1226,243 @@ export function mostrarModalProgramadoDetallado(
 }
 
 /**
+ * Modal amplio para ver la fila completa de un paciente en la Matriz Excel
+ * (Mismo estilo visual que el popup 'Programado' de validación de soportes)
+ */
+export function mostrarModalFilaMatriz(p) {
+    if (!p) return;
+
+    const prev = document.getElementById("modalFilaMatrizActivo");
+    if (prev) prev.remove();
+
+    const backdrop = document.createElement("div");
+    backdrop.id = "modalFilaMatrizActivo";
+    backdrop.className = "modal-rules-backdrop";
+    backdrop.style.zIndex = "2150";
+
+    const s = p.servicios || {};
+    const pkgCode = p.paquete || p.paqueteRaw || "—";
+    const pkgCls = p.paquete ? `pkg-${p.paquete.toLowerCase()}` : "";
+    const pkgInfo = PAQUETES_INFO[pkgCode] || {};
+    const pkgNombreFull = pkgInfo.descripcion || pkgInfo.nombre || (p.paqueteRaw || "Sin paquete asignado");
+    const reglaTer = REGLAS_TERAPIAS_PAQUETES[pkgCode] || {};
+    const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(pkgCode);
+
+    const renderFilaCompacta = (label, cant, tipoProblema = "", detalle = "") => {
+        const val = cant ?? 0;
+        const activo = val > 0 || tipoProblema !== "";
+
+        let valCls = val > 0 ? "sop-ok" : "";
+        let detalleHTML = "";
+
+        if (tipoProblema === "falta" || tipoProblema === "no_aplica") {
+            valCls = "prog-pulse-red";
+            if (detalle) {
+                detalleHTML = `<span style="font-size:9px; font-weight:700; color:#dc2626;">${detalle}</span>`;
+            }
+        } else if (tipoProblema === "excede") {
+            valCls = "sop-warn";
+            if (detalle) {
+                detalleHTML = `<span style="font-size:9px; font-weight:700; color:#d97706;">${detalle}</span>`;
+            }
+        }
+
+        return `
+            <div class="prog-row-item ${activo ? 'row-active' : 'row-muted'}" style="grid-template-columns: 1fr auto;">
+                <span class="prog-col-name" title="${label}">${label}</span>
+                <div style="display:inline-flex; align-items:center; gap:6px;">
+                    ${detalleHTML}
+                    <span class="prog-col-sop ${valCls}" title="Matriz: ${val}">
+                        <span class="prog-txt-label">Matriz:</span> <b>${val}</b>
+                    </span>
+                </div>
+            </div>
+        `;
+    };
+
+    // 1. Servicios Fijos
+    const vmReq = (pkgCode === "CPF1107" || pkgCode === "CPF1225") ? 2 : 1;
+    const vmVal = s.VM ?? 0;
+    const probVM = vmVal < vmReq ? "falta" : (vmVal > vmReq ? "excede" : "");
+    const detVM = vmVal < vmReq ? `Falta (requiere ${vmReq})` : (vmVal > vmReq ? `Excede (requiere ${vmReq})` : "");
+
+    let probVENF = "", detVENF = "";
+    let probENF = "", detENF = "";
+    const venfVal = s.VENF ?? 0;
+    const enfVal = s.ENF ?? 0;
+
+    if (esPaqueteAplicacion) {
+        if (enfVal < 1) { probENF = "falta"; detENF = "Falta (requiere 1)"; }
+        else if (enfVal > 1) { probENF = "excede"; detENF = "Excede (requiere 1)"; }
+        if (venfVal > 0) { probVENF = "no_aplica"; detVENF = "No aplica (requiere 0)"; }
+    } else if (pkgCode === "CPF1107") {
+        if (enfVal < 4) { probENF = "falta"; detENF = "Falta (requiere 4)"; }
+        else if (enfVal > 4) { probENF = "excede"; detENF = "Excede (requiere 4)"; }
+        if (venfVal > 0) { probVENF = "excede"; detVENF = "No aplica (requiere 0)"; }
+    } else if (pkgCode.startsWith("CPF")) {
+        if (venfVal === 0 && enfVal === 0) {
+            probVENF = "falta"; detVENF = "Falta (requiere VENF o ENF)";
+            probENF = "falta"; detENF = "Falta (requiere VENF o ENF)";
+        } else {
+            if (venfVal > 1) { probVENF = "excede"; detVENF = "Excede (requiere 1)"; }
+            if (enfVal > 1) { probENF = "excede"; detENF = "Excede (requiere 1)"; }
+        }
+    }
+
+    const filasFijosHTML = [
+        renderFilaCompacta("Médica (VM)", vmVal, probVM, detVM),
+        renderFilaCompacta("Enf. Profesional (VENF)", venfVal, probVENF, detVENF),
+        renderFilaCompacta("Aux. Enfermería (ENF)", enfVal, probENF, detENF),
+    ].join("");
+
+    // 2. Terapias
+    const getProbTerapia = (val) => {
+        const v = val || 0;
+        if (v > 0 && (esPaqueteAplicacion || reglaTer.permiteTerapias === false)) {
+            return { prob: "no_aplica", det: "No aplica (requiere 0)" };
+        }
+        return { prob: "", det: "" };
+    };
+
+    const filasTerapiasHTML = [
+        { label: "Terapia Física (TF)", val: s.TF || 0 },
+        { label: "Terapia Respiratoria (TR)", val: s.TR || 0 },
+        { label: "T. Resp. Succión (TRS)", val: s.TRS || 0 },
+        { label: "Fonoaudiología (FON)", val: s.FON || 0 },
+        { label: "Terapia Ocupacional (TO)", val: s.TO || 0 },
+    ].map(t => {
+        const { prob, det } = getProbTerapia(t.val);
+        return renderFilaCompacta(t.label, t.val, prob, det);
+    }).join("");
+
+    // 3. Otros Servicios
+    const cantOptActivos = [s.PSI || 0, s.NUT || 0, s.TS || 0].filter((c) => c > 0).length;
+    const getProbOpt = (val) => {
+        const v = val || 0;
+        if (esPaqueteAplicacion) {
+            return v > 0 ? { prob: "no_aplica", det: "No aplica (requiere 0)" } : { prob: "", det: "" };
+        }
+        if (cantOptActivos === 0) {
+            return { prob: "falta", det: "Falta (requiere 1 opcional)" };
+        }
+        if (v === 0) return { prob: "", det: "" };
+        if (v > 1) return { prob: "excede", det: "Excede (requiere 1)" };
+        if (cantOptActivos > 1) return { prob: "excede", det: "Excede (solo 1 opcional)" };
+        return { prob: "", det: "" };
+    };
+
+    const filasOtrosHTML = [
+        { label: "Psicología (PSI)", val: s.PSI || 0 },
+        { label: "Trabajo Social (TS)", val: s.TS || 0 },
+        { label: "Nutrición (NUT)", val: s.NUT || 0 },
+    ].map(o => {
+        const { prob, det } = getProbOpt(o.val);
+        return renderFilaCompacta(o.label, o.val, prob, det);
+    }).join("");
+
+    // 4. Aplicación de Medicamentos
+    const aplVal = s.APL || 0;
+    const probAPL = (esPaqueteAplicacion && aplVal === 0) ? "falta" : "";
+    const detAPL = (esPaqueteAplicacion && aplVal === 0) ? "Falta dosis" : "";
+    const filasAplHTML = renderFilaCompacta("Aplicación Medicamento (APL)", aplVal, probAPL, detAPL);
+
+    // Avisos al pie (mismo formato compacto que Soportes)
+    let avisosHTML = "";
+    if ((p.errores && p.errores.length > 0) || (p.alertas && p.alertas.length > 0)) {
+        const tieneErr = p.errores && p.errores.length > 0;
+        const errs = (p.errores || []).map(e => `<div class="prog-err-line error">❌ ${e}</div>`).join("");
+        const alts = (p.alertas || []).map(a => `<div class="prog-err-line warning">⚠️ ${a}</div>`).join("");
+        avisosHTML = `
+            <div class="prog-section-title" style="color:${tieneErr ? '#ef4444' : '#d97706'}; margin-top:6px;">${tieneErr ? 'Novedades Matriz' : 'Alertas Matriz'}</div>
+            <div class="prog-err-container">${errs}${alts}</div>
+        `;
+    }
+
+    const totalTer = p.totalTerapias ?? 0;
+    let terHeaderStyle = "";
+    let terHeaderExtra = "";
+    if (reglaTer.min !== undefined && totalTer < reglaTer.min) {
+        terHeaderStyle = "color:#dc2626; border-color:rgba(239,68,68,0.35); background:rgba(239,68,68,0.08);";
+        terHeaderExtra = ` · Falta (mín. ${reglaTer.min})`;
+    } else if (reglaTer.max !== undefined && totalTer > reglaTer.max) {
+        terHeaderStyle = "color:#d97706; border-color:rgba(245,158,11,0.35); background:rgba(245,158,11,0.1);";
+        terHeaderExtra = ` · Excede (máx. ${reglaTer.max})`;
+    }
+
+    backdrop.innerHTML = `
+        <div class="programado-floating-popover floating-popover-movable" style="position:relative; width: 410px; min-width: 320px; max-width: 94vw; max-height: 88vh; resize:none;" onclick="event.stopPropagation()">
+            <div class="popover-header">
+                <span class="popover-header-title">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
+                    Matriz
+                </span>
+                <div class="popover-header-actions">
+                    <button type="button" class="popover-close-btn" onclick="document.getElementById('modalFilaMatrizActivo')?.remove()">&times;</button>
+                </div>
+            </div>
+
+            <div class="popover-body prog-popover-body">
+                <div class="prog-patient-header">
+                    <div class="prog-patient-name" title="${p.nombre || '—'}">${p.nombre || 'Paciente'}</div>
+                    <div class="prog-patient-meta">
+                        <span class="prog-meta-badge">Doc: <strong>${p.documento || '—'}</strong></span>
+                        ${p.filaExcel ? `<span class="prog-meta-badge">Fila: <strong>#${p.filaExcel}</strong></span>` : ''}
+                        <span class="doc-package-tag ${pkgCls} prog-pkg-badge">${pkgCode}</span>
+                    </div>
+                    <div style="font-size:10px; font-weight:600; color:var(--text-secondary); line-height:1.3; margin-top:2px;">${pkgNombreFull}</div>
+                </div>
+
+                <!-- Servicios Fijos -->
+                <div class="prog-category-block">
+                    <div class="prog-category-header">
+                        <span>Servicios Fijos</span>
+                    </div>
+                    <div class="prog-category-list">
+                        ${filasFijosHTML}
+                    </div>
+                </div>
+
+                <!-- Terapias -->
+                <div class="prog-category-block">
+                    <div class="prog-category-header">
+                        <span>Terapias</span>
+                        <span class="prog-total-terapias-badge" style="${terHeaderStyle}">Matriz: ${totalTer}${terHeaderExtra}</span>
+                    </div>
+                    <div class="prog-category-list">
+                        ${filasTerapiasHTML}
+                    </div>
+                </div>
+
+                <!-- Otros Servicios -->
+                <div class="prog-category-block">
+                    <div class="prog-category-header">
+                        <span>Otros Servicios</span>
+                    </div>
+                    <div class="prog-category-list">
+                        ${filasOtrosHTML}
+                    </div>
+                </div>
+
+                <!-- Aplicación Medicamentos -->
+                <div class="prog-category-block">
+                    <div class="prog-category-header">
+                        <span>Aplicación Medicamentos</span>
+                    </div>
+                    <div class="prog-category-list">
+                        ${filasAplHTML}
+                    </div>
+                </div>
+
+                ${avisosHTML}
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener("click", () => backdrop.remove());
+}
+
+/**
  * Modal de diagnóstico y prevalidación de matriz
  */
 export function mostrarModalPrevalidacionMatriz(matrizData) {
@@ -1236,7 +1479,8 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
 
     const totalPacientes = diagnosticoGlobal.totalPacientes || 0;
     const conErrores = diagnosticoGlobal.pacientesConErrores || 0;
-    const conformes = totalPacientes - conErrores;
+    const conAlertas = diagnosticoGlobal.pacientesConAlertas || 0;
+    const conformes = Math.max(0, totalPacientes - conErrores - conAlertas);
 
     // Mapa de errores/alertas por código de paquete para identificar paquetes con problemas
     const estadoPorPaquete = {};
@@ -1268,8 +1512,10 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             const tieneAlerta = !tieneError && pkgState.alertas > 0;
             const statusCls = tieneError ? "pkg-has-error" : (tieneAlerta ? "pkg-has-warning" : "");
             const titleMsg = tieneError
-                ? `${pkg}: Contiene novedades/errores en la matriz. Click para filtrar.`
-                : `${pkg}: Todo conforme. Click para filtrar.`;
+                ? `${pkg}: Contiene errores en la matriz. Click para filtrar.`
+                : (tieneAlerta
+                    ? `${pkg}: Contiene alertas por exceso en la matriz. Click para filtrar.`
+                    : `${pkg}: Todo conforme. Click para filtrar.`);
 
             return `
                 <div class="preval-pkg-chip doc-package-tag ${pkgCls} ${statusCls}" data-pkg="${pkg}" role="button" tabindex="0" title="${titleMsg}">
@@ -1280,20 +1526,23 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
         })
         .join("") || "<span style='color:var(--text-muted); font-size:11px;'>Sin paquetes</span>";
 
-    // Helper para formatear nombres a Title/PascalCase
-    const formatPascalCase = (str) => {
-        if (!str) return "—";
-        return str.toLowerCase().replace(/(?:^|\s|\/|-)\S/g, match => match.toUpperCase());
-    };
-
     // Filas de la tabla
-    const filasHTML = pacientesList.map((p) => {
-        const estadoBadge = p.valido
-            ? `<span class="preval-badge success">✔ Conforme</span>`
-            : `<span class="preval-badge error">✗ Novedades</span>`;
+    const filasHTML = pacientesList.map((p, idx) => {
+        const tieneErroresFila = p.errores && p.errores.length > 0;
+        const tieneAlertasFila = p.alertas && p.alertas.length > 0;
+
+        const estadoBadge = tieneErroresFila
+            ? `<span class="preval-badge error">✗ Novedades</span>`
+            : (tieneAlertasFila
+                ? `<span class="preval-badge warning">⚠️ Alerta</span>`
+                : `<span class="preval-badge success">✔ Conforme</span>`);
+
+        const estadoDataAttr = tieneErroresFila
+            ? "novedades"
+            : (tieneAlertasFila ? "alerta" : "conforme");
 
         const renderDiagItem = (texto, tipo) => {
-            const icon = tipo === "error" ? "✕" : "!";
+            const icon = tipo === "error" ? "✕" : "⚠️";
             const cls = tipo === "error" ? "preval-item-error" : "preval-item-warning";
             const parts = texto.split(":");
             if (parts.length > 1) {
@@ -1336,23 +1585,37 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             .map((t) => `<span class="pserv-ter-item ${t.cant === 0 ? 'zero' : 'active'}">${t.nombre}:${t.cant}</span>`)
             .join(" ");
 
-        // Texto plano del error para el botón de copiar
-        const textoErroresRaw = (p.errores || []).join(" | ") || (p.alertas || []).join(" | ") || "Conforme";
-        const textoErroresEscaped = textoErroresRaw.replace(/'/g, "\\'");
         const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(pkgCode);
 
-        // Grupos ordenados, alineados en columnas consistentes
+        // Grupos ordenados, alineados en columnas consistentes con semáforo según reglas reales del paquete
         let chipsServicios = "";
         if (esPaqueteAplicacion) {
-            const dosisEsperada = pkgCode === "CPF1102" ? 1 : (pkgCode === "CPF1104" ? 4 : (s.APL === 3 ? 3 : 2));
+            const clsVM = s.VM < 1 ? "err" : (s.VM === 1 ? "ok" : "warn");
+            const clsENF = s.ENF < 1 ? "err" : (s.ENF === 1 ? "ok" : "warn");
+            const clsVENF = s.VENF > 0 ? "err" : "dim";
+            const aplVal = s.APL || 0;
+            let clsAPL = "ok";
+            if (pkgCode === "CPF1102") {
+                clsAPL = aplVal < 1 ? "err" : (aplVal === 1 ? "ok" : "warn");
+            } else if (pkgCode === "CPF1103") {
+                clsAPL = aplVal < 2 ? "err" : (aplVal <= 3 ? "ok" : "warn");
+            } else if (pkgCode === "CPF1104") {
+                clsAPL = aplVal < 4 ? "err" : "ok";
+            }
+            const paqDiarioVal = p.cantPaqDiario ?? 0;
+            const clsPaqDiario = (paqDiarioVal <= 0 || paqDiarioVal < aplVal)
+                ? "err"
+                : (paqDiarioVal === aplVal ? "ok" : "warn");
+
             chipsServicios = `
                 <div class="preval-services-structured">
                     <!-- 1. Fijos Obligatorios -->
                     <div class="pserv-group">
                         <span class="pserv-group-title">Fijos:</span>
                         <div class="pserv-group-items">
-                            <span class="pserv-tag oblig ${s.VM === 1 ? 'ok' : 'err'}">VM: ${s.VM}</span>
-                            <span class="pserv-tag oblig ${s.ENF === 1 ? 'ok' : 'err'}">ENF: ${s.ENF}</span>
+                            <span class="pserv-tag oblig ${clsVM}">VM: ${s.VM}</span>
+                            <span class="pserv-tag oblig ${clsENF}">ENF: ${s.ENF}</span>
+                            <span class="pserv-tag oblig ${clsVENF}" title="${s.VENF > 0 ? 'VENF: No aplica en este paquete (requiere 0)' : 'VENF: 0 (No aplica)'}">VENF: ${s.VENF}</span>
                         </div>
                     </div>
 
@@ -1360,22 +1623,66 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <div class="pserv-group">
                         <span class="pserv-group-title">Aplicación:</span>
                         <div class="pserv-group-items">
-                            <span class="pserv-tag oblig ${s.APL > 0 ? 'ok' : 'err'}">APL (Dosis): ${s.APL || 0}</span>
-                            <span class="pserv-tag oblig ${(p.cantPaqDiario > 0 && p.cantPaqDiario === s.APL) ? 'ok' : 'err'}">Paq. Diario: ${p.cantPaqDiario ?? 0}</span>
+                            <span class="pserv-tag oblig ${clsAPL}">APL (Dosis): ${aplVal}</span>
+                            <span class="pserv-tag oblig ${clsPaqDiario}">Paq. Diario: ${paqDiarioVal}</span>
                         </div>
                     </div>
                 </div>
             `;
         } else {
+            // 1. Fijos Obligatorios según paquete
+            const vmReq = (pkgCode === "CPF1107" || pkgCode === "CPF1225") ? 2 : 1;
+            const clsVM = s.VM < vmReq ? "err" : (s.VM === vmReq ? "ok" : "warn");
+
+            let clsVENF = "ok";
+            let clsENF = "ok";
+            if (pkgCode === "CPF1107") {
+                // CPF1107 exige 4 ENF y 0 VENF
+                clsENF = s.ENF < 4 ? "err" : (s.ENF === 4 ? "ok" : "warn");
+                clsVENF = s.VENF === 0 ? "dim" : "warn";
+            } else {
+                // Resto de paquetes CPF: requiere 1 VENF o 1 ENF (al menos uno, máx 1 por servicio)
+                if (s.VENF === 0 && s.ENF === 0) {
+                    clsVENF = "err";
+                    clsENF = "err";
+                } else {
+                    clsVENF = s.VENF === 0 ? "dim" : (s.VENF === 1 ? "ok" : "warn");
+                    clsENF = s.ENF === 0 ? "dim" : (s.ENF === 1 ? "ok" : "warn");
+                }
+            }
+
+            // 2. Opcional (PSI, NUT, TS): requiere exactamente 1 de los 3 con cantidad 1
+            const cantOptActivos = [s.PSI || 0, s.NUT || 0, s.TS || 0].filter((c) => c > 0).length;
+            const getOptCls = (val) => {
+                const v = val || 0;
+                if (cantOptActivos === 0) return "err";
+                if (v === 0) return "dim";
+                if (cantOptActivos > 1 || v > 1) return "warn";
+                return "active";
+            };
+            const clsPSI = getOptCls(s.PSI);
+            const clsNUT = getOptCls(s.NUT);
+            const clsTS = getOptCls(s.TS);
+
+            // 3. Terapias (Total)
+            const reglaTer = REGLAS_TERAPIAS_PAQUETES[pkgCode];
+            let clsTerTotal = "";
+            if (pkgCode === "CPF1107") {
+                clsTerTotal = p.totalTerapias > 0 ? "warn" : "";
+            } else if (reglaTer && reglaTer.min !== undefined && reglaTer.max !== undefined) {
+                if (p.totalTerapias < reglaTer.min) clsTerTotal = "err";
+                else if (p.totalTerapias > reglaTer.max) clsTerTotal = "warn";
+            }
+
             chipsServicios = `
                 <div class="preval-services-structured">
                     <!-- 1. Fijos Obligatorios -->
                     <div class="pserv-group">
                         <span class="pserv-group-title">Fijos:</span>
                         <div class="pserv-group-items">
-                            <span class="pserv-tag oblig ${s.VM === 1 ? 'ok' : 'err'}">VM: ${s.VM}</span>
-                            <span class="pserv-tag oblig ${s.VENF === 1 ? 'ok' : 'err'}">VENF: ${s.VENF}</span>
-                            <span class="pserv-tag oblig ${s.ENF === 1 ? 'ok' : 'err'}">ENF: ${s.ENF}</span>
+                            <span class="pserv-tag oblig ${clsVM}">VM: ${s.VM}</span>
+                            <span class="pserv-tag oblig ${clsVENF}">VENF: ${s.VENF}</span>
+                            <span class="pserv-tag oblig ${clsENF}">ENF: ${s.ENF}</span>
                         </div>
                     </div>
 
@@ -1383,9 +1690,9 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <div class="pserv-group">
                         <span class="pserv-group-title">Opcional:</span>
                         <div class="pserv-group-items">
-                            <span class="pserv-tag opt ${s.PSI > 0 ? 'active' : 'dim'}">PSI: ${s.PSI}</span>
-                            <span class="pserv-tag opt ${s.NUT > 0 ? 'active' : 'dim'}">NUT: ${s.NUT}</span>
-                            <span class="pserv-tag opt ${s.TS > 0 ? 'active' : 'dim'}">TS: ${s.TS}</span>
+                            <span class="pserv-tag opt ${clsPSI}">PSI: ${s.PSI}</span>
+                            <span class="pserv-tag opt ${clsNUT}">NUT: ${s.NUT}</span>
+                            <span class="pserv-tag opt ${clsTS}">TS: ${s.TS}</span>
                         </div>
                     </div>
 
@@ -1393,7 +1700,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <div class="pserv-group">
                         <span class="pserv-group-title">Terapias:</span>
                         <div class="pserv-group-items">
-                            <span class="pserv-tag ter-total">Total: ${p.totalTerapias}</span>
+                            <span class="pserv-tag ter-total ${clsTerTotal}">Total: ${p.totalTerapias}</span>
                             <div class="pserv-tag ter-detail">${terapiasDetalleChips}</div>
                         </div>
                     </div>
@@ -1402,7 +1709,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
         }
 
         return `
-            <tr class="preval-row ${p.valido ? 'valido' : 'con-novedad'}" data-doc="${p.documento || ''}" data-nombre="${(p.nombre || '').toLowerCase()}" data-pkg="${pkgCode}" data-estado="${p.valido ? 'conforme' : 'novedades'}">
+            <tr class="preval-row ${tieneErroresFila ? 'con-novedad' : (tieneAlertasFila ? 'con-alerta' : 'valido')}" data-row-idx="${idx}" data-doc="${p.documento || ''}" data-nombre="${(p.nombre || '').toLowerCase()}" data-pkg="${pkgCode}" data-estado="${estadoDataAttr}">
                 <td class="preval-cell-num">${p.filaExcel}</td>
                 <td class="preval-cell-doc">
                     <div class="doc-badge-stack preval-doc-badge-stack">
@@ -1417,11 +1724,17 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                         </div>
                         <div class="doc-title-line preval-doc-title-line">
                             <span class="carpeta-nombre preval-doc-num">${p.documento || "—"}</span>
+                            <div class="preval-copy-btn-group">
+                                <button type="button" class="btn-copy-minimal btn-copy-doc" title="Copiar sólo documento (${p.documento})">📋</button>
+                                <button type="button" class="btn-copy-minimal btn-copy-pkg-doc" title="Copiar '${pkgCode} - ${p.documento} - '">🏷️</button>
+                                <button type="button" class="btn-copy-minimal btn-copy-err" title="Copiar con novedad">📝</button>
+                            </div>
                         </div>
-                        <div class="preval-copy-btn-group">
-                            <button type="button" class="btn-copy-minimal btn-copy-doc" title="Copiar sólo documento (${p.documento})">📋</button>
-                            <button type="button" class="btn-copy-minimal btn-copy-pkg-doc" title="Copiar '${pkgCode} - ${p.documento} - '">🏷️</button>
-                            <button type="button" class="btn-copy-minimal btn-copy-err" title="Copiar con novedad">📝</button>
+                        <div class="doc-badge-actions">
+                            <button type="button" class="carpeta-files-badge btn-programado-trigger btn-ver-fila-matriz" title="Ver fila completa #${p.filaExcel} en la matriz Excel">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
+                                <span>Ver matriz</span>
+                            </button>
                         </div>
                     </div>
                 </td>
@@ -1453,9 +1766,10 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <div class="preval-kpi-compact">
                         <span class="kpi-tag total">Total <strong>${totalPacientes}</strong></span>
                         <span class="kpi-tag ok">Conformes <strong>${conformes}</strong></span>
+                        <span class="kpi-tag ${conAlertas > 0 ? 'warn' : 'ok'}">Alertas <strong>${conAlertas}</strong></span>
                         <span class="kpi-tag ${conErrores > 0 ? 'err' : 'ok'}">
                             Novedades <strong>${conErrores}</strong>
-                            <button type="button" id="btnCopiarTodasNovedadesMatriz" class="btn-copy-kpi" title="Copiar todas las novedades visibles de la matriz">📋 Copiar</button>
+                            <button type="button" id="btnCopiarTodasNovedadesMatriz" class="btn-copy-kpi" title="Copiar todas las novedades y alertas visibles de la matriz">📋 Copiar</button>
                         </span>
                     </div>
                     <button type="button" class="modal-rules-close" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()" title="Cerrar">&times;</button>
@@ -1485,6 +1799,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                         <div class="studio-segmented-control" id="prevalFiltroEstadoGroup">
                             <button type="button" class="btn-segmented active" data-filter-estado="">Todos</button>
                             <button type="button" class="btn-segmented" data-filter-estado="conforme">Conformes</button>
+                            <button type="button" class="btn-segmented" data-filter-estado="alerta">Alertas</button>
                             <button type="button" class="btn-segmented" data-filter-estado="novedades">Con novedades</button>
                         </div>
                     </div>
@@ -1495,10 +1810,10 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <table class="preval-table" id="prevalTableMain">
                         <thead>
                             <tr>
-                                <th style="width: 42px; text-align: center;">Fila</th>
-                                <th style="width: 110px;">Documento</th>
-                                <th style="width: 170px;">Nombre Paciente</th>
-                                <th style="width: 290px;">Programación Matriz</th>
+                                <th style="width: 44px; text-align: center;">Fila</th>
+                                <th style="width: 220px;">Documento / Paquete</th>
+                                <th style="width: 195px;">Nombre Paciente</th>
+                                <th style="width: 300px;">Programación Matriz</th>
                                 <th style="width: 115px; text-align: center;">Estado</th>
                                 <th>Hallazgos / Reglas</th>
                             </tr>
@@ -1632,22 +1947,33 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
         });
     }
 
-    // Event delegation para los 3 botones de copiar en cada fila
+    // Event delegation para los botones de copiar y el botón "Ver fila" en cada fila
     if (tbody) {
         tbody.addEventListener("click", (e) => {
             const btnDoc = e.target.closest(".btn-copy-doc");
             const btnPkgDoc = e.target.closest(".btn-copy-pkg-doc");
             const btnErr = e.target.closest(".btn-copy-err");
+            const btnVerFila = e.target.closest(".btn-ver-fila-matriz");
 
-            if (!btnDoc && !btnPkgDoc && !btnErr) return;
+            if (!btnDoc && !btnPkgDoc && !btnErr && !btnVerFila) return;
             e.stopPropagation();
 
             const tr = e.target.closest("tr.preval-row");
             if (!tr) return;
 
+            const rowIdx = parseInt(tr.getAttribute("data-row-idx") || "-1", 10);
             const doc = tr.getAttribute("data-doc") || "";
             const pkg = tr.getAttribute("data-pkg") || "";
-            const paciente = pacientesList.find((p) => String(p.documento || "").trim() === String(doc).trim());
+            const paciente = (rowIdx >= 0 && pacientesList[rowIdx])
+                ? pacientesList[rowIdx]
+                : pacientesList.find((p) => String(p.documento || "").trim() === String(doc).trim());
+
+            if (btnVerFila) {
+                if (paciente) {
+                    mostrarModalFilaMatriz(paciente);
+                }
+                return;
+            }
 
             if (btnDoc) {
                 copiarTextoSimple(e, doc);
@@ -1655,7 +1981,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                 copiarTextoSimple(e, `${pkg} - ${doc} - `);
             } else if (btnErr) {
                 const textoErroresRaw = paciente
-                    ? (paciente.errores || []).join(" | ") || (paciente.alertas || []).join(" | ") || "Conforme"
+                    ? ([...(paciente.errores || []), ...(paciente.alertas || [])].join(" | ") || "Conforme")
                     : "Conforme";
                 copiarErrorMatriz(e, pkg, doc, textoErroresRaw);
             }
@@ -1688,7 +2014,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
 
             const lineas = pacientesConNovedad.map((p) => {
                 const pkg = p.paquete || p.paqueteRaw || "CPF";
-                const errText = (p.errores || []).join(" | ") || (p.alertas || []).join(" | ") || "Sin novedades";
+                const errText = [...(p.errores || []), ...(p.alertas || [])].join(" | ") || "Sin novedades";
                 return `${p.documento} - ${pkg} - ${errText.trim()}`;
             });
 

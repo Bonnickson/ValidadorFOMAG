@@ -59,7 +59,11 @@ Validador FOMAG/
 
 ### 1. Carga de Matriz de Programación (Paso 1)
 - **Carga Obligatoria**: Admite archivos `.xlsx`, `.xls` y `.csv`.
-- **Diagnóstico y Pre-validación Inmediata**: Al adjuntar la matriz, se abre un panel con KPIs (Conformes / Novedades), filtros por paquete/búsqueda y desglose por paciente.
+- **Diagnóstico y Pre-validación Inmediata**: Al adjuntar la matriz, se abre un panel con KPIs (`Total`, `Conformes`, `Alertas` y `Novedades`), filtros por estado/paquete/búsqueda y desglose por paciente:
+  - **Errores (Rojo)**: Cantidades faltantes o por debajo del mínimo exigido por el paquete (`VM`, `ENF`/`VENF`, falta de opcional o terapias insuficientes).
+  - **Alertas (Amarillo)**: Cantidades programadas que exceden el tope del paquete (exceso en `VM`, `ENF`/`VENF`, más de un opcional o terapias por encima del máximo).
+  - **Chips de Servicios Inteligentes**: Cada servicio (`VM`, `VENF`, `ENF`, `PSI`, `NUT`, `TS`, `Terapias`, `APL`) se colorea dinámicamente en verde, amarillo, rojo o gris atenuado según las reglas específicas del paquete del paciente.
+  - **Botón "📊 Ver matriz"**: Abre un popup compacto por paciente (idéntico en formato al de Soportes) con los grupos de servicios programados y alertas claras si un servicio falta, excede lo requerido o no aplica.
 - **Carga Directa de Soportes**: Permite avanzar a la carga de expedientes directamente desde el modal de diagnóstico o desde el sidebar una vez habilitado el paso 2.
 
 ### 2. Carga de Soportes (Paso 2)
@@ -76,7 +80,7 @@ Diseñado para la validación de paquetes integrales con documento maestro `2 PA
 - **Servicio Opcional Único**: Debe contener **exactamente 1** de los siguientes servicios: `PSI` (Psicología), `NUT` (Nutrición) o `TS` (Trabajo Social), con 1 sola evolución.
 - **Archivos de Firma**: Valida que los archivos `4 [servicio].pdf` tengan 1 sola página y correspondan a formatos de firmas.
 - **Regla de Sumatoria de Terapias y Prohibiciones Estrictas**:
-  - **CPF1102, CPF1103, CPF1104** (Medicamento diario): Solo 1 VM, 1 ENF y APL (según dosis). **Prohibidas las terapias y los opcionales**.
+  - **CPF1102, CPF1103, CPF1104** (Medicamento diario): Solo 1 VM, 1 ENF y APL (según dosis). **No admite VENF (0), ni terapias ni opcionales**.
   - **CPF1108** (Atención Domiciliaria Crónico): **Prohibidas las terapias** (0 terapias; marca error si tiene alguna).
   - **CPF1111, CPF1112, CPF1113** (Heridas): **Prohibidas las terapias** (0 terapias; marca error si tiene alguna).
   - **CPF1107** (Crónico Paliativo): Terapias opcionales pero **únicamente TF, TR y TRS/Succión** (prohibidas FON y TO).

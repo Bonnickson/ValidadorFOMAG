@@ -605,8 +605,15 @@
                     <ul class="wiki-list">
                         <li><strong>Filtrado de filas vacías:</strong> Si una fila no tiene número de documento (vacío), se descarta de forma automática y no se valida ni genera errores.</li>
                         <li><strong>Filas duplicadas:</strong> Alerta si un mismo número de documento aparece dos veces con el mismo paquete.</li>
-                        <li><strong>Cumplimiento de reglas CPF en la matriz:</strong> Verifica que la fila tenga <code>VM = 1</code>, al menos un servicio de enfermería (<code>VENF = 1</code> o <code>ENF = 1</code>), exactamente un opcional (<code>PSI</code>, <code>NUT</code> o <code>TS</code> = <code>1</code>) y que la suma de terapias cumpla el rango del paquete.</li>
-                        <li><strong>Herramientas del modal:</strong> Puedes filtrar por <em>Todos</em>, <em>Conformes</em> o <em>Con novedades</em>, buscar por documento o nombre, copiar novedades individuales o masivas y arrastrar directamente allí la carpeta de soportes PDF.</li>
+                        <li><strong>Semáforo por paquete (Déficit vs. Exceso):</strong> Evalúa las cantidades programadas frente a las reglas específicas de cada paquete (incluyendo reglas especiales como <code>CPF1107</code> con <code>2 VM</code> y <code>4 ENF</code> o <code>CPF1225</code> con <code>2 VM</code>):
+                            <ul>
+                                <li>🔴 <strong>Error (Rojo):</strong> Cuando <strong>falta</strong> cantidad o no alcanza el mínimo exigido (ej. <code>VM &lt; requerido</code>, <code>ENF &lt; requerido</code>, falta opcional o suma de terapias inferior al mínimo).</li>
+                                <li>🟡 <strong>Alerta (Amarillo):</strong> Cuando un servicio <strong>excede la cantidad requerida</strong> (supera lo exigido por el paquete, hay más de un opcional elegido o las terapias superan el tope máximo).</li>
+                                <li>🟢 <strong>Conforme (Verde) / Atenuado (Gris):</strong> Cuando el servicio cumple exactamente la cantidad exigida (verde) o cuando una alternativa no requerida está válidamente en <code>0</code> (gris atenuado, como <code>VENF: 0</code> en <code>CPF1107</code> o cuando ya se programó <code>ENF: 1</code>).</li>
+                            </ul>
+                        </li>
+                        <li><strong>Botón "📊 Ver matriz":</strong> En cada paciente abre un popup compacto (con el mismo diseño del botón <em>Programado</em> de soportes) que muestra toda la programación agrupada por categorías (Servicios Fijos, Terapias, Otros Servicios y Aplicación de Medicamentos), indicando de forma puntual solo cuando un servicio <strong>falta</strong>, <strong>excede lo requerido</strong> o <strong>no aplica</strong>.</li>
+                        <li><strong>Herramientas del modal:</strong> Puedes filtrar por <em>Todos</em>, <em>Conformes</em>, <em>Alertas</em> o <em>Con novedades</em>, buscar por documento o nombre, copiar novedades individuales o masivas y arrastrar directamente allí la carpeta de soportes PDF.</li>
                     </ul>
 
                     <h2>🔄 Cruce bidireccional (Matriz ↔ Carpetas de soportes)</h2>
@@ -710,7 +717,7 @@
                                             <li><strong>Matriz Columna APL:</strong> Debe registrar la cantidad en <em>Paq. Aplicación Medicamento 1 Dosis</em> igual a la cantidad diaria del paquete.</li>
                                             <li><strong>Validación estricta de dosis:</strong> Las columnas de 2, 3 y 4 dosis deben estar en <code>0</code> (genera error si tienen valor).</li>
                                             <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> que contenga el código <code>CPF1102</code> y documento del paciente.</li>
-                                            <li><strong>Prohibición:</strong> No admite servicios opcionales (PSI/NUT/TS) ni terapias programadas.</li>
+                                            <li><strong>Prohibición:</strong> Requiere Auxiliar de Enfermería (ENF: 1). No admite Enfermería Profesional (VENF: 0), servicios opcionales (PSI/NUT/TS) ni terapias programadas.</li>
                                         </ul>
                                     </td>
                                 </tr>
@@ -726,7 +733,7 @@
                                             <li><strong>Matriz Columna APL:</strong> Debe marcar exactamente en <em>2 Dosis</em> o en <em>3 Dosis</em> (solo una de las dos) igual a la cantidad diaria.</li>
                                             <li><strong>Exclusividad de dosis:</strong> Genera error si ambas están marcadas o si se registran valores en 1 o 4 dosis.</li>
                                             <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> con código <code>CPF1103</code> y cédula del paciente.</li>
-                                            <li><strong>Prohibición:</strong> Servicios opcionales (PSI/NUT/TS) y terapias deben estar en <code>0</code>.</li>
+                                            <li><strong>Prohibición:</strong> Requiere ENF (1); no admite VENF (0), servicios opcionales (PSI/NUT/TS) ni terapias.</li>
                                         </ul>
                                     </td>
                                 </tr>
@@ -742,7 +749,7 @@
                                             <li><strong>Matriz Columna APL:</strong> Debe marcar obligatoriamente en <em>Paq. Aplicación Medicamento 4 Dosis</em> igual a la cantidad diaria.</li>
                                             <li><strong>Validación estricta de dosis:</strong> Genera error si hay valores en 1, 2 o 3 dosis.</li>
                                             <li><strong>Soporte maestro:</strong> Requiere <code>2 PAQ.pdf</code> con código <code>CPF1104</code> y cédula del paciente.</li>
-                                            <li><strong>Prohibición:</strong> Servicios opcionales (PSI/NUT/TS) y terapias deben estar en <code>0</code>.</li>
+                                            <li><strong>Prohibición:</strong> Requiere ENF (1); no admite VENF (0), servicios opcionales (PSI/NUT/TS) ni terapias.</li>
                                         </ul>
                                     </td>
                                 </tr>
@@ -1528,6 +1535,10 @@
                     </div>
 
                     <h2>🟡 Alertas de revisión (no bloqueantes pero requieren verificación)</h2>
+                    <div class="wiki-error-item">
+                        <strong>⚠️ Matriz: Servicio o terapias con cantidad de más (supera el máximo del paquete)</strong>
+                        <p>En la pre-validación de la matriz, cuando un paciente tiene más sesiones programadas de las requeridas por su paquete (ej. <code>VM &gt; requerido</code>, <code>ENF &gt; requerido</code>, más de un servicio opcional o suma de terapias superior al máximo), se muestra como <strong>Alerta en amarillo</strong> tanto en el chip del servicio como en el diagnóstico, diferenciándolo de los faltantes que se marcan en rojo.</p>
+                    </div>
                     <div class="wiki-error-item">
                         <strong>⚠️ 4.pdf: Tiene [N] páginas (se espera 1 sola página)</strong>
                         <p>La planilla de firmas tiene más de una página; ábrela en el visor para verificar que no tenga hojas en blanco o documentos anexos por error.</p>

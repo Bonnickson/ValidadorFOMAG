@@ -768,7 +768,11 @@ if (inputMatriz) {
                 matrizNombreArchivo.textContent = file.name;
                 const totalP = resultadoMatriz.diagnosticoGlobal.totalPacientes;
                 const errP = resultadoMatriz.diagnosticoGlobal.pacientesConErrores;
-                matrizStatsTexto.textContent = `${totalP} pacientes (${totalP - errP} conformes, ${errP} con novedades)`;
+                const warnP = resultadoMatriz.diagnosticoGlobal.pacientesConAlertas || 0;
+                const okP = Math.max(0, totalP - errP - warnP);
+                matrizStatsTexto.textContent = warnP > 0
+                    ? `${totalP} pacientes (${okP} conformes, ${warnP} con alertas, ${errP} con novedades)`
+                    : `${totalP} pacientes (${okP} conformes, ${errP} con novedades)`;
             }
             if (matrixDropzoneTitle) {
                 matrixDropzoneTitle.textContent = "Matriz Cargada ✓";

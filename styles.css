@@ -2566,9 +2566,10 @@ body.theme-dark .btn-programado-trigger:hover {
 }
 
 .programado-floating-popover {
-    min-width: 350px;
+    min-width: 410px;
     min-height: 150px;
-    width: 390px;
+    width: 460px;
+    max-width: 540px;
     max-height: 520px;
 }
 
@@ -5184,9 +5185,9 @@ body.theme-dark .matriz-card-loaded {
     background: var(--bg-card, #ffffff);
     border: 1px solid var(--border-subtle, #dbe1ec);
     border-radius: var(--radius-lg, 12px);
-    width: 96%;
-    max-width: 1180px;
-    max-height: 88vh;
+    width: 97vw;
+    max-width: 1480px;
+    max-height: 90vh;
     display: flex;
     flex-direction: column;
     box-shadow: var(--shadow-modal);
@@ -5320,6 +5321,13 @@ body.theme-dark .preval-top-toolbar {
     color: #059669;
 }
 .kpi-tag.ok strong { color: #059669; }
+
+.kpi-tag.warn {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.3);
+    color: #d97706;
+}
+.kpi-tag.warn strong { color: #d97706; }
 
 .kpi-tag.err {
     background: rgba(239, 68, 68, 0.08);
@@ -5474,6 +5482,20 @@ body.theme-dark .preval-top-toolbar {
     color: #d97706 !important;
 }
 
+.preval-pkg-chip.pkg-has-warning .preval-pkg-count {
+    color: #d97706 !important;
+    text-decoration: underline;
+}
+
+.preval-pkg-chip.pkg-has-warning::after {
+    content: "•";
+    color: #f59e0b;
+    font-weight: 900;
+    font-size: 11px;
+    margin-left: -1px;
+    line-height: 0;
+}
+
 /* Barra de Filtros y Búsqueda del Modal Moderna y Limpia */
 .preval-filter-strip {
     display: flex;
@@ -5543,7 +5565,8 @@ body.theme-dark .preval-search-box:focus-within {
 
 /* Tabla Compacta */
 .preval-table-container {
-    max-height: 420px;
+    max-height: calc(90vh - 205px);
+    min-height: 360px;
     overflow-y: auto;
     border: 1px solid var(--border-subtle, #dbe1ec);
     border-radius: var(--radius-md, 8px);
@@ -5619,8 +5642,20 @@ body.theme-dark .preval-table tbody tr.preval-row-has-error {
 .preval-doc-badge-stack {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 3px;
     align-items: flex-start;
+    width: 100%;
+}
+
+.preval-doc-badge-stack .doc-package-desc {
+    font-size: 10px;
+    line-height: 1.25;
+    max-width: 210px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .preval-doc-badge-stack .doc-package-tag {
@@ -5645,8 +5680,9 @@ body.theme-dark .preval-table tbody tr.preval-row-has-error {
 .preval-doc-title-line {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 6px;
     margin-top: 1px;
+    flex-wrap: wrap;
 }
 
 .preval-doc-num {
@@ -5660,7 +5696,71 @@ body.theme-dark .preval-table tbody tr.preval-row-has-error {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    margin-top: 1px;
+}
+
+/* Grilla de celdas originales del Excel en el modal de Ver Fila */
+.fila-excel-raw-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+    gap: 6px;
+}
+
+.fila-excel-raw-cell {
+    background: var(--bg-subtle, #f8fafc);
+    border: 1px solid var(--border-subtle, #dbe1ec);
+    border-radius: 5px;
+    padding: 5px 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    opacity: 0.65;
+}
+
+.fila-excel-raw-cell.has-val {
+    background: var(--bg-card, #ffffff);
+    border-color: var(--border-strong, #cbd5e1);
+    opacity: 1;
+}
+
+body.theme-dark .fila-excel-raw-cell.has-val {
+    background: #192233;
+    border-color: #334360;
+}
+
+.fila-excel-raw-header {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: 0;
+}
+
+.fila-excel-col-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 800;
+    padding: 0 4px;
+    border-radius: 3px;
+    background: var(--accent-glow, rgba(37, 99, 235, 0.1));
+    color: var(--accent, #2563eb);
+    flex-shrink: 0;
+}
+
+.fila-excel-col-title {
+    font-size: 9.5px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fila-excel-raw-val {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-pure);
+    word-break: break-word;
+    line-height: 1.25;
 }
 
 .btn-copy-minimal {
@@ -5738,10 +5838,38 @@ body.theme-dark .preval-table tbody tr.preval-row-has-error {
     border-color: rgba(239, 68, 68, 0.3);
 }
 
+.pserv-tag.oblig.warn {
+    background: rgba(245, 158, 11, 0.14);
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.35);
+}
+
+.pserv-tag.oblig.dim {
+    background: var(--bg-subtle, #f1f5f9);
+    color: var(--text-muted);
+    opacity: 0.5;
+}
+
+body.theme-dark .pserv-tag.oblig.dim {
+    background: #1e293b;
+}
+
 .pserv-tag.opt.active {
     background: rgba(37, 99, 235, 0.1);
     color: #2563eb;
     border-color: rgba(37, 99, 235, 0.25);
+}
+
+.pserv-tag.opt.err {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.pserv-tag.opt.warn {
+    background: rgba(245, 158, 11, 0.14);
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.35);
 }
 
 .pserv-tag.opt.dim {
@@ -5759,6 +5887,18 @@ body.theme-dark .pserv-tag.opt.dim {
     color: var(--accent, #2563eb);
     border-color: var(--accent-border, rgba(37, 99, 235, 0.25));
     font-weight: 800;
+}
+
+.pserv-tag.ter-total.err {
+    background: rgba(239, 68, 68, 0.12);
+    color: #ef4444;
+    border-color: rgba(239, 68, 68, 0.3);
+}
+
+.pserv-tag.ter-total.warn {
+    background: rgba(245, 158, 11, 0.14);
+    color: #d97706;
+    border-color: rgba(245, 158, 11, 0.35);
 }
 
 .pserv-tag.ter-detail {
@@ -5819,6 +5959,11 @@ body.theme-dark .pserv-ter-item.zero {
 .preval-badge.success {
     background: rgba(16, 185, 129, 0.12);
     color: #10b981;
+}
+
+.preval-badge.warning {
+    background: rgba(245, 158, 11, 0.14);
+    color: #d97706;
 }
 
 .preval-badge.error {

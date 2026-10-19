@@ -250,6 +250,7 @@ export function parsearMatriz(rawRows) {
         }
 
         // Parsear servicios
+        const geriatria = parseCantidad(fila[5]); // Col F: Geriatría
         const vm = parseCantidad(fila[columnasDetectadas.VM]);
         const venf = parseCantidad(fila[columnasDetectadas.ENF_PROF]); // Col H: Paq. Enfermería Profesional (VENF)
         const enf = parseCantidad(fila[columnasDetectadas.ENF_AUX]);   // Col I: Paq. Aux Enfermeria (ENF)
@@ -269,6 +270,34 @@ export function parsearMatriz(rawRows) {
         const apl2 = columnasDetectadas.APL_2_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_2_DOSIS]) : 0;
         const apl3 = columnasDetectadas.APL_3_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_3_DOSIS]) : 0;
         const apl4 = columnasDetectadas.APL_4_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_4_DOSIS]) : 0;
+
+        // Capturar todas las celdas de la fila tal cual vienen en el Excel
+        const headerRow1 = rawRows[1] || [];
+        const headerRow0 = rawRows[0] || [];
+        const maxCols = Math.max(fila.length, headerRow1.length, 17);
+        const celdasFila = [];
+        const obtenerLetraCol = (idx) => {
+            let n = idx;
+            let letra = "";
+            while (n >= 0) {
+                letra = String.fromCharCode((n % 26) + 65) + letra;
+                n = Math.floor(n / 26) - 1;
+            }
+            return letra;
+        };
+        for (let c = 0; c < maxCols; c++) {
+            const h1 = String(headerRow1[c] ?? "").trim();
+            const h0 = String(headerRow0[c] ?? "").trim();
+            const headerLabel = h1 || h0 || `Columna ${obtenerLetraCol(c)}`;
+            const valRaw = fila[c] !== undefined && fila[c] !== null ? String(fila[c]).trim() : "";
+            // Omitir columnas finales vacías sin encabezado en Fila 2
+            if (!h1 && !valRaw && c >= 17) continue;
+            celdasFila.push({
+                col: obtenerLetraCol(c),
+                header: headerLabel,
+                valor: valRaw,
+            });
+        }
 
         let aplEsperado = 0;
         let dosisNombre = "";
@@ -313,11 +342,21 @@ export function parsearMatriz(rawRows) {
         } else if (esPaqueteMedicamento) {
             // Regla específica para CPF1102, CPF1103 y CPF1104:
             // Solo requiere 1 VM, 1 ENF y APL (según dosis y Cant Paquete Diario)
-            if (vm !== 1) {
+            if (vm < 1) {
                 erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
+            } else if (vm > 1) {
+                alertasFila.push(`VM: Requiere 1 (tiene ${vm})`);
             }
-            if (enf !== 1) {
+
+            if (enf < 1) {
                 erroresFila.push(`ENF: Requiere 1 (tiene ${enf})`);
+            } else if (enf > 1) {
+                alertasFila.push(`ENF: Requiere 1 (tiene ${enf})`);
+            }
+
+            // VENF no aplica en paquetes de aplicación de medicamentos (exige ENF)
+            if (venf > 0) {
+                erroresFila.push(`VENF: No aplica en este paquete (tiene ${venf}, requiere 0)`);
             }
 
             // Validar asignación de dosis correspondiente
@@ -384,43 +423,55 @@ export function parsearMatriz(rawRows) {
             // 1. Validar Fijos Obligatorios de Médica (VM) y Enfermería (VENF / ENF)
             if (paquete === "CPF1107") {
                 // CPF1107: Debe tener 2 VM y 4 ENF
-                if (vm !== 2) {
+                if (vm < 2) {
                     erroresFila.push(`VM: Requiere 2 (tiene ${vm})`);
+                } else if (vm > 2) {
+                    alertasFila.push(`VM: Requiere 2 (tiene ${vm})`);
                 }
-                if (enf !== 4) {
+
+                if (enf < 4) {
                     erroresFila.push(`ENF: Requiere 4 (tiene ${enf})`);
+                } else if (enf > 4) {
+                    alertasFila.push(`ENF: Requiere 4 (tiene ${enf})`);
                 }
-                if (venf !== 0) {
-                    erroresFila.push(`VENF: Requiere 0 (tiene ${venf})`);
+
+                if (venf > 0) {
+                    alertasFila.push(`VENF: Requiere 0 (tiene ${venf})`);
                 }
             } else if (paquete === "CPF1225") {
                 // CPF1225: Debe tener 2 VM
-                if (vm !== 2) {
+                if (vm < 2) {
                     erroresFila.push(`VM: Requiere 2 (tiene ${vm})`);
+                } else if (vm > 2) {
+                    alertasFila.push(`VM: Requiere 2 (tiene ${vm})`);
                 }
+
                 if (venf === 0 && enf === 0) {
                     erroresFila.push(`VENF o ENF: Requiere al menos 1 servicio`);
                 } else {
-                    if (venf !== 0 && venf !== 1) {
-                        erroresFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
+                    if (venf > 1) {
+                        alertasFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
                     }
-                    if (enf !== 0 && enf !== 1) {
-                        erroresFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
+                    if (enf > 1) {
+                        alertasFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
                     }
                 }
             } else {
                 // Resto de paquetes estándar CPF (1 VM, y al menos 1 VENF o ENF)
-                if (vm !== 1) {
+                if (vm < 1) {
                     erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
+                } else if (vm > 1) {
+                    alertasFila.push(`VM: Requiere 1 (tiene ${vm})`);
                 }
+
                 if (venf === 0 && enf === 0) {
                     erroresFila.push(`VENF o ENF: Requiere al menos 1 servicio`);
                 } else {
-                    if (venf !== 0 && venf !== 1) {
-                        erroresFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
+                    if (venf > 1) {
+                        alertasFila.push(`VENF: Requiere 1 si aplica (tiene ${venf})`);
                     }
-                    if (enf !== 0 && enf !== 1) {
-                        erroresFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
+                    if (enf > 1) {
+                        alertasFila.push(`ENF: Requiere 1 si aplica (tiene ${enf})`);
                     }
                 }
             }
@@ -435,11 +486,11 @@ export function parsearMatriz(rawRows) {
                 erroresFila.push(`Opcional: Falta elegir 1 (PSI, NUT o TS)`);
             } else if (opcionalesConValor.length > 1) {
                 const lista = opcionalesConValor.map(o => `${o.serv}:${o.cant}`).join(", ");
-                erroresFila.push(`Opcional: Solo 1 permitido (tiene varios: ${lista})`);
+                alertasFila.push(`Opcional: Solo 1 permitido (tiene varios: ${lista})`);
             } else {
                 const unico = opcionalesConValor[0];
-                if (unico.cant !== 1) {
-                    erroresFila.push(`${unico.serv}: requiere 1 (tiene ${unico.cant})`);
+                if (unico.cant > 1) {
+                    alertasFila.push(`${unico.serv}: requiere 1 (tiene ${unico.cant})`);
                 }
             }
 
@@ -485,9 +536,12 @@ export function parsearMatriz(rawRows) {
                         ? ` (${terapiasActivas.join(", ")})`
                         : " (0 asignadas)";
 
-                    erroresFila.push(
-                        `Terapias: Requiere ${regla.min}-${regla.max} sumadas (tiene ${totalTerapias}${detalleStr})`
-                    );
+                    const msgTerapias = `Terapias: Requiere ${regla.min}-${regla.max} sumadas (tiene ${totalTerapias}${detalleStr})`;
+                    if (totalTerapias < regla.min) {
+                        erroresFila.push(msgTerapias);
+                    } else {
+                        alertasFila.push(msgTerapias);
+                    }
                 }
             }
         }
@@ -501,6 +555,7 @@ export function parsearMatriz(rawRows) {
             paquete,
             facturarEventoRaw,
             esFacturarEvento: esFacturarEventoSi,
+            geriatria,
             cantPaqDiario,
             aplDosis: {
                 dosis1: apl1,
@@ -512,6 +567,7 @@ export function parsearMatriz(rawRows) {
             },
             servicios,
             totalTerapias,
+            celdasFila,
             errores: erroresFila,
             alertas: alertasFila,
             valido: erroresFila.length === 0,
@@ -538,6 +594,7 @@ export function parsearMatriz(rawRows) {
     }
 
     const totalConErrores = pacientesList.filter((p) => !p.valido).length;
+    const totalConAlertas = pacientesList.filter((p) => p.valido && p.alertas && p.alertas.length > 0).length;
 
     return {
         pacientesPorDoc,
@@ -548,6 +605,7 @@ export function parsearMatriz(rawRows) {
             totalFilas: rawRows.length,
             totalPacientes: pacientesList.length,
             pacientesConErrores: totalConErrores,
+            pacientesConAlertas: totalConAlertas,
             errores: erroresGlobales,
             conteoPorPaquete,
         },
