@@ -21,6 +21,17 @@ export function normalizeForSearch(s) {
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D\-_:.,;–—]/g, " ")
         .toUpperCase()
+        // Corregir codificaciones alteradas / mojibake comunes en PDFs clínicos
+        .replace(/EVOLUCI[UÚÙÛ]N/g, "EVOLUCION")
+        .replace(/M[EÈÉÊ]DICA/g, "MEDICA")
+        .replace(/HISTORIA\s+CL[IÌÍÎ]NICA/g, "HISTORIA CLINICA")
+        .replace(/PSICOLOG[IÌÍÎ]A/g, "PSICOLOGIA")
+        .replace(/ENFERMER[IÌÍÎ]A/g, "ENFERMERIA")
+        .replace(/NUTRICI[UÚÙÛ]N/g, "NUTRICION")
+        .replace(/FONOAUDIOLOG[IÌÍÎ]A/g, "FONOAUDIOLOGIA")
+        .replace(/F[IÌÍÎ]SICA/g, "FISICA")
+        .replace(/ATENCI[UÚÙÛ]N/g, "ATENCION")
+        .replace(/CURACI[UÚÙÛ]N/g, "CURACION")
         .replace(/\s+/g, " ")
         .trim();
 }

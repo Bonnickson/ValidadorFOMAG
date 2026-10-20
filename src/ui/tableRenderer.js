@@ -72,15 +72,23 @@ export function renderFechasPills(fechas = [], periodoPermitido = null) {
 const gruposPorCarpeta = new Map();
 let contadorGrupo = 0;
 
-const renderErrorItem = (errorText) => {
+const renderErrorItem = (errorText, carpeta = "", servicio = "") => {
     const { tipo } = clasificarErrorResumen(errorText);
     const tipoNorm = normalizarTipoError(tipo);
     const errorFormateado = formatearErrorConIconosPDF(errorText);
-    return `<div class="error-item" data-error-type="${tipo}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">✕</span> <span>${errorFormateado}</span></div>`;
+    const safeErrorAttr = String(errorText || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const safeCarpeta = String(carpeta || "").replace(/'/g, "\\'");
+    const safeServicio = String(servicio || "").replace(/'/g, "\\'");
+
+    const copyBtn = carpeta
+        ? `<button type="button" class="btn-copy-error-single" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="Copiar este error (Responsable - Documento - Paquete - Servicio - Archivo - Error)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
+        : "";
+
+    return `<div class="error-item" data-error-type="${tipo}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">✕</span> <span class="error-text-content">${errorFormateado}</span>${copyBtn}</div>`;
 };
 
-const renderErrorItems = (errors = []) =>
-    errors && errors.length ? errors.map(renderErrorItem).join("") : "";
+const renderErrorItems = (errors = [], carpeta = "", servicio = "") =>
+    errors && errors.length ? errors.map(err => renderErrorItem(err, carpeta, servicio)).join("") : "";
 
 /**
  * Obtiene la clase de grupo para una carpeta
@@ -280,7 +288,7 @@ export function updateRow(tablaBody, carpeta, r, mostrarExitos = false) {
         todosLosErrores.push(...r.erroresPorServicio["General"]);
     }
 
-    const erroresHTML = renderErrorItems(todosLosErrores) || "—";
+    const erroresHTML = renderErrorItems(todosLosErrores, carpeta, "General") || "—";
     const isProcessing = existing.classList.contains("processing");
 
     existing.innerHTML = renderEvento(
@@ -303,7 +311,7 @@ export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
     const fechasPills = renderFechasPills(r.fechas || [], r.periodoPermitido);
 
     const tipoDisplay = r.tipo || "—";
-    const erroresHTML = renderErrorItems(r.errores) || "—";
+    const erroresHTML = renderErrorItems(r.errores, carpeta, "General") || "—";
 
     if (r.tipoValidacion === "paquete") {
         // Para paquete, crear una fila por servicio
@@ -330,7 +338,7 @@ export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
             todosLosErrores.push(...r.erroresPorServicio["General"]);
         }
 
-        const erroresHTMLCompleto = renderErrorItems(todosLosErrores) || "—";
+        const erroresHTMLCompleto = renderErrorItems(todosLosErrores, carpeta, "General") || "—";
 
         // Determinar estado
         const tieneErrores = todosLosErrores.length > 0;
@@ -437,7 +445,7 @@ function renderPaqueteFilas(
     const erroresGeneralesHeaderHTML = [
         ...exitosGenerales.map(e => `<div class="exito-item validacion-exitosa" style="display: ${mostrarExitos ? "" : "none"}">✓ ${formatearErrorConIconosPDF(e)}</div>`),
         ...alertasGenerales.map(a => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${formatearErrorConIconosPDF(a)}</strong></div>`),
-        renderErrorItems(erroresGenerales)
+        renderErrorItems(erroresGenerales, carpeta, "General")
     ].filter(Boolean).join("") || "";
 
     const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
@@ -589,6 +597,7 @@ function renderPaqueteFilas(
         }
 
         const nombreCompleto = SERVICIOS_NOMBRES[s] || s;
+        const siglaServicioBadge = s ? `<span class="servicio-sigla-tag">${s}</span>` : "";
 
         const exitosServicio = r.exitosPorServicio?.[s] || [];
         const alertasServicioRender = r.alertasPorServicio?.[s] || [];
@@ -615,7 +624,7 @@ function renderPaqueteFilas(
         const alertasHTML = alertasServicioRender
             .map((e) => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${formatearErrorConIconosPDF(e)}</strong></div>`)
             .join("");
-        const erroresHTML = renderErrorItems(erroresServicio);
+        const erroresHTML = renderErrorItems(erroresServicio, carpeta, s);
 
         const soloExitos = exitosHTML && !alertasHTML && !erroresHTML;
         const badgeExito = soloExitos
@@ -633,7 +642,7 @@ function renderPaqueteFilas(
 
         // Sin celda vacía porque la primera columna está cubierta por el rowspan
         tr.innerHTML = `
-            <td class="servicio-nombre">${nombreCompleto}</td>
+            <td class="servicio-nombre"><span class="servicio-nombre-wrapper"><span class="servicio-nombre-texto">${nombreCompleto}</span>${siglaServicioBadge}</span></td>
             <td class="archivos-cell center-cell">${archivosHTML || "—"}</td>
             <td class="count-evol-cell">${cant5}</td>
             <td class="fechas">${fechasHTML}</td>
@@ -682,7 +691,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
             "grupo-fin"
         );
 
-        const erroresHTML = renderErrorItems(r.errores) || "—";
+        const erroresHTML = renderErrorItems(r.errores, carpeta, "General") || "—";
         const tieneErrores = r.errores.length > 0;
         tr.setAttribute(
             "data-estado",
@@ -725,6 +734,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         if (index === serviciosArray.length - 1) tr.classList.add("grupo-fin");
 
         const nombreCompleto = SERVICIOS_NOMBRES[servicio] || servicio;
+        const siglaServicioBadge = servicio ? `<span class="servicio-sigla-tag">${servicio}</span>` : "";
         const archivosServicio = archivosPorServicio[servicio] || [];
         const servicioLower =
             servicio === "SUCCION" ? "succion" : servicio.toLowerCase();
@@ -764,7 +774,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const erroresServicio = r.erroresPorServicio?.[servicio] || [];
         // Alertas del servicio
         const alertasServicio = r.alertasPorServicio?.[servicio] || [];
-        const erroresHTML = renderErrorItems(erroresServicio);
+        const erroresHTML = renderErrorItems(erroresServicio, carpeta, servicio);
         const alertasHTML = alertasServicio
             .map((a) => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${a}</strong></div>`)
             .join("");
@@ -816,7 +826,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
                 <button class="copy-inline-btn copy-full-btn" onclick="copiarFormatoCompleto(event,'${r.tipoPaquete || 'FOMAG'}','${carpeta}')" title="Copiar formato">🏷️</button>
                 <button class="copy-inline-btn copy-hallazgos-btn" onclick="copiarHallazgosCompletos(event,'${carpeta}')" title="Copiar hallazgos: Paquete - Documento - Servicio - Archivo - Error">📝</button>
             </span></td>
-            <td class="servicio-nombre">${nombreCompleto}</td>
+            <td class="servicio-nombre"><span class="servicio-nombre-wrapper"><span class="servicio-nombre-texto">${nombreCompleto}</span>${siglaServicioBadge}</span></td>
             <td class="archivos-cell center-cell">${archivosHTML || "—"}</td>
             <td class="cant-auto-cell ${cantAutoClass}">${cantAuto || "—"}</td>
             <td class="count-evol-cell">${cantEvol || "—"}</td>
@@ -843,7 +853,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         tr.classList.add("paquete-row", grupoClase);
         tr.setAttribute("data-estado", "con-errores");
 
-        const erroresHTML = renderErrorItems(erroresGeneralesNoServicio);
+        const erroresHTML = renderErrorItems(erroresGeneralesNoServicio, carpeta, "General");
 
         tr.innerHTML = `
             <td>${tipoDisplay}</td>

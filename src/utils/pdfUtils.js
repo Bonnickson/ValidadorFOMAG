@@ -67,11 +67,33 @@ export async function extraerTextoOCRPagina(page) {
 }
 
 /**
+ * Determina si una cadena de texto contiene caracteres no mapeados o corruptos (típicos de fuentes Type 3 sin ToUnicode)
+ */
+export function tieneTextoCorrupto(texto) {
+    if (!texto || texto.length < 10) return false;
+    // Si contiene patrones de nombres de glifos Type 3 emitidos sin mapa ToUnicode (/0 /1 /2 /3 /i255)
+    if (/\/[0-9]+\s+\/[0-9]+/i.test(texto) || /\/i255/i.test(texto)) {
+        return true;
+    }
+    let ctrlCount = 0;
+    const len = texto.length;
+    for (let i = 0; i < len; i++) {
+        const code = texto.charCodeAt(i);
+        // Caracteres de control ASCII comunes en glifos Type 3 sin mapear (\x00-\x08, \x0E-\x1F)
+        if (code < 32 && code !== 9 && code !== 10 && code !== 13) {
+            ctrlCount++;
+            if (ctrlCount >= 10) return true;
+        }
+    }
+    return false;
+}
+
+/**
  * Ejecuta OCR sobre las páginas de un documento PDF.
  * Para optimizar velocidad, procesa las primeras páginas (máximo maxPages)
  * o se detiene si el texto acumulado ya satisface un criterio de búsqueda.
  */
-export async function extraerTextoOCRDePDF(pdf, maxPages = 3, terminoEsperado = "") {
+export async function extraerTextoOCRDePDF(pdf, maxPages = 3, terminoEsperado = "", requerirFecha = false) {
     let textoOCR = "";
     const total = Math.min(pdf.numPages, maxPages);
     const esperadoNorm = terminoEsperado ? normalizeForSearch(terminoEsperado) : "";
@@ -82,8 +104,11 @@ export async function extraerTextoOCRDePDF(pdf, maxPages = 3, terminoEsperado = 
             const textoPagina = await extraerTextoOCRPagina(page);
             textoOCR += textoPagina + " ";
 
-            // Si ya encontramos lo que buscamos, terminar inmediatamente
-            if (esperadoNorm && normalizeForSearch(textoOCR).includes(esperadoNorm)) {
+            // Si se busca un término y además se requieren fechas, no detenerse hasta tener ambos
+            const tieneEsperado = !esperadoNorm || normalizeForSearch(textoOCR).includes(esperadoNorm);
+            const tieneFecha = !requerirFecha || extraerFechas(textoOCR).length > 0;
+
+            if (tieneEsperado && tieneFecha) {
                 break;
             }
         } finally {

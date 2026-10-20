@@ -114,11 +114,15 @@ Valida cada servicio de manera individual mediante pares de archivos (`2 [servic
 - 🕒 **Marcado Visual y Auditoría Inteligente de Fechas (LNDS)**:
   - Detección algorítmica de fechas desordenadas que rompen la secuencia temporal y fechas duplicadas en historias clínicas (`5.pdf`).
   - Presentación limpia y profesional en la columna de fechas y en el visor PDF: resaltado semántico por colores y tooltips interactivos sin sobrecargar con símbolos innecesarios.
+- 🔍 **Motor Híbrido PDF + OCR Inteligente**:
+  - Extrae texto digital instantáneamente con PDF.js.
+  - Activa automáticamente OCR (Tesseract) cuando un soporte escaneado o con fuentes vectoriales Type 3 (texto no mapeable/corrupto sin fechas) no arroja fechas clínicas o documento del paciente, rescatando las evoluciones médicas reales sin falsos positivos.
 - ⚡ **Lectura Masiva**: Soporte para *File System Access API* (`btnAbrirFS`) y selector estándar por carpetas.
 - 📐 **Panel de Incidencias Redimensionable**: Panel de resumen de errores interactivo con ajuste de altura fluido mediante `requestAnimationFrame`.
 - 🔍 **Filtros Dinámicos**: Filtrado en vivo por texto/cédula, tipo de servicio, estado y selección múltiple de tarjetas de error.
-- 📋 **Acciones Rápidas de Portapapeles**: Copiado rápido de identificadores, números de documento, formatos estándar y listas de expedientes con error.
-- 📥 **Exportación a Excel**:
+- 📋 **Acciones Rápidas de Portapapeles**: Copiado rápido de identificadores, números de documento, formatos estándar, hallazgos estructurados (`Responsable - Documento - Paquete - Servicio - Archivo - Error`) y botón individual de copia para cada mensaje de error con sigla visible del servicio (`VM`, `ENF`, etc.).
+- 📥 **Exportación a Excel y Certificación en PDF**:
+  - **Certificado PDF**: Genera un certificado formal no editable con sello de estado (`APROBADO` o `RECHAZADO`), métricas por código de paquete (`CPF`), clasificación diferenciada entre errores críticos (bloqueantes) y alertas/falsos positivos, detalle individual de cuentas y firmas de responsabilidad.
   - **Descargar XLSX**: Reporte detallado de auditoría carpeta por carpeta con observaciones y estados.
   - **Reporte Matriz**: Resumen consolidado para control de facturación y auditoría médica.
 

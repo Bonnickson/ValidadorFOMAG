@@ -132,8 +132,9 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
                 : null);
 
         const pkg = r?.tipoPaquete || r?.tipo || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
-        const doc = carpeta || "";
-        const prefijo = `${pkg} - ${doc}`;
+        const doc = r?.nroDocumento || carpeta || "";
+        const resp = r?.auditor || r?.datosMatriz?.nombre || "";
+        const prefijo = resp ? `${resp} - ${doc} - ${pkg}` : `${pkg} - ${doc}`;
         
         const lineas = [];
 
@@ -186,5 +187,55 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
         const fallback = `${pkg} - ${carpeta || ""} - 📦 Paquete - N/A - Error al procesar hallazgos`;
         await copiarTextoAlPortapapeles(fallback);
         mostrarToastCopia(fallback);
+    }
+}
+
+/**
+ * Copia un error individual formateado como:
+ * "responsable - documento - paquete - servicio - archivo - error"
+ */
+export async function copiarErrorIndividual(event, carpeta, servicioKey, errorTexto, resultadosGlobales) {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    try {
+        const r = (resultadosGlobales && resultadosGlobales[carpeta])
+            ? resultadosGlobales[carpeta]
+            : (resultadosGlobales
+                ? Object.values(resultadosGlobales).find(item => item.carpetaNombre === carpeta || item.nroDocumento === carpeta)
+                : null);
+
+        const responsable = (r?.auditor || r?.datosMatriz?.nombre || "N/A").trim();
+        const documento = (r?.nroDocumento || carpeta || "").trim();
+        const paquete = (r?.tipoPaquete || r?.tipo || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108") || "N/A").trim();
+        
+        // Servicio
+        let servicio = servicioKey || "General";
+        if (servicio === "General") {
+            servicio = "📦 Paquete";
+        } else if (SERVICIOS_NOMBRES[servicio]) {
+            servicio = SERVICIOS_NOMBRES[servicio];
+        }
+
+        // Archivo
+        const fileMatch = errorTexto ? errorTexto.match(/\b([0-9A-Za-z_-]+(?:\s+[0-9A-Za-z_-]+)?\.pdf)\b/i) : null;
+        let archivo = fileMatch ? fileMatch[1] : "";
+        if (!archivo) {
+            if (servicioKey && servicioKey !== "General" && r?.pdfsPorServicio?.[servicioKey]) {
+                const pdfKeys = Object.keys(r.pdfsPorServicio[servicioKey]);
+                archivo = pdfKeys.length > 0 ? pdfKeys.join(", ") : "N/A";
+            } else {
+                archivo = "N/A";
+            }
+        }
+
+        const linea = `${responsable} - ${documento} - ${paquete} - ${servicio} - ${archivo} - ${errorTexto.trim()}`;
+        await copiarTextoAlPortapapeles(linea);
+        mostrarToastCopia(linea);
+    } catch (err) {
+        console.error("Error en copiarErrorIndividual:", err);
+        await copiarTextoAlPortapapeles(errorTexto);
+        mostrarToastCopia(errorTexto);
     }
 }

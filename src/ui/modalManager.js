@@ -2077,10 +2077,10 @@ export function mostrarModalAlertaFinalValidacion(totalCarpetas, totalConErrores
                 ? `Se han detectado <strong style="color:#f59e0b;">${totalConAlertas} paciente(s) con alertas</strong> en la matriz.`
                 : `Los <strong>${totalCarpetas} paciente(s)</strong> de la matriz cumplen las reglas de paquete.`))
         : (hayProblemas
-            ? `Se han detectado <strong style="color:#ef4444;">${totalConErrores} paciente(s) con novedades o inconsistencias</strong> durante la validación de los soportes.`
+            ? `Se han detectado <strong style="color:#ef4444;">${totalConErrores} paciente(s) con novedades o inconsistencias</strong>. Por favor <strong>revisa los hallazgos en pantalla</strong>. Si todo está debidamente verificado y subsanado, <strong>descarga el Certificado PDF</strong> para adjuntarlo y reportarlo en tu entrega.`
             : (soloAlertas
-                ? `Se han detectado <strong style="color:#f59e0b;">${totalConAlertas} paciente(s) con alertas</strong> durante la auditoría.`
-                : `Todos los <strong>${totalCarpetas} paciente(s)</strong> han superado la validación sin errores.`));
+                ? `Se han detectado <strong style="color:#f59e0b;">${totalConAlertas} paciente(s) con alertas informativas</strong>. Por favor revisa las observaciones y, si todo está correcto, <strong>descarga el Certificado PDF</strong> oficial para reportarlo.`
+                : `Todos los <strong>${totalCarpetas} paciente(s)</strong> superaron la validación sin errores. Revisa el resultado final y <strong>descarga el Certificado PDF</strong> oficial para reportar tu radicación.`));
 
     backdrop.innerHTML = `
         <div class="modal-rules-card" style="max-width: 480px; padding: 0; overflow: hidden; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
@@ -2110,8 +2110,13 @@ export function mostrarModalAlertaFinalValidacion(totalCarpetas, totalConErrores
                 </div>
             </div>
             <div style="padding: 12px 20px; background: var(--bg-subtle); border-top: 1px solid var(--border-subtle); display: flex; justify-content: flex-end; gap: 8px;">
-                <button type="button" class="btn-studio btn-studio-primary" style="padding: 7px 18px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modalAlertaFinalValidacionActivo')?.remove()">
-                    Entendido
+                ${!esMatriz ? `
+                    <button type="button" class="btn-studio" style="padding: 7px 14px; font-size: 12px; font-weight: 600; background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: 1px solid #0284c7;" onclick="document.getElementById('modalAlertaFinalValidacionActivo')?.remove(); document.getElementById('btnDescargarPDF')?.click();">
+                        Descargar Certificado PDF
+                    </button>
+                ` : ''}
+                <button type="button" class="btn-studio btn-studio-ghost" style="padding: 7px 18px; font-size: 12px; font-weight: 600;" onclick="document.getElementById('modalAlertaFinalValidacionActivo')?.remove()">
+                    ${esMatriz ? 'Entendido' : 'Revisar en Pantalla'}
                 </button>
             </div>
         </div>
@@ -2196,9 +2201,10 @@ export function solicitarPeriodoPermitidoModal({ desdeInicial = "", hastaInicial
         if (prev) prev.remove();
 
         const hoy = new Date();
-        const añoActual = hoy.getFullYear();
-        const mesActual = String(hoy.getMonth() + 1).padStart(2, "0");
-        const defaultMes = `${añoActual}-${mesActual}`;
+        const fechaMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+        const aAntDefault = fechaMesAnterior.getFullYear();
+        const mAntDefault = String(fechaMesAnterior.getMonth() + 1).padStart(2, "0");
+        const defaultMes = `${aAntDefault}-${mAntDefault}`;
 
         const valorDesde = desdeInicial || defaultMes;
         const valorHasta = hastaInicial || desdeInicial || defaultMes;
@@ -2277,8 +2283,11 @@ export function solicitarPeriodoPermitidoModal({ desdeInicial = "", hastaInicial
         });
 
         btnMesActual.addEventListener("click", () => {
-            inputDesde.value = defaultMes;
-            inputHasta.value = defaultMes;
+            const aAct = hoy.getFullYear();
+            const mAct = String(hoy.getMonth() + 1).padStart(2, "0");
+            const mesActStr = `${aAct}-${mAct}`;
+            inputDesde.value = mesActStr;
+            inputHasta.value = mesActStr;
         });
 
         btnMesAnterior.addEventListener("click", () => {

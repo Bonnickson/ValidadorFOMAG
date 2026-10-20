@@ -33,11 +33,17 @@ const REGLAS_ARCHIVO_5 = {
         debeContener: [
             "Registro De Historia Clínica",
             "Registro De Evolución Médica",
+            "Historia Clínica",
+            "Evolución Médica",
         ],
         igualarConFechas: true,
     },
     ENF: {
-        debeContener: ["Registro De Enfermería - Actividades"],
+        debeContener: [
+            "Registro De Enfermería - Actividades",
+            "REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA",
+            "REGISTRO DE ATENCION DOMICILIARIA - ENFERMERIA",
+        ],
         igualarConFechas: true,
     },
     VENF: {

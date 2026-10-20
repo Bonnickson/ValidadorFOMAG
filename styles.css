@@ -974,10 +974,15 @@ td.missing {
     font-weight: 700 !important;
     color: var(--danger-text, #ef4444);
     margin-bottom: 0;
-    line-height: 1.2;
+    line-height: 1.25;
     display: flex;
     align-items: flex-start;
-    gap: 4px;
+    gap: 5px;
+    position: relative;
+}
+
+.error-item:hover .btn-copy-error-single {
+    opacity: 0.85;
 }
 
 .error-item span,
@@ -985,11 +990,79 @@ td.missing {
     font-weight: 700 !important;
 }
 
+.error-item .error-text-content {
+    flex: 1;
+    min-width: 0;
+}
+
 .error-item .error-icon {
     font-weight: 900 !important;
     color: #ef4444 !important;
     display: inline-block;
     font-size: 11px;
+    flex-shrink: 0;
+}
+
+.btn-copy-error-single {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 1px 3px;
+    margin: 0;
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.35;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    line-height: 1;
+}
+
+.btn-copy-error-single:hover {
+    opacity: 1 !important;
+    color: var(--accent, #3b82f6);
+    background: rgba(59, 130, 246, 0.08);
+}
+
+.btn-copy-error-icon {
+    width: 11px;
+    height: 11px;
+}
+
+/* Sigla discreta junto al nombre del servicio */
+.servicio-nombre-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    max-width: 100%;
+}
+
+.servicio-nombre-texto {
+    white-space: normal;
+    word-break: break-word;
+}
+
+.servicio-sigla-tag {
+    font-size: 8.5px;
+    font-weight: 800;
+    letter-spacing: 0.4px;
+    color: var(--text-muted, #64748b);
+    background: var(--bg-subtle, #f1f5f9);
+    border: 1px solid var(--border-subtle, #e2e8f0);
+    padding: 1px 4px;
+    border-radius: 3px;
+    flex-shrink: 0;
+    text-transform: uppercase;
+    line-height: 1.1;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+body.theme-dark .servicio-sigla-tag {
+    color: #94a3b8;
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 /* ================= REDISEÑO DE ARCHIVOS DENTRO DE LA CARPETA ================= */
@@ -6157,4 +6230,70 @@ body.theme-light .pdf-file-badge {
     display: inline-block;
     vertical-align: -1px;
 }
+
+/* Modal de Progreso de Descarga (Excel y PDF) */
+.modal-progreso-bajada {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+    animation: fadeIn 0.15s ease-out;
+}
+
+.modal-progreso-bajada.oculto {
+    display: none !important;
+}
+
+.modal-progreso-bajada-contenido {
+    background: var(--bg-card, #ffffff);
+    color: var(--text-pure, #0f172a);
+    border: 1px solid var(--border-subtle, #e2e8f0);
+    border-radius: var(--radius-lg, 12px);
+    padding: 24px 28px;
+    max-width: 440px;
+    width: 90%;
+    box-shadow: 0 20px 40px -10px rgba(15, 23, 42, 0.35);
+}
+
+.modal-progreso-bajada-contenido h3 {
+    margin: 0 0 16px 0;
+    color: var(--text-pure, #0f172a);
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.progreso-barra-bajada {
+    width: 100%;
+    height: 7px;
+    background: var(--bg-subtle, #e2e8f0);
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: 12px;
+}
+
+.progreso-fill-bajada {
+    height: 100%;
+    background: linear-gradient(90deg, #0284c7, #2563eb);
+    width: 0%;
+    transition: width 0.25s ease-out;
+    border-radius: 999px;
+}
+
+.progreso-info-bajada {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 11.5px;
+    color: var(--text-muted, #64748b);
+    font-weight: 600;
+}
+
 

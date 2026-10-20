@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Certificado y Resumen Ejecutivo de Validación</title>
+  <style>
+    @page {
+      size: letter;
+      margin: 12mm 15mm;
+    }
+    * {
+      box-sizing: border-box;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      margin: 0;
+      color: #1e293b;
+      font-size: 11px;
+      line-height: 1.4;
+      background: #fff;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 2px solid #0284c7;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .brand-logo {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 900;
+      font-size: 18px;
+    }
+    .brand-title {
+      font-size: 18px;
+      font-weight: 800;
+      color: #0f172a;
+      margin: 0;
+      letter-spacing: -0.3px;
+    }
+    .brand-subtitle {
+      font-size: 10px;
+      color: #64748b;
+      margin: 0;
+    }
+    .badge-status {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-weight: 800;
+      font-size: 11px;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-error {
+      background: #fee2e2;
+      color: #b91c1c;
+      border: 1px solid #f87171;
+    }
+    .badge-success {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #4ade80;
+    }
+
+    /* Meta bar */
+    .meta-bar {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 12px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .meta-item {
+      display: flex;
+      flex-direction: column;
+    }
+    .meta-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      color: #64748b;
+      font-weight: 700;
+    }
+    .meta-value {
+      font-size: 11px;
+      font-weight: 600;
+      color: #0f172a;
+    }
+
+    /* KPI Grid */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+    .kpi-card {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #ffffff;
+      border-left: 4px solid #cbd5e1;
+    }
+    .kpi-card.blue { border-left-color: #0284c7; }
+    .kpi-card.green { border-left-color: #10b981; }
+    .kpi-card.red { border-left-color: #ef4444; }
+    .kpi-card.amber { border-left-color: #f59e0b; }
+    .kpi-card.purple { border-left-color: #8b5cf6; }
+
+    .kpi-num {
+      font-size: 18px;
+      font-weight: 800;
+      line-height: 1.1;
+      color: #0f172a;
+    }
+    .kpi-title {
+      font-size: 9.5px;
+      color: #64748b;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    /* Section Headings */
+    .section-title {
+      font-size: 11.5px;
+      font-weight: 800;
+      color: #1e293b;
+      margin: 14px 0 6px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .section-title::before {
+      content: "";
+      width: 4px;
+      height: 12px;
+      background: #0284c7;
+      border-radius: 2px;
+      display: inline-block;
+    }
+
+    /* Tables */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 10px;
+    }
+    th {
+      background: #f1f5f9;
+      color: #475569;
+      font-weight: 700;
+      text-align: left;
+      padding: 5px 8px;
+      font-size: 9.5px;
+      border-bottom: 1.5px solid #cbd5e1;
+    }
+    td {
+      padding: 5px 8px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 10px;
+      vertical-align: top;
+    }
+    tr:nth-child(even) td {
+      background: #fafafa;
+    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+
+    /* Tags */
+    .tag {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 9px;
+      font-weight: 700;
+    }
+    .tag-pkg {
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    .tag-err {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .tag-warn {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    /* Notice box for non-real errors */
+    .alert-box {
+      background: #fffbeb;
+      border: 1px solid #fcd34d;
+      border-radius: 6px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+      display: flex;
+      gap: 8px;
+    }
+    .alert-box svg {
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+      fill: #b45309;
+      margin-top: 1px;
+    }
+    .alert-content {
+      font-size: 9.5px;
+      color: #78350f;
+    }
+    .alert-title {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 18px;
+      border-top: 1px solid #e2e8f0;
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+      color: #94a3b8;
+      font-size: 8.5px;
+    }
+    .signature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 30px;
+      margin-top: 25px;
+      margin-bottom: 10px;
+    }
+    .sig-box {
+      border-top: 1px dashed #94a3b8;
+      padding-top: 5px;
+      text-align: center;
+      font-size: 9.5px;
+      color: #475569;
+    }
+    .sig-role {
+      font-size: 8.5px;
+      color: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Encabezado Principal -->
+  <div class="header">
+    <div class="brand">
+      <div class="brand-logo">VF</div>
+      <div>
+        <h1 class="brand-title">CERTIFICADO Y RESUMEN DE VALIDACIÓN</h1>
+        <p class="brand-subtitle">Validador de Soportes Clínicos FOMAG &middot; Auditoría de Facturación</p>
+      </div>
+    </div>
+    <div>
+      <span class="badge-status badge-error">
+        &#9888; RECHAZADO &mdash; 7 NOVEDADES
+      </span>
+    </div>
+  </div>
+
+  <!-- Barra de Metadatos -->
+  <div class="meta-bar">
+    <div class="meta-item">
+      <span class="meta-label">Convenio / Modalidad</span>
+      <span class="meta-value">FOMAG &middot; Paquete Mensual</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Fecha y Hora de Auditoría</span>
+      <span class="meta-value">19/10/2026 &middot; 23:30 hrs</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Matriz Relacionada</span>
+      <span class="meta-value">Matriz_FOMAG_Octubre_2026.xlsx</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Auditor / Remitente</span>
+      <span class="meta-value">COORDINACIÓN BOGOTÁ (Usuario 04)</span>
+    </div>
+  </div>
+
+  <!-- Tarjetas KPI -->
+  <div class="kpi-grid">
+    <div class="kpi-card blue">
+      <div class="kpi-num">48</div>
+      <div class="kpi-title">Total Cuentas / Carpetas</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-num">41</div>
+      <div class="kpi-title">Aprobadas Sin Error (85%)</div>
+    </div>
+    <div class="kpi-card red">
+      <div class="kpi-num">7</div>
+      <div class="kpi-title">Con Inconsistencias (15%)</div>
+    </div>
+    <div class="kpi-card purple">
+      <div class="kpi-num">192</div>
+      <div class="kpi-title">Archivos Clínicos (PDFs)</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-num">11</div>
+      <div class="kpi-title">Hallazgos Totales</div>
+    </div>
+  </div>
+
+  <!-- Cuadro informativo: Explicación de falsos errores / observaciones -->
+  <div class="alert-box">
+    <svg viewBox="0 0 20 20"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm.75 4.75a.75.75 0 00-1.5 0v4.5a.75.75 0 001.5 0v-4.5zm-.75 8a1 1 0 100-2 1 1 0 000 2z"/></svg>
+    <div class="alert-content">
+      <div class="alert-title">Nota Técnica sobre Falsos Rechazos e Interpretaciones:</div>
+      En esta auditoría se desglosa si el error corresponde a una <b>inconsistencia documental real</b> (ej. falta de firma o fecha no coincidente) o a una <b>observación del validador por tipología/paquete</b> (ej. servicio prestado que no está parametrizado en la matriz pero que sí está justificado por orden médica).
+    </div>
+  </div>
+
+  <!-- Resumen 1: Consolidado por Paquete (CPF) -->
+  <div class="section-title">1. Consolidado de Cuentas y Resultados por Paquete (CPF)</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 14%;">Código CPF</th>
+        <th>Descripción del Paquete</th>
+        <th class="text-center" style="width: 12%;">Total Cuentas</th>
+        <th class="text-center" style="width: 12%;">Aprobadas</th>
+        <th class="text-center" style="width: 12%;">Con Error</th>
+        <th class="text-center" style="width: 12%;">% Aprobación</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-pkg">CPF1101</span></td>
+        <td>PAQUETE BÁSICO DOMICILIARIO (TF + TR)</td>
+        <td class="text-center"><b>18</b></td>
+        <td class="text-center" style="color: #16a34a; font-weight:700;">17</td>
+        <td class="text-center" style="color: #dc2626; font-weight:700;">1</td>
+        <td class="text-center">94.4%</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-pkg">CPF1102</span></td>
+        <td>PAQUETE INTERMEDIO INTEGRAL (TF + TR + FON + VM)</td>
+        <td class="text-center"><b>14</b></td>
+        <td class="text-center" style="color: #16a34a; font-weight:700;">11</td>
+        <td class="text-center" style="color: #dc2626; font-weight:700;">3</td>
+        <td class="text-center">78.5%</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-pkg">CPF1103</span></td>
+        <td>PAQUETE CRÓNICO / REHABILITACIÓN INTENSIVA</td>
+        <td class="text-center"><b>10</b></td>
+        <td class="text-center" style="color: #16a34a; font-weight:700;">8</td>
+        <td class="text-center" style="color: #dc2626; font-weight:700;">2</td>
+        <td class="text-center">80.0%</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-pkg">CPF1109</span></td>
+        <td>PACIENTE VIRTUAL MATRIZ (Pendiente Soportes)</td>
+        <td class="text-center"><b>6</b></td>
+        <td class="text-center" style="color: #16a34a; font-weight:700;">5</td>
+        <td class="text-center" style="color: #dc2626; font-weight:700;">1</td>
+        <td class="text-center">83.3%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Resumen 2: Frecuencia por Tipo de Error -->
+  <div class="section-title">2. Clasificación y Frecuencia de Errores Encontrados</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 28%;">Tipo de Inconsistencia</th>
+        <th>Naturaleza del Error</th>
+        <th class="text-center" style="width: 10%;">Afectados</th>
+        <th style="width: 25%;">Acción Recomendada para Enviar</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="tag tag-err">Discrepancia Fechas/Sesiones</span></td>
+        <td>La cantidad de fechas en el archivo 5.pdf no iguala lo autorizado en 2.pdf.</td>
+        <td class="text-center"><b>4</b></td>
+        <td>Ajustar soportes o corregir factura con las sesiones reales brindadas.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-warn">No programado en matriz</span></td>
+        <td><b>Posible Falsa Alarma:</b> El usuario tiene soportes válidos pero no fue digitado en la matriz mensual FOMAG.</td>
+        <td class="text-center"><b>2</b></td>
+        <td>Verificar con facturación si el paciente ingresó como adición extemporánea.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-err">Falta Soporte Obligatorio</span></td>
+        <td>Falta el archivo 5_VM.pdf o 2_TF.pdf dentro de la carpeta del paciente.</td>
+        <td class="text-center"><b>3</b></td>
+        <td>Adjuntar el PDF clínico faltante antes del cargue.</td>
+      </tr>
+      <tr>
+        <td><span class="tag tag-warn">Texto de Cabecera Diferente</span></td>
+        <td><b>Alerta de Formato:</b> El PDF dice "Atención Domiciliaria" en vez del literal estricto.</td>
+        <td class="text-center"><b>2</b></td>
+        <td>Revisión visual del auditor: si la firma y contenido corresponden, es admisible.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Detalle Exhaustivo: Pacientes con Observaciones -->
+  <div class="section-title">3. Detalle Individual de Cuentas Rechazadas / Con Novedades</div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 15%;">Documento</th>
+        <th style="width: 12%;">Paquete</th>
+        <th style="width: 10%;">Servicio</th>
+        <th style="width: 38%;">Hallazgo Detectado por el Validador</th>
+        <th style="width: 25%;">Clasificación / Dictamen</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><b>1024589632</b></td>
+        <td><span class="tag tag-pkg">CPF1102</span></td>
+        <td><b>TF</b></td>
+        <td>Archivo 2 autoriza 8 sesiones, pero en 5.pdf solo se encontraron 7 fechas de evolución.</td>
+        <td><span class="tag tag-err">Error Crítico: Faltan Soportes</span></td>
+      </tr>
+      <tr>
+        <td><b>52874123</b></td>
+        <td><span class="tag tag-pkg">CPF1101</span></td>
+        <td><b>TR</b></td>
+        <td>No se encontró el archivo '5 TR.pdf' en la carpeta.</td>
+        <td><span class="tag tag-err">Error Crítico: Archivo Faltante</span></td>
+      </tr>
+      <tr>
+        <td><b>19456321</b></td>
+        <td><span class="tag tag-pkg">CPF1103</span></td>
+        <td><b>FON</b></td>
+        <td>El paciente tiene carpeta con 4 evoluciones, pero su cédula no está en la matriz cargada.</td>
+        <td><span class="tag tag-warn">Revisar Matriz (Posible Adición)</span></td>
+      </tr>
+      <tr>
+        <td><b>79654120</b></td>
+        <td><span class="tag tag-pkg">CPF1102</span></td>
+        <td><b>VM</b></td>
+        <td>Cabecera dice "Atención Médica Domiciliaria" (No coincide exacto con texto estándar).</td>
+        <td><span class="tag tag-warn">Observación de Texto (Válido Clínico)</span></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- Firmas de Responsabilidad -->
+  <div class="signature-grid">
+    <div class="sig-box">
+      Firma y Validación de Quien Genera / Remite los Archivos<br>
+      <span class="sig-role">Declaro que las inconsistencias fueron revisadas y corregidas</span>
+    </div>
+    <div class="sig-box">
+      Firma Auditor / Receptor de Cuentas Médicas<br>
+      <span class="sig-role">Aprobación final de radicación y facturación</span>
+    </div>
+  </div>
+
+  <!-- Pie de Página -->
+  <div class="footer">
+    <span>Validador FOMAG &middot; Generado automáticamente el 19/10/2026 23:30:15</span>
+    <span>ID Auditoría: #VAL-20261019-7842 &middot; Página 1 de 1</span>
+  </div>
+
+</body>
+</html>

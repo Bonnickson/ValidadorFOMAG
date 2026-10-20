@@ -170,14 +170,19 @@
                         Exportar XLSX
                     </button>
 
-                    <button id="btnDescargarMatriz" class="btn-studio btn-studio-success oculto">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
-                        Reporte Matriz
-                    </button>
-
                     <button id="btnAyuda" class="btn-studio btn-studio-ghost" onclick="toggleWiki()">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                         Guía de Auditoría
+                    </button>
+
+                    <button id="btnDescargarPDF" class="btn-studio oculto" style="background: linear-gradient(135deg, #0284c7, #0369a1); color: white; border: 1px solid #0284c7;" title="Generar Certificado y Resumen Ejecutivo oficial en PDF">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        Certificado PDF
+                    </button>
+
+                    <button id="btnDescargarMatriz" class="btn-studio btn-studio-success oculto">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:14px;height:14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+                        Reporte Matriz
                     </button>
 
                     <button id="btnLimpiar" class="btn-studio btn-studio-danger oculto">
@@ -328,7 +333,7 @@
     <!-- Download Progress Modal -->
     <div id="modalProgresoBajada" class="modal-progreso-bajada oculto">
         <div class="modal-progreso-bajada-contenido">
-            <h3>Generando archivo Excel XLSX...</h3>
+            <h3 id="modalProgresoBajadaTitulo">Generando archivo Excel XLSX...</h3>
             <div class="progreso-barra-bajada">
                 <div id="progresoFillBajada" class="progreso-fill-bajada"></div>
             </div>
@@ -453,7 +458,7 @@
                     </p>
 
                     <div class="wiki-note info">
-                        <strong>💡 Motor Híbrido PDF + OCR Inteligente:</strong> El sistema extrae primero el texto digital del PDF de forma instantánea. Si un soporte viene escaneado como imagen y no detecta el documento, código de paquete o leyenda del servicio, activa automáticamente reconocimiento óptico (<strong>OCR Tesseract</strong>) sobre las primeras páginas.
+                        <strong>💡 Motor Híbrido PDF + OCR Inteligente:</strong> El sistema extrae primero el texto digital del PDF de forma instantánea. Si un soporte viene escaneado como imagen o presenta fuentes vectoriales Type 3 con texto no mapeable/corrupto sin fechas legibles en su evolución médica (<code>5.pdf</code>), activa automáticamente reconocimiento óptico asistido (<strong>OCR Tesseract</strong>) sobre las páginas clínicas para recuperar fechas y datos del paciente.
                     </div>
 
                     <div class="wiki-quick-links">
@@ -614,6 +619,7 @@
                         </li>
                         <li><strong>Botón "📊 Ver matriz":</strong> En cada paciente abre un popup compacto (con el mismo diseño del botón <em>Programado</em> de soportes) que muestra toda la programación agrupada por categorías (Servicios Fijos, Terapias, Otros Servicios y Aplicación de Medicamentos), indicando de forma puntual solo cuando un servicio <strong>falta</strong>, <strong>excede lo requerido</strong> o <strong>no aplica</strong>.</li>
                         <li><strong>Herramientas del modal:</strong> Puedes filtrar por <em>Todos</em>, <em>Conformes</em>, <em>Alertas</em> o <em>Con novedades</em>, buscar por documento o nombre, copiar novedades individuales o masivas y arrastrar directamente allí la carpeta de soportes PDF.</li>
+                        <li><strong>📋 Copia individual de errores con estructura de auditoría:</strong> Cada error listado en la tabla dispone de su propio botón de copiado rápido con el formato unificado <code>responsable - documento - paquete - servicio - archivo - error</code>, además de mostrar la sigla abreviada (<code>VM</code>, <code>ENF</code>, etc.) de forma discreta junto al nombre del servicio.</li>
                     </ul>
 
                     <h2>🔄 Cruce bidireccional (Matriz ↔ Carpetas de soportes)</h2>
@@ -1020,7 +1026,7 @@
                                 <tr>
                                     <td><code>VM</code></td>
                                     <td class="wiki-nowrap">🩺 Valoración médica</td>
-                                    <td>"Registro de historia clínica" o "Registro de evolución médica"</td>
+                                    <td>"Registro de historia clínica", "Registro de evolución médica", "Historia clínica" o "Evolución médica"</td>
                                     <td>FOMAG: "Atención (visita) domiciliaria, por medicina general" · Capital: "Valoración médica"</td>
                                 </tr>
                                 <tr>
@@ -1032,7 +1038,7 @@
                                 <tr>
                                     <td><code>ENF</code></td>
                                     <td class="wiki-nowrap">💉 Auxiliar de enfermería</td>
-                                    <td>"Registro de enfermería - actividades"</td>
+                                    <td>"Registro de enfermería - actividades" o "Registro de atención domiciliaria - enfermería"</td>
                                     <td>FOMAG: "Atención (visita) domiciliaria, por enfermería" · Capital: "Enfermería"</td>
                                 </tr>
                                 <tr>
@@ -1467,10 +1473,21 @@
 
                 <!-- ==================== 12. DICCIONARIO DE ERRORES ==================== -->
                 <article id="wiki-errores" class="wiki-article oculto">
-                    <h1>⚠️ 8. Diccionario de Errores y Alertas</h1>
+                    <h1>⚠️ 8. Diccionario de Errores, Alertas y Certificado PDF</h1>
                     <p class="wiki-intro">
-                        Referencia rápida de los mensajes que genera el validador, qué los causa y cómo corregirlos.
+                        Referencia rápida de los mensajes que genera el validador, qué los causa, cómo corregirlos y cómo interpretar el Certificado Oficial en PDF.
                     </p>
+
+                    <h2>📄 Certificado y Resumen Ejecutivo en PDF</h2>
+                    <div class="wiki-error-item" style="border-left-color: #0284c7;">
+                        <strong>Función del Certificado PDF y Distinción de Errores vs Alertas</strong>
+                        <p>El botón <b>Certificado PDF</b> genera un reporte formal no editable para adjuntar en la radicación. Este certificado clasifica automáticamente:</p>
+                        <ul>
+                            <li><b>🔴 Errores Críticos:</b> Faltan soportes obligatorios, fechas de evolución no cuadran con autorizaciones o falta el archivo 2 PAQ.pdf. Son bloqueantes y generan rechazo directo de la cuenta.</li>
+                            <li><b>🟡 Alertas / Posibles Falsos Positivos:</b> Casos como títulos de cabecera con ligeras variaciones de redacción o pacientes con soportes válidos pero ausentes en la matriz mensual. El auditor puede cotejarlos y dar aval manual sin necesidad de reprocesar el soporte.</li>
+                            <li><b>📊 Totales por Paquete (CPF):</b> Consolida el volumen de cuentas y la tasa de cumplimiento porcentual para cada código de paquete.</li>
+                        </ul>
+                    </div>
 
                     <h2>🔴 Errores de cruce con matriz (Modo Paquete)</h2>
                     <div class="wiki-error-item">

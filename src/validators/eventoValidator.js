@@ -16,6 +16,7 @@ import {
     extraerTextoPDF,
     extraerTextoOCRDePDF,
     extraerFechas,
+    tieneTextoCorrupto,
     validarOrdenFechas,
 } from "../utils/pdfUtils.js";
 
@@ -119,12 +120,15 @@ export async function validarPDF(
         let textoPlano = texto.toUpperCase().replace(/\s+/g, " ").trim();
         let textoPlanoNorm = normalizeForSearch(texto);
 
-        // Helper para reintentar con OCR si aún no se ha ejecutado
-        let ocrEjecutado = false;
-        const asegurarOCR = async (terminoBuscado = "") => {
-            if (!ocrEjecutado) {
-                ocrEjecutado = true;
-                const textoOCR = await extraerTextoOCRDePDF(pdf, 2, terminoBuscado);
+        // Extraer fechas digitales iniciales
+        let fechas = extraerFechas(texto);
+
+        // Helper para reintentar con OCR si aún no se ha ejecutado o si se requiere escanear más páginas
+        let paginasOcrProcesadas = 0;
+        const asegurarOCR = async (terminoBuscado = "", maxPags = 2, requerirFecha = false) => {
+            if (paginasOcrProcesadas < maxPags) {
+                const textoOCR = await extraerTextoOCRDePDF(pdf, maxPags, terminoBuscado, requerirFecha);
+                paginasOcrProcesadas = Math.max(paginasOcrProcesadas, maxPags);
                 if (textoOCR && textoOCR.trim().length > 0) {
                     texto = (texto + " " + textoOCR).trim();
                     textoPlanoNorm = normalizeForSearch(texto);
@@ -133,8 +137,14 @@ export async function validarPDF(
             }
         };
 
-        // Extraer fechas
-        const fechas = extraerFechas(texto);
+        // Si el archivo es de evoluciones (5.pdf) y no se detectaron fechas digitales o su texto está corrupto (Type 3),
+        // activar OCR de inmediato sobre las primeras páginas para rescatar las fechas clínicas
+        const numArchivoInicial = file.name.match(/^(\d+) /)?.[1];
+        if (numArchivoInicial === "5" && (fechas.length === 0 || tieneTextoCorrupto(texto))) {
+            const pagsEscanear = Math.min(pdf.numPages, 4);
+            await asegurarOCR(nroDocumento, pagsEscanear, true);
+        }
+
         resultados[carpeta].fechas.push(...fechas);
 
         // Detectar si el archivo es por servicio (FOMAG) ej: "2 tf.pdf"

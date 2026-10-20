@@ -47,6 +47,7 @@ import {
     copiarHallazgosCompletos,
     copiarTextoSimple,
     copiarErrorMatriz,
+    copiarErrorIndividual,
 } from "./utils/clipboardUtils.js";
 import {
     agruparArchivosInteligente,
@@ -59,6 +60,7 @@ import {
     exportarResumenErroresXLSX,
     exportarFomagEvento,
 } from "./services/excelExportService.js";
+import { exportarCertificadoPDF } from "./services/pdfExportService.js";
 import {
     leerArchivoMatriz,
     parsearMatriz,
@@ -82,6 +84,7 @@ const btnVerPrevalidacion = document.getElementById("btnVerPrevalidacion");
 const input = document.getElementById("inputFolder");
 const btnAbrirFS = document.getElementById("btnAbrirFS");
 const btnDescargar = document.getElementById("btnDescargar");
+const btnDescargarPDF = document.getElementById("btnDescargarPDF");
 const btnDescargarMatriz = document.getElementById("btnDescargarMatriz");
 const estado = document.getElementById("estado");
 const tabla = document.getElementById("tabla");
@@ -222,6 +225,7 @@ function limpiarResultados(limpiarInput = false) {
     barraProgresoDiv.classList.add("oculto");
     btnLimpiarTodo.classList.add("oculto");
     btnDescargar.classList.add("oculto");
+    if (btnDescargarPDF) btnDescargarPDF.classList.add("oculto");
     btnDescargarMatriz.classList.add("oculto");
     resumenErroresDiv.classList.add("oculto");
 
@@ -703,6 +707,7 @@ async function procesarLoteArchivos(archivosLista) {
         todosLosResultados = resultados;
         actualizarResumen(resultados, domElements, appState, false, exportarResumenErroresXLSX);
         btnDescargar.classList.remove("oculto");
+        if (btnDescargarPDF) btnDescargarPDF.classList.remove("oculto");
 
         if (tipoValidacion === "evento" && convenio === "fomag") {
             btnDescargarMatriz.classList.remove("oculto");
@@ -921,6 +926,23 @@ btnDescargar.addEventListener("click", async () => {
     }
     exportarXLSX(todosLosResultados);
 });
+
+if (btnDescargarPDF) {
+    btnDescargarPDF.addEventListener("click", async () => {
+        if (!todosLosResultados || Object.keys(todosLosResultados).length === 0) {
+            alert("No hay resultados para generar el Certificado en PDF");
+            return;
+        }
+        const matrizNombre = datosMatrizGlobal?.nombreArchivo || inputMatriz?.files?.[0]?.name || "Sin matriz adjunta";
+        await exportarCertificadoPDF({
+            resultados: todosLosResultados,
+            convenio: convenioSelect?.value || "FOMAG",
+            tipoValidacion: tipoValidacionSelect?.value || "paquete",
+            nombreMatriz: matrizNombre,
+            auditor: "Auditoría Cuentas Médicas"
+        });
+    });
+}
 
 btnDescargarMatriz.addEventListener("click", async () => {
     const ok = await cargarXLSX();
@@ -1207,5 +1229,7 @@ window.copiarHallazgosCompletos = (event, carpeta) =>
 window.copiarTextoSimple = (event, texto) => copiarTextoSimple(event, texto);
 window.copiarErrorMatriz = (event, paquete, documento, erroresTexto) =>
     copiarErrorMatriz(event, paquete, documento, erroresTexto);
+window.copiarErrorIndividual = (event, carpeta, servicio, errorTexto) =>
+    copiarErrorIndividual(event, carpeta, servicio, errorTexto, todosLosResultados);
 window.mostrarAvisoRevisionFirmas = mostrarAvisoRevisionFirmas;
 window.mostrarModalReglasPaquete = mostrarModalReglasPaquete;
