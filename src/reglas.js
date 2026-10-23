@@ -203,6 +203,136 @@ const REGLAS_ARCHIVO_2_FOMAG = {
     },
 };
 
+// --- NUEVA EPS ---
+// Valida código o descripción del servicio en Nueva EPS y compara con evoluciones
+const REGLAS_ARCHIVO_2_NUEVA_EPS = {
+    TF: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR FISIOTERAPIA",
+            "FISIOTERAPIA",
+            "TERAPIA FISICA",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    TR: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA RESPIRATORIA",
+            "TERAPIA RESPIRATORIA",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    SUCCION: {
+        debeContener: ["TERAPIA SUCCION", "SUCCION"],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    TRS: {
+        debeContener: [
+            "Terapia respiratoria Succion",
+            "TERAPIA RESPIRATORIA CON SUCCION",
+            "SUCCION",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    FON: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
+            "FONOAUDIOLOGIA",
+            "FONIATRIA",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    VM: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
+            "MEDICINA GENERAL",
+            "VALORACION MEDICA",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    ENF: {
+        debeContener: [
+            "6 HORAS POR AUXILIAR DE ENFERMERIA",
+            "8 HORAS POR AUXILIAR DE ENFERMERIA",
+            "12 HORAS DIURNAS POR AUX ENFERMERIA",
+            "12 HORAS NOCTURNAS POR AUX ENFERMERIA",
+            "24 HORAS POR AUX ENFERMERIA",
+            "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
+            "AUXILIAR DE ENFERMERIA",
+            "ENFERMERIA",
+            "E890146",
+            "E890128",
+            "E890126",
+            "E890127",
+            "E890152",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    CH: {
+        debeContener: [
+            "ATENCION INTEGRAL HERIDAS DE ALTA COMPLEJIDAD",
+            "ATENCION INTEGRAL HERIDAS DE MEDIANA COMPLEJIDAD",
+            "ATENCION INTEGRAL HERIDAS DE BAJA COMPLEJIDAD",
+            "CURACION DE HERIDAS",
+            "CURACION",
+            "E891864",
+            "E891865",
+            "E891866",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    PSI: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
+            "PSICOLOGIA",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    TS: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
+            "TRABAJO SOCIAL",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    TO: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
+            "TERAPIA OCUPACIONAL",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    ENF12: {
+        debeContener: [
+            "12 HORAS DIURNAS POR AUX ENFERMERIA",
+            "12 HORAS NOCTURNAS POR AUX ENFERMERIA",
+            "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
+            "E890126",
+            "E890127",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    NUT: {
+        debeContener: [
+            "ATENCION (VISITA) DOMICILIARIA, POR NUTRICION Y DIETETICA",
+            "NUTRICION",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+};
+
 // ========================================
 // 3. FUNCIONES PARA OBTENER REGLAS SEGÚN MODO
 // ========================================
@@ -211,12 +341,14 @@ const REGLAS_ARCHIVO_2_FOMAG = {
  * Obtiene reglas para validación por EVENTO (individual)
  * Estructura: Cada servicio tiene archivo 2.pdf + 5.pdf
  *
- * @param {string} convenio - "capital-salud" o "fomag"
+ * @param {string} convenio - "capital-salud", "fomag" o "nueva-eps"
  * @returns {Object} Reglas por servicio con archivos 2.pdf y 5.pdf
  */
 export function obtenerReglasEvento(convenio) {
     const reglas2 =
-        convenio === "fomag"
+        convenio === "nueva-eps"
+            ? REGLAS_ARCHIVO_2_NUEVA_EPS
+            : convenio === "fomag"
             ? REGLAS_ARCHIVO_2_FOMAG
             : REGLAS_ARCHIVO_2_CAPITAL;
 
@@ -249,16 +381,18 @@ export function obtenerReglasEvento(convenio) {
  * Estructura: Cada servicio tiene archivo 2.pdf + 5.pdf
  * Diferencia: El 2.pdf SIEMPRE compara número con fechas (incluso en Capital Salud)
  *
- * @param {string} convenio - "capital-salud" o "fomag"
+ * @param {string} convenio - "capital-salud", "fomag" o "nueva-eps"
  * @returns {Object} Reglas por servicio con archivos 2.pdf y 5.pdf
  */
 export function obtenerReglasPaquete(convenio) {
     const reglas2Base =
-        convenio === "fomag"
+        convenio === "nueva-eps"
+            ? REGLAS_ARCHIVO_2_NUEVA_EPS
+            : convenio === "fomag"
             ? REGLAS_ARCHIVO_2_FOMAG
             : REGLAS_ARCHIVO_2_CAPITAL;
 
-    const comparar = convenio === "fomag"; // Solo FOMAG compara autorizaciones vs evoluciones
+    const comparar = convenio === "fomag" || convenio === "nueva-eps"; // FOMAG y Nueva EPS comparan autorizaciones vs evoluciones
 
     // Preparar reglas para 2.pdf según convenio
     const reglas2Paquete = {};

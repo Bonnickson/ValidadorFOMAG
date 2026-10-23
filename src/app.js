@@ -293,7 +293,7 @@ function detectarTipoCarpeta(carpeta, resultado, convenio = "capital-salud") {
     const tipoDetectado = ALLOWED_TYPES.find((t) => carpetaUpper.includes(t));
     resultado.tipo = tipoDetectado || null;
 
-    if (!tipoDetectado && convenio !== "fomag") {
+    if (!tipoDetectado && convenio !== "fomag" && convenio !== "nueva-eps") {
         resultado.errores.push(
             `Por Evento: la carpeta debe incluir un tipo válido (${ALLOWED_TYPES.join(", ")})`
         );
@@ -335,7 +335,15 @@ async function procesarValidacionEvento(
 ) {
     validarArchivosPermitidosEvento(archivos, resultados, carpeta, convenio);
 
-    if (convenio === "fomag") {
+    if (convenio === "nueva-eps") {
+        resultados[carpeta].alertasPorServicio = resultados[carpeta].alertasPorServicio || {};
+        resultados[carpeta].alertasPorServicio["General"] = resultados[carpeta].alertasPorServicio["General"] || [];
+        resultados[carpeta].alertasPorServicio["General"].push(
+            "ℹ️ Nota de auditoría Nueva EPS (Evento): La parametrización de autorizaciones individuales por evento está en proceso de definición; verificar códigos según contrato."
+        );
+    }
+
+    if (convenio === "fomag" || convenio === "nueva-eps") {
         const tieneNum = (num) =>
             nombres.some((n) => new RegExp(`^${num}\\s+`, "i").test(n));
         ["2", "4", "5"].forEach((num) => {
@@ -370,7 +378,7 @@ async function procesarValidacionEvento(
     let archivo2Paq = null;
     const serviciosCon5 = new Set();
 
-    if (convenio === "fomag") {
+    if (convenio === "fomag" || convenio === "nueva-eps") {
         archivo2Paq = archivos.find(
             (f) => f.name.toLowerCase() === "2 paq.pdf"
         );
@@ -534,8 +542,8 @@ async function procesarLoteArchivos(archivosLista) {
                     documentosProcesadosSet.add(`${claveBusquedaMatriz}_${paqAsoc}`);
                     documentosProcesadosSet.add(`${nroDocumento}_${paqAsoc}`);
 
-                    // Si la carpeta no tenía paquete explícito en disco, tomar el de la matriz
-                    if (!infoCarpeta.tipoPaquete || infoCarpeta.tipoPaquete === "auto" || infoCarpeta.tipoPaquete === "CPF1108") {
+                    // Si la carpeta no tenía paquete explícito en disco o venía en auto/fallback, tomar el de la matriz
+                    if (!infoCarpeta.tipoPaquete || infoCarpeta.tipoPaquete === "auto" || infoCarpeta.tipoPaquete === "CPF1108" || infoCarpeta.tipoPaquete === "E890190") {
                         if (datosMatrizPaciente.paquete) {
                             paqueteParaCarpeta = datosMatrizPaciente.paquete;
                         } else if (datosMatrizPaciente.esFacturarEvento) {

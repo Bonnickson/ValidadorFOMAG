@@ -7,6 +7,11 @@ import {
     PAQUETES_SOPORTADOS,
     REGLAS_TERAPIAS_PAQUETES,
     obtenerTextoServicioFomag,
+    obtenerTextoServicioNuevaEps,
+    normalizarCodigoPaquete,
+    CODIGOS_APLICACION,
+    CODIGOS_DIARIOS,
+    CODIGOS_PALIATIVOS,
     REGEX_SERVICIO_ARCHIVO,
 } from "../config/constants.js";
 import {
@@ -48,12 +53,16 @@ export function validarArchivosPermitidosPaquete(
         // Patrón válido: "2 vm.pdf", "4 enf.pdf", etc.
         const patronServicio = REGEX_SERVICIO_ARCHIVO;
 
-        // Patrón válido solo para FOMAG: "2 paq.pdf"
+        // Patrón válido solo para FOMAG y Nueva EPS: "2 paq.pdf"
         const patron2Paq = /^2\s+paq\.pdf$/i;
+
+        // Archivo 3.pdf (ADRES): obligatorio en paquetes de Nueva EPS
+        const patron3Adres = /^3\.pdf$/i;
 
         const esArchivoValido =
             patronServicio.test(nombreLower) ||
-            (convenio === "fomag" && patron2Paq.test(nombreLower));
+            ((convenio === "fomag" || convenio === "nueva-eps") && patron2Paq.test(nombreLower)) ||
+            (convenio === "nueva-eps" && patron3Adres.test(nombreLower));
 
         if (!esArchivoValido) {
             archivosNoPermitidos.push(archivo.name);
@@ -143,8 +152,9 @@ export async function validarPorPaquete(
         }
     }
 
-    // Solo validar paquetes con sus reglas (ignorar "cronico" y "cronico-terapias" antiguos)
-    if (tipoPaquete.startsWith("CPF")) {
+    // Solo validar paquetes con sus reglas si es paquete parametrizado
+    const esPaqueteValido = PAQUETES_SOPORTADOS.includes(tipoPaquete) || tipoPaquete.startsWith("CPF") || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
+    if (esPaqueteValido) {
         validarNuevoPaquete(
             carpeta,
             nombres,
@@ -227,6 +237,30 @@ export async function validarPorPaquete(
         );
     }
 
+    // Procesar "3.pdf" (ADRES) si existe o si es Nueva EPS
+    const archivo3 = archivos.find(
+        (f) => f.name.toLowerCase() === "3.pdf" && f.type === "application/pdf"
+    );
+    if (archivo3) {
+        estado.textContent = `Procesando: ${carpeta} / ${archivo3.name} (ADRES)`;
+        if (onProgresoArchivo) onProgresoArchivo(archivo3.name);
+        await validarArchivo3(
+            archivo3,
+            carpeta,
+            nroDocumento,
+            resultados,
+            convenio
+        );
+    } else if (convenio === "nueva-eps") {
+        resultados[carpeta].servicios.add("General");
+        resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
+        if (!resultados[carpeta].erroresPorServicio["General"].some(e => e.includes("Falta 3.pdf"))) {
+            resultados[carpeta].erroresPorServicio["General"].push("Falta 3.pdf (ADRES obligatorio para Nueva EPS)");
+        }
+        resultados[carpeta].pdfs = resultados[carpeta].pdfs || {};
+        resultados[carpeta].pdfs["3.pdf"] = "✗";
+    }
+
     // Validaciones finales por tipo de paquete (post-procesamiento)
     // Asegurar que existe "General" en servicios y erroresPorServicio
     if (!resultados[carpeta].servicios.has("General")) {
@@ -241,7 +275,9 @@ export async function validarPorPaquete(
         const servMatriz = mat.servicios || {};
 
         // Validar si el paquete de la carpeta coincide con el de la matriz
-        if (mat.paquete && tipoPaquete && tipoPaquete !== "auto" && mat.paquete !== tipoPaquete) {
+        const matPaqCanonico = normalizarCodigoPaquete(mat.paquete);
+        const tipoPaqCanonico = normalizarCodigoPaquete(tipoPaquete);
+        if (mat.paquete && tipoPaquete && tipoPaquete !== "auto" && mat.paquete !== tipoPaquete && matPaqCanonico !== tipoPaqCanonico) {
             resultados[carpeta].erroresPorServicio["General"].push(
                 `Discrepancia de Paquete: La carpeta física es ${tipoPaquete}, pero en la matriz está programado como ${mat.paquete}.`
             );
@@ -289,13 +325,15 @@ export async function validarPorPaquete(
                 }
             }
         }
-    } else if (tipoPaquete.startsWith("CPF")) {
+    } else if (tipoPaquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete])) {
         const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
         if (!esPaqueteParametrizado) {
             // Si el paquete no está parametrizado, no exigir reglas por defecto
             updateRow(carpeta, resultados[carpeta]);
             return;
         }
+
+        const paqueteCanonico = normalizarCodigoPaquete(tipoPaquete);
 
         // En paquete nuevo sin matriz: validaciones por defecto
         const cantVM =
@@ -305,7 +343,7 @@ export async function validarPorPaquete(
         const cantVENF =
             resultados[carpeta].fechasPorServicio?.["VENF"]?.length || 0;
 
-        const vmEsperada = (tipoPaquete === "CPF1107" || tipoPaquete === "CPF1225") ? 2 : 1;
+        const vmEsperada = (CODIGOS_PALIATIVOS.has(tipoPaquete) || CODIGOS_DIARIOS.has(tipoPaquete) || paqueteCanonico === "CPF1107" || paqueteCanonico === "CPF1225") ? 2 : 1;
 
         if (cantVM !== vmEsperada) {
             resultados[carpeta].erroresPorServicio["General"].push(
@@ -317,10 +355,10 @@ export async function validarPorPaquete(
             );
         }
 
-        const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(tipoPaquete);
+        const esPaqueteAplicacion = CODIGOS_APLICACION.has(tipoPaquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico);
 
         if (esPaqueteAplicacion) {
-            // CPF1102, CPF1103, CPF1104 solo requieren 1 VM, 1 ENF y APL
+            // Paquetes de medicamentos solo requieren 1 VM, 1 ENF y APL
             if (!resultados[carpeta].servicios?.has("ENF") || cantENF !== 1) {
                 resultados[carpeta].erroresPorServicio["General"].push(
                     `Paquete ${tipoPaquete} debe tener exactamente 1 evolución de ENF (tiene ${cantENF})`
@@ -342,8 +380,8 @@ export async function validarPorPaquete(
                 );
             }
         } else {
-            if (tipoPaquete === "CPF1107") {
-                // CPF1107: Exige 4 ENF
+            if (CODIGOS_PALIATIVOS.has(tipoPaquete) || paqueteCanonico === "CPF1107") {
+                // Paliativo: Exige 4 ENF
             if (!resultados[carpeta].servicios?.has("ENF") || cantENF !== 4) {
                 resultados[carpeta].erroresPorServicio["General"].push(
                     `Paquete ${tipoPaquete} debe tener exactamente 4 evoluciones de ENF (tiene ${cantENF})`
@@ -509,7 +547,8 @@ function validarNuevoPaquete(
         return;
     }
 
-    const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(tipoPaquete);
+    const paqueteCanonico = normalizarCodigoPaquete(tipoPaquete);
+    const esPaqueteAplicacion = CODIGOS_APLICACION.has(tipoPaquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico);
 
     // 1. Validar Obligatorios y Prohibiciones (solo si no hay matriz; si hay matriz se valida contra ella)
     if (!resultados[carpeta].datosMatriz) {
@@ -548,7 +587,7 @@ function validarNuevoPaquete(
                 );
             }
 
-            if (tipoPaquete === "CPF1107") {
+            if (CODIGOS_PALIATIVOS.has(tipoPaquete) || paqueteCanonico === "CPF1107") {
                 if (!serviciosReales.has("ENF")) {
                     resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio de auxiliar de enfermería (ENF)`);
                 }
@@ -613,6 +652,17 @@ function validarNuevoPaquete(
     const tienePaq = nombres.some(n => n.toLowerCase() === "2 paq.pdf");
     if (!tienePaq) {
         resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir archivo '2 PAQ.pdf'`);
+    }
+
+    // En Nueva EPS es obligatorio el archivo "3.pdf" (ADRES)
+    if (convenio === "nueva-eps") {
+        const tiene3 = nombres.some(n => n.toLowerCase() === "3.pdf");
+        if (!tiene3) {
+            resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
+            resultados[carpeta].erroresPorServicio["General"].push("Falta 3.pdf (ADRES obligatorio para Nueva EPS)");
+            resultados[carpeta].pdfs = resultados[carpeta].pdfs || {};
+            resultados[carpeta].pdfs["3.pdf"] = "✗";
+        }
     }
 
     // Preparar UI
@@ -685,9 +735,9 @@ async function validarPDFPaquete(
         const esPaquete = file.name.toLowerCase().includes("paq.pdf") || file.name.toLowerCase().includes("paq");
         const numArchivo = file.name.match(/^(\d+) /)?.[1];
 
-        // Validar número de documento en archivos 2 y 5 para FOMAG
+        // Validar número de documento en archivos 2 y 5 para FOMAG y Nueva EPS
         if (
-            convenio === "fomag" &&
+            (convenio === "fomag" || convenio === "nueva-eps") &&
             (numArchivo === "2" || numArchivo === "5") &&
             servicio !== "PAQ"
         ) {
@@ -715,14 +765,15 @@ async function validarPDFPaquete(
             }
         }
 
-        // Si es paquete CPF nuevo y es el archivo "2 PAQ.pdf"
-        if (esPaquete && numArchivo === "2" && tipoPaquete.startsWith("CPF")) {
-            if (!textoPlanoNorm.includes(tipoPaquete.toUpperCase())) {
+        // Si es paquete CPF o Nueva EPS y es el archivo "2 PAQ.pdf"
+        if (esPaquete && numArchivo === "2" && (tipoPaquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(tipoPaquete))) {
+            const codigoBuscado = tipoPaquete.toUpperCase();
+            if (!textoPlanoNorm.includes(codigoBuscado)) {
                 await asegurarOCR();
             }
 
             // Validar que el código del paquete exista en el PDF
-            if (!textoPlanoNorm.includes(tipoPaquete.toUpperCase())) {
+            if (!textoPlanoNorm.includes(codigoBuscado)) {
                 resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
                 resultados[carpeta].erroresPorServicio["General"].push(
                     `2 PAQ.pdf: no contiene el código del paquete ${tipoPaquete}`
@@ -735,7 +786,7 @@ async function validarPDFPaquete(
             }
         } 
         // Si es "2 paq.pdf" de FOMAG (antiguo), procesar múltiples servicios
-        else if (esPaquete && numArchivo === "2" && convenio === "fomag" && !tipoPaquete.startsWith("CPF")) {
+        else if (esPaquete && numArchivo === "2" && convenio === "fomag" && !tipoPaquete.startsWith("CPF") && !PAQUETES_SOPORTADOS.includes(tipoPaquete)) {
             await procesarArchivoPaqueteFomag(
                 file,
                 carpeta,
@@ -893,12 +944,13 @@ async function validarPDFPaquete(
                 }
             }
 
-            // Validar archivo 2 individual de FOMAG (solo para los paquetes antiguos o crónicos)
+            // Validar archivo 2 individual de FOMAG (solo para los paquetes antiguos o crónicos sin matriz)
             if (
                 numArchivo === "2" &&
                 servicio !== "PAQ" &&
                 convenio === "fomag" &&
-                !tipoPaquete.startsWith("CPF")
+                !tipoPaquete.startsWith("CPF") &&
+                !PAQUETES_SOPORTADOS.includes(tipoPaquete)
             ) {
                 await validarArchivo2Fomag(
                     file,
@@ -918,10 +970,11 @@ async function validarPDFPaquete(
             const claveArchivo = numArchivo ? `${numArchivo}.pdf` : null;
 
             // Aplicar reglas:
-            // - Para archivo 2: solo si NO es "2 paq.pdf" de FOMAG (antiguo) y NO es un paquete nuevo
+            // - Para archivo 2: solo si NO es "2 paq.pdf" y NO es un paquete nuevo (CPF / Nueva EPS)
             // - Para archivos 4 y 5: siempre
             const es2Paquete = esPaquete && numArchivo === "2";
-            const debeAplicarRegla = claveArchivo && !es2Paquete && !(numArchivo === "2" && tipoPaquete.startsWith("CPF"));
+            const esPaqueteNuevo = tipoPaquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(tipoPaquete);
+            const debeAplicarRegla = claveArchivo && !es2Paquete && !(numArchivo === "2" && esPaqueteNuevo);
 
             if (debeAplicarRegla && REGLAS_PAQUETE[servicio][claveArchivo]) {
                 const regla = REGLAS_PAQUETE[servicio][claveArchivo];
@@ -984,8 +1037,9 @@ async function validarPDFPaquete(
                     );
                 }
 
-                // COMPARACIÓN: Solo para archivo 5.pdf y solo si NO es un nuevo paquete
-                if (regla.igualarConFechas && numArchivo === "5" && !tipoPaquete.startsWith("CPF")) {
+                // COMPARACIÓN: Solo para archivo 5.pdf y solo si NO es un nuevo paquete (en paquetes modernos se valida contra la matriz)
+                const esPaqueteIntegral = tipoPaquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(tipoPaquete);
+                if (regla.igualarConFechas && numArchivo === "5" && !esPaqueteIntegral) {
                     // Obtener Cant Auto (del 2.pdf ya procesado)
                     const cantAuto =
                         resultados[carpeta].numerosPorServicio?.[servicio] || 0;
@@ -1164,5 +1218,86 @@ async function validarArchivo2Fomag(
         resultados[carpeta].erroresPorServicio[servicio].push(
             `${file.name}: no se pudo extraer el número después del texto`
         );
+    }
+}
+
+/**
+ * Valida el soporte 3.pdf (ADRES) en paquetes, especialmente para Nueva EPS
+ */
+async function validarArchivo3(
+    file,
+    carpeta,
+    nroDocumento,
+    resultados,
+    convenio
+) {
+    let pdf = null;
+    try {
+        pdf = await pdfjsLib.getDocument({
+            data: await file.arrayBuffer(),
+        }).promise;
+
+        let texto = await extraerTextoPDF(pdf);
+        let textoNorm = normalizeForSearch(texto);
+
+        // Si no contiene el documento o está vacío, probar OCR
+        if (!textoNorm.includes(nroDocumento) || textoNorm.length < 20) {
+            const textoOCR = await extraerTextoOCRDePDF(pdf, Math.min(pdf.numPages, 3), nroDocumento);
+            if (textoOCR && textoOCR.trim().length > 0) {
+                texto = (texto + " " + textoOCR).trim();
+                textoNorm = normalizeForSearch(texto);
+            }
+        }
+
+        resultados[carpeta].pdfs = resultados[carpeta].pdfs || {};
+        resultados[carpeta].servicios.add("General");
+        resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
+        resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+
+        let tieneErrores3 = false;
+
+        // 1. Validar número de documento
+        const docNorm = normalizeForSearch(nroDocumento);
+        if (docNorm && !textoNorm.includes(docNorm)) {
+            resultados[carpeta].erroresPorServicio["General"].push(`3.pdf: no contiene número ${nroDocumento}`);
+            tieneErrores3 = true;
+        } else if (docNorm) {
+            resultados[carpeta].exitosPorServicio["General"].push(`3.pdf: contiene número ${nroDocumento}`);
+        }
+
+        // 2. Si es Nueva EPS, validar texto "Nueva EPS" y "cotizante" o "beneficiario" (insensible a mayúsculas, minúsculas y acentos)
+        if (convenio === "nueva-eps") {
+            const contieneNuevaEps = textoNorm.includes("NUEVA EPS") || textoNorm.includes("NUEVAEPS");
+            if (!contieneNuevaEps) {
+                resultados[carpeta].erroresPorServicio["General"].push('3.pdf: no contiene el texto "Nueva EPS"');
+                tieneErrores3 = true;
+            } else {
+                resultados[carpeta].exitosPorServicio["General"].push('3.pdf: contiene "Nueva EPS"');
+            }
+
+            const contieneCotizante = textoNorm.includes("COTIZANTE");
+            const contieneBeneficiario = textoNorm.includes("BENEFICIARIO");
+            if (!contieneCotizante && !contieneBeneficiario) {
+                resultados[carpeta].erroresPorServicio["General"].push('3.pdf: no especifica "cotizante" o "beneficiario"');
+                tieneErrores3 = true;
+            } else {
+                const tipoEncontrado = contieneCotizante ? "Cotizante" : "Beneficiario";
+                resultados[carpeta].exitosPorServicio["General"].push(`3.pdf: tipo de afiliado "${tipoEncontrado}"`);
+            }
+        }
+
+        resultados[carpeta].pdfs["3.pdf"] = tieneErrores3 ? "✗" : "✔";
+    } catch {
+        resultados[carpeta].servicios.add("General");
+        resultados[carpeta].erroresPorServicio["General"] = resultados[carpeta].erroresPorServicio["General"] || [];
+        resultados[carpeta].erroresPorServicio["General"].push("3.pdf: error leyendo PDF");
+        resultados[carpeta].pdfs = resultados[carpeta].pdfs || {};
+        resultados[carpeta].pdfs["3.pdf"] = "✗";
+    } finally {
+        if (pdf && pdf.destroy) {
+            try {
+                await pdf.destroy();
+            } catch (_) {}
+        }
     }
 }

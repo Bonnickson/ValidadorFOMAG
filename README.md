@@ -1,6 +1,6 @@
-# Validador de PDFs - FOMAG & Capital Salud
+# Validador de PDFs - FOMAG, Nueva EPS & Capital Salud
 
-Aplicación web modular y de alto rendimiento para la auditoría y validación automática de historias clínicas y soportes de atención domiciliaria en formato PDF. Permite validar expedientes organizados en carpetas, soportando dos modalidades de operación (**Por evento** y **Por paquete**), validaciones de convenios (**Capital Salud** y **FOMAG**), diagnóstico y pre-validación de matriz de programación (.xlsx, .xls, .csv), y exportación de resultados a reportes en Excel (.xlsx).
+Aplicación web modular y de alto rendimiento para la auditoría y validación automática de historias clínicas y soportes de atención domiciliaria en formato PDF. Permite validar expedientes organizados en carpetas, soportando dos modalidades de operación (**Por evento** y **Por paquete**), validaciones de convenios (**Nueva EPS**, **FOMAG** y **Capital Salud**), diagnóstico y pre-validación de matriz de programación (.xlsx, .xls, .csv), y exportación de resultados a reportes en Excel (.xlsx).
 
 ---
 
@@ -70,9 +70,10 @@ Validador FOMAG/
 - El panel de carga de soportes permanece oculto y protegido hasta que se cuente con una matriz cargada.
 - Permite arrastrar o seleccionar la carpeta principal de soportes para iniciar la auditoría automatizada.
 
-### 3. Validación Por Paquete (Familia CPF)
+### 3. Validación Por Paquete (FOMAG y Nueva EPS)
 Diseñado para la validación de paquetes integrales con documento maestro `2 PAQ.pdf`:
-- **Documento Maestro**: `2 PAQ.pdf` es la fuente única de autorizaciones. No se permiten archivos `2 [servicio].pdf` individuales.
+- **Documento Maestro**: `2 PAQ.pdf` es la fuente única de autorizaciones. No se permiten archivos `2 [servicio].pdf` individuales en paquetes. Debe contener el documento del paciente y el código del paquete correspondiente (`CPF1108`, `E890190`, etc.).
+- **Soporte 3 (ADRES)**: En paquetes de Nueva EPS es estrictamente obligatorio el archivo `3.pdf`, verificando documento, texto "Nueva EPS" y afiliación ("Cotizante" o "Beneficiario").
 - **Servicios Obligatorios**:
   - Estándar: Exige exactamente 1 evolución en `VM` (Valoración Médica) y al menos 1 servicio de enfermería (`ENF` o `VENF`).
   - **`CPF1107`**: Exige exactamente **2 VM** y **4 ENF** (auxiliar de enfermería; VENF en 0).
@@ -99,10 +100,11 @@ Valida cada servicio de manera individual mediante pares de archivos (`2 [servic
 
 ## 🏛️ Reglas por Convenio
 
-| Convenio | Validación Archivo 2.pdf | Validación Archivo 5.pdf | Documento Paciente |
-| :--- | :--- | :--- | :--- |
-| **🏢 Capital Salud** | Valida presencia del texto del servicio. | Valida texto y verifica duplicados/orden de fechas. | Validación estándar |
-| **🏛️ FOMAG** | Valida texto específico y extrae cantidad autorizada. | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2 y 5 |
+| Convenio | Validación Archivo 2.pdf | Validación Soporte 3 (ADRES) | Validación Archivo 5.pdf | Documento Paciente |
+| :--- | :--- | :--- | :--- | :--- |
+| **🏢 Nueva EPS** | Valida código del paquete en `2 PAQ.pdf` o código/texto en `2 [srv].pdf` y extrae cantidad autorizada. | **Obligatorio en Paquete y Evento**: Exige `3.pdf`, texto "Nueva EPS", documento y "Cotizante" o "Beneficiario". | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2, 3 y 5 |
+| **🏛️ FOMAG** | Valida texto específico y extrae cantidad autorizada. | No requerido en paquetes CPF (no aplica `3.pdf`). | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2 y 5 |
+| **🏢 Capital Salud** | Valida presencia del texto del servicio. | Exige `3.pdf` en Evento con número de documento. | Valida texto y verifica duplicados/orden de fechas. | Validación estándar en 2, 3 y 5 |
 
 ---
 

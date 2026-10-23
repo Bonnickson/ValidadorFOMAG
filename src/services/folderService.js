@@ -29,7 +29,7 @@ export function agruparArchivosInteligente(
 ) {
     const fallbackSeguro =
         !fallbackTipoPaquete || fallbackTipoPaquete === "auto"
-            ? "CPF1108"
+            ? "auto"
             : fallbackTipoPaquete;
 
     // 1. Agrupar primero por directorio físico exacto (evita fragmentación por orden de lectura)
@@ -57,56 +57,51 @@ export function agruparArchivosInteligente(
         const dirPath = p.slice(0, -1).join("/");
         const carpetaPaciente = p[p.length - 2];
         let paqueteDetectado = fallbackSeguro;
+        let auditorDetectado = "";
         let errorPaquete = null;
 
         if (tipoValidacion === "paquete") {
-            if (p.length >= 4) {
-                // [Raíz] / [Auditor] / [Paquete] / [Paciente] / [PDFs] o [Raíz] / [Paquete] / [Paciente] / [PDFs]
-                const carpetaPaquete = p[p.length - 3];
-                const codigo = extraerCodigoPaquete(carpetaPaquete);
-                if (codigo) {
-                    paqueteDetectado = codigo;
-                } else {
-                    paqueteDetectado = fallbackSeguro;
-                    errorPaquete = `Carpeta de paquete no reconocida: "${carpetaPaquete}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
-                }
-            } else if (p.length === 3) {
-                // 2 niveles: [Paquete] / [Paciente] / [PDFs]
-                const carpetaPaquete = p[0];
-                const codigo = extraerCodigoPaquete(carpetaPaquete);
-                if (codigo) {
-                    paqueteDetectado = codigo;
-                } else {
-                    const matchIntento = carpetaPaquete
-                        .trim()
-                        .match(/^([A-Za-z0-9]+)/);
-                    const codigoIntento = matchIntento
-                        ? matchIntento[1].toUpperCase()
-                        : "";
-                    if (codigoIntento.startsWith("CPF")) {
-                        errorPaquete = `Código de paquete no válido: "${carpetaPaquete}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
-                    }
-                    paqueteDetectado = fallbackSeguro;
-                }
-            } else {
-                // 1 nivel: [Paciente] / [PDFs]
-                paqueteDetectado = fallbackSeguro;
-            }
-        }
+            const segmentosSuperiores = p.slice(0, p.length - 2);
+            let indicePaquete = -1;
 
-        // Detectar si hay nivel de auditor/subcarpeta superior
-        let auditorDetectado = "";
-        if (p.length >= 5) {
-            // Si el nivel anterior al paciente es paquete, el previo es el auditor
-            if (extraerCodigoPaquete(p[p.length - 3])) {
-                auditorDetectado = p[p.length - 4];
-            } else {
-                auditorDetectado = p[1];
+            // Buscar el código de paquete en cualquiera de los niveles superiores a la carpeta del paciente
+            for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
+                const seg = segmentosSuperiores[i];
+                const codigo = extraerCodigoPaquete(seg);
+                if (codigo) {
+                    paqueteDetectado = codigo;
+                    indicePaquete = i;
+                    break;
+                }
             }
-        } else if (p.length === 4) {
-            // [Auditor, Paquete, Paciente, Archivo.pdf]
-            if (extraerCodigoPaquete(p[1])) {
-                auditorDetectado = p[0];
+
+            // Si se detectó paquete en alguna carpeta superior, el otro nivel superior (si existe) es el auditor
+            if (indicePaquete !== -1) {
+                for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
+                    if (i !== indicePaquete) {
+                        auditorDetectado = segmentosSuperiores[i];
+                        break;
+                    }
+                }
+            } else {
+                // Verificar si alguna carpeta intentó ser paquete pero con código inválido
+                for (const seg of segmentosSuperiores) {
+                    const matchIntento = seg.trim().match(/^([A-Za-z0-9]+)/);
+                    const codigoIntento = matchIntento ? matchIntento[1].toUpperCase() : "";
+                    if (codigoIntento.startsWith("CPF") || codigoIntento.startsWith("E8") || codigoIntento.startsWith("E9") || codigoIntento.startsWith("EC")) {
+                        errorPaquete = `Código de paquete no válido: "${seg}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
+                        break;
+                    }
+                }
+                paqueteDetectado = fallbackSeguro;
+                if (segmentosSuperiores.length > 0) {
+                    auditorDetectado = segmentosSuperiores[0];
+                }
+            }
+        } else {
+            const segmentosSuperiores = p.slice(0, p.length - 2);
+            if (segmentosSuperiores.length > 0) {
+                auditorDetectado = segmentosSuperiores[0];
             }
         }
 

@@ -1,4 +1,12 @@
-import { REGLAS_TERAPIAS_PAQUETES, PAQUETES_SOPORTADOS } from "../config/constants.js";
+import {
+    REGLAS_TERAPIAS_PAQUETES,
+    PAQUETES_SOPORTADOS,
+    normalizarCodigoPaquete,
+    CODIGOS_APLICACION,
+    CODIGOS_DIARIOS,
+    CODIGOS_PALIATIVOS,
+    MAPEO_NUEVA_EPS_A_FOMAG,
+} from "../config/constants.js";
 
 /**
  * Mapeo de columnas esperadas
@@ -229,9 +237,11 @@ export function parsearMatriz(rawRows) {
         const erroresFila = [];
         const alertasFila = [];
 
-        // Determinar código de paquete normalizado (ej. CPF1102, CPF1103, CPF1104, CPF1105, etc.)
+        // Determinar código de paquete normalizado (ej. CPF1102, CPF1108, E890190, E985111, etc.)
         let paquete = paqueteRaw;
-        const matchPaq = paqueteRaw.match(/(CPF\s*\d+)/i) || paqueteRaw.match(/(CPF[A-Za-z0-9]+)/i);
+        const matchPaq =
+            paqueteRaw.match(/(CPF\s*\d+|CPF[A-Za-z0-9]+|E89\d+|E98\d+|EC89\d+|AD\d+)/i) ||
+            paqueteRaw.match(/^([A-Za-z0-9]+)/);
         if (matchPaq) {
             paquete = matchPaq[1].replace(/\s+/g, "").toUpperCase();
         }
@@ -302,13 +312,14 @@ export function parsearMatriz(rawRows) {
         let aplEsperado = 0;
         let dosisNombre = "";
 
-        if (paquete === "CPF1102") {
+        const paqueteCanonicoPre = normalizarCodigoPaquete(paquete);
+        if (paqueteCanonicoPre === "CPF1102") {
             aplEsperado = apl1;
             dosisNombre = "1 Dosis";
-        } else if (paquete === "CPF1103") {
+        } else if (paqueteCanonicoPre === "CPF1103") {
             aplEsperado = apl2 > 0 ? apl2 : apl3;
             dosisNombre = apl2 > 0 ? "2 Dosis" : (apl3 > 0 ? "3 Dosis" : "2 o 3 Dosis");
-        } else if (paquete === "CPF1104") {
+        } else if (paqueteCanonicoPre === "CPF1104") {
             aplEsperado = apl4;
             dosisNombre = "4 Dosis";
         }
@@ -333,14 +344,15 @@ export function parsearMatriz(rawRows) {
         const totalTerapias = tf + tr + trs + fon + to;
 
         // Pre-validar según reglas de paquetes actuales
+        const paqueteCanonico = normalizarCodigoPaquete(paquete);
         const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(paquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[paquete]);
-        const esPaqueteMedicamento = paquete === "CPF1102" || paquete === "CPF1103" || paquete === "CPF1104";
+        const esPaqueteMedicamento = CODIGOS_APLICACION.has(paquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico);
 
         if (paquete && paquete !== "EVENTO" && !esPaqueteParametrizado) {
             // Si el código de paquete no está parametrizado en el sistema, solo indicar ese error y no inventar ni exigir reglas por defecto
             erroresFila.push(`Paquete ${paquete}: Código de paquete no parametrizado en el sistema.`);
         } else if (esPaqueteMedicamento) {
-            // Regla específica para CPF1102, CPF1103 y CPF1104:
+            // Regla específica para paquetes de medicamentos (CPF1102-1104 / E890167-169):
             // Solo requiere 1 VM, 1 ENF y APL (según dosis y Cant Paquete Diario)
             if (vm < 1) {
                 erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
@@ -360,29 +372,29 @@ export function parsearMatriz(rawRows) {
             }
 
             // Validar asignación de dosis correspondiente
-            if (paquete === "CPF1102") {
+            if (paqueteCanonico === "CPF1102") {
                 if (apl1 <= 0) {
-                    erroresFila.push(`CPF1102: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 1 Dosis' (tiene 0)`);
+                    erroresFila.push(`${paquete}: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 1 Dosis' (tiene 0)`);
                 }
                 if (apl2 > 0 || apl3 > 0 || apl4 > 0) {
-                    erroresFila.push(`CPF1102: Solo debe marcar 1 Dosis (tiene valores en otras dosis: 2D:${apl2}, 3D:${apl3}, 4D:${apl4})`);
+                    erroresFila.push(`${paquete}: Solo debe marcar 1 Dosis (tiene valores en otras dosis: 2D:${apl2}, 3D:${apl3}, 4D:${apl4})`);
                 }
-            } else if (paquete === "CPF1103") {
+            } else if (paqueteCanonico === "CPF1103") {
                 const tieneDosisValida = (apl2 > 0 && apl3 === 0) || (apl3 > 0 && apl2 === 0);
                 if (apl2 <= 0 && apl3 <= 0) {
-                    erroresFila.push(`CPF1103: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 2 Dosis' o '3 Dosis' (tiene 0)`);
+                    erroresFila.push(`${paquete}: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 2 Dosis' o '3 Dosis' (tiene 0)`);
                 } else if (!tieneDosisValida) {
-                    erroresFila.push(`CPF1103: Debe elegir solo una dosis entre 2 Dosis o 3 Dosis (tiene 2D:${apl2}, 3D:${apl3})`);
+                    erroresFila.push(`${paquete}: Debe elegir solo una dosis entre 2 Dosis o 3 Dosis (tiene 2D:${apl2}, 3D:${apl3})`);
                 }
                 if (apl1 > 0 || apl4 > 0) {
-                    erroresFila.push(`CPF1103: No debe marcar 1 Dosis ni 4 Dosis (tiene 1D:${apl1}, 4D:${apl4})`);
+                    erroresFila.push(`${paquete}: No debe marcar 1 Dosis ni 4 Dosis (tiene 1D:${apl1}, 4D:${apl4})`);
                 }
-            } else if (paquete === "CPF1104") {
+            } else if (paqueteCanonico === "CPF1104") {
                 if (apl4 <= 0) {
-                    erroresFila.push(`CPF1104: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 4 Dosis' (tiene 0)`);
+                    erroresFila.push(`${paquete}: Debe colocar la cantidad en 'Paq. Aplicación Medicamento 4 Dosis' (tiene 0)`);
                 }
                 if (apl1 > 0 || apl2 > 0 || apl3 > 0) {
-                    erroresFila.push(`CPF1104: Solo debe marcar 4 Dosis (tiene valores en otras dosis: 1D:${apl1}, 2D:${apl2}, 3D:${apl3})`);
+                    erroresFila.push(`${paquete}: Solo debe marcar 4 Dosis (tiene valores en otras dosis: 1D:${apl1}, 2D:${apl2}, 3D:${apl3})`);
                 }
             }
 
@@ -405,24 +417,24 @@ export function parsearMatriz(rawRows) {
                 if (to > 0) ter.push(`TO:${to}`);
                 erroresFila.push(`${paquete}: No contempla terapias (tiene ${ter.join(", ")})`);
             }
-        } else if (paquete && paquete.startsWith("CPF")) {
-            // Reglas generales para el resto de paquetes CPF
+        } else if (paquete && (paquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(paquete))) {
+            // Reglas generales para el resto de paquetes (FOMAG y Nueva EPS)
             // 0. Prohibir columnas de dosis de medicamentos (APL) si no es paquete de medicamentos
             if (apl1 > 0 || apl2 > 0 || apl3 > 0 || apl4 > 0) {
                 erroresFila.push(`${paquete}: No contempla servicio de aplicación de medicamentos (APL)`);
             }
 
             // Validar 'Cant Paquete Diario':
-            // En paquetes diarios (como CPF1225) es válido registrar días y NO va ligado a otra columna.
+            // En paquetes diarios (como CPF1225 o EC890290) es válido registrar días y NO va ligado a otra columna.
             // En paquetes mensuales no debe marcarse Cant Paquete Diario.
-            const esPaqueteDiario = paquete === "CPF1225";
+            const esPaqueteDiario = CODIGOS_DIARIOS.has(paquete) || paqueteCanonico === "CPF1225";
             if (!esPaqueteDiario && cantPaqDiario > 0) {
                 erroresFila.push(`${paquete}: Es paquete mensual, no debe registrar 'Cant Paquete Diario' (tiene ${cantPaqDiario})`);
             }
 
             // 1. Validar Fijos Obligatorios de Médica (VM) y Enfermería (VENF / ENF)
-            if (paquete === "CPF1107") {
-                // CPF1107: Debe tener 2 VM y 4 ENF
+            if (CODIGOS_PALIATIVOS.has(paquete) || paqueteCanonico === "CPF1107") {
+                // Paliativo: Debe tener 2 VM y 4 ENF
                 if (vm < 2) {
                     erroresFila.push(`VM: Requiere 2 (tiene ${vm})`);
                 } else if (vm > 2) {
@@ -438,8 +450,8 @@ export function parsearMatriz(rawRows) {
                 if (venf > 0) {
                     alertasFila.push(`VENF: Requiere 0 (tiene ${venf})`);
                 }
-            } else if (paquete === "CPF1225") {
-                // CPF1225: Debe tener 2 VM
+            } else if (esPaqueteDiario) {
+                // Ventilación Mecánica: Debe tener 2 VM
                 if (vm < 2) {
                     erroresFila.push(`VM: Requiere 2 (tiene ${vm})`);
                 } else if (vm > 2) {
@@ -457,7 +469,7 @@ export function parsearMatriz(rawRows) {
                     }
                 }
             } else {
-                // Resto de paquetes estándar CPF (1 VM, y al menos 1 VENF o ENF)
+                // Resto de paquetes estándar (1 VM, y al menos 1 VENF o ENF)
                 if (vm < 1) {
                     erroresFila.push(`VM: Requiere 1 (tiene ${vm})`);
                 } else if (vm > 1) {
@@ -629,12 +641,13 @@ export function buscarPacienteEnMatriz(datosMatriz, documento, paquete) {
     // 1. Si se especificó un paquete concreto, buscar coincidencia exacta doc + paquete
     if (tienePaqueteEspecifico && datosMatriz.pacientesPorDocYPaquete) {
         const paqNorm = String(paquete).trim().toUpperCase();
+        const paqCanonico = normalizarCodigoPaquete(paqNorm);
         const clave = `${docNorm}_${paqNorm}`;
         if (datosMatriz.pacientesPorDocYPaquete.has(clave)) {
             return datosMatriz.pacientesPorDocYPaquete.get(clave);
         }
 
-        // Búsqueda flexible por dígitos pero manteniendo el paquete estricto
+        // Búsqueda flexible por dígitos pero manteniendo el paquete estricto (o su código equivalente)
         if (datosMatriz.pacientesList) {
             const docSoloDigitos = docNorm.replace(/\D/g, "");
             if (docSoloDigitos) {
@@ -642,7 +655,7 @@ export function buscarPacienteEnMatriz(datosMatriz, documento, paquete) {
                     (p) =>
                         p.documento &&
                         p.documento.replace(/\D/g, "") === docSoloDigitos &&
-                        p.paquete === paqNorm
+                        (p.paquete === paqNorm || normalizarCodigoPaquete(p.paquete) === paqCanonico)
                 );
                 if (matchConPaq) return matchConPaq;
             }

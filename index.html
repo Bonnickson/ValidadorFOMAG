@@ -69,19 +69,36 @@
                         </div>
                         <select id="tipoPaquete" class="studio-select">
                             <option value="auto" selected>Automático</option>
-                            <option value="CPF1102">CPF1102 - Atencion Integral De Paciente Agudo Baja Complejidad Programa Extension Hospitalaria (Por Dia)</option>
-                            <option value="CPF1103">CPF1103 - Atencion Integral De Paciente Agudo Mediana Complejidad Programa Extension Hospitalaria (Por Dia)</option>
-                            <option value="CPF1104">CPF1104 - Atencion Integral De Paciente Agudo Alta Complejidad Programa Extension Hospitalaria (Por Dia)</option>
-                            <option value="CPF1105">CPF1105 - Paquete De Rehabilitacion Mensual Domiciliario (Paciente Neurologico Agudo)</option>
-                            <option value="CPF1106">CPF1106 - Paquete De Traqueostomia Mensual Domiciliario</option>
-                            <option value="CPF1107">CPF1107 - Paquete De Atención Domiciliaria Cronico Paliativo (Mensual)(13076)</option>
-                            <option value="CPF1108">CPF1108 - Paquete De Atencion Domiciliaria Paciente Cronico (Mensual)</option>
-                            <option value="CPF1109">CPF1109 - Paquete De Atencion Domiciliario A Paciente Cronico Con Terapias (Mensual)</option>
-                            <option value="CPF1110">CPF1110 - Paquete De Atencion Domiciliaria Paciente Cronico (Mensual) (13073)</option>
-                            <option value="CPF1111">CPF1111 - Atencion Integral Heridas De Alta Complejidad Mensual Domiciliaria</option>
-                            <option value="CPF1112">CPF1112 - Atencion Integral Heridas De Mediana Complejidad Mensual Domiciliaria</option>
-                            <option value="CPF1113">CPF1113 - Atencion Integral Heridas De Baja Complejidad Mensual Domiciliaria</option>
-                            <option value="CPF1225">CPF1225 - Paquete Diario de Ventilacion Mecanica Paciente Cronico</option>
+                            <optgroup label="FOMAG Magisterio">
+                                <option value="CPF1102">CPF1102 - Atencion Integral De Paciente Agudo Baja Complejidad Programa Extension Hospitalaria (Por Dia)</option>
+                                <option value="CPF1103">CPF1103 - Atencion Integral De Paciente Agudo Mediana Complejidad Programa Extension Hospitalaria (Por Dia)</option>
+                                <option value="CPF1104">CPF1104 - Atencion Integral De Paciente Agudo Alta Complejidad Programa Extension Hospitalaria (Por Dia)</option>
+                                <option value="CPF1105">CPF1105 - Paquete De Rehabilitacion Mensual Domiciliario (Paciente Neurologico Agudo)</option>
+                                <option value="CPF1106">CPF1106 - Paquete De Traqueostomia Mensual Domiciliario</option>
+                                <option value="CPF1107">CPF1107 - Paquete De Atención Domiciliaria Cronico Paliativo (Mensual)(13076)</option>
+                                <option value="CPF1108">CPF1108 - Paquete De Atencion Domiciliaria Paciente Cronico (Mensual)</option>
+                                <option value="CPF1109">CPF1109 - Paquete De Atencion Domiciliario A Paciente Cronico Con Terapias (Mensual)</option>
+                                <option value="CPF1110">CPF1110 - Paquete De Atencion Domiciliaria Paciente Cronico (Mensual) (13073)</option>
+                                <option value="CPF1111">CPF1111 - Atencion Integral Heridas De Alta Complejidad Mensual Domiciliaria</option>
+                                <option value="CPF1112">CPF1112 - Atencion Integral Heridas De Mediana Complejidad Mensual Domiciliaria</option>
+                                <option value="CPF1113">CPF1113 - Atencion Integral Heridas De Baja Complejidad Mensual Domiciliaria</option>
+                                <option value="CPF1225">CPF1225 - Paquete Diario de Ventilacion Mecanica Paciente Cronico</option>
+                            </optgroup>
+                            <optgroup label="Nueva EPS">
+                                <option value="E890167">E890167 - Atencion Integral De Paciente Agudo Baja Complejidad (Por Dia)(12405)</option>
+                                <option value="E890168">E890168 - Atencion Integral De Paciente Agudo Mediana Complejidad (Por Dia)(12406)</option>
+                                <option value="E890169">E890169 - Atencion Integral De Paciente Agudo Alta Complejidad (Por Dia)(12407)</option>
+                                <option value="E890190">E890190 - Paquete De Atencion Domiciliaria Paciente Cronico Intermedio(69368)</option>
+                                <option value="E891863">E891863 - Paquete De Rehabilitacion Mensual Domiciliario(Paciente Neurologico)(29000)</option>
+                                <option value="E891864">E891864 - Atencion Integral Heridas De Alta Complejidad Mensual(29001)</option>
+                                <option value="E891865">E891865 - Atencion Integral Heridas De Mediana Complejidad Mensual(29002)</option>
+                                <option value="E891866">E891866 - Atencion Integral Heridas De Baja Complejidad Mensual(29003)</option>
+                                <option value="E985110">E985110 - Paquete De Atencion Domiciliaria Paciente Cronico(13073)</option>
+                                <option value="E985111">E985111 - Paquete De Atencion Domiciliario Cronico Con Terapias(13074)</option>
+                                <option value="E985112">E985112 - Paquete De Traqueostomia Mensual Domiciliario(13075)</option>
+                                <option value="E985113">E985113 - Paquete De Atención Domiciliaria Cronico Paliativo(13076)</option>
+                                <option value="EC890290">EC890290 - Paquete Diario De Ventilacion Mecanica Paciente Cronico</option>
+                            </optgroup>
                         </select>
 
                         <!-- Popover / Panel flotante sutil de reglas -->
@@ -91,8 +108,9 @@
                     <div class="control-field">
                         <label for="convenio">Entidad / Convenio</label>
                         <select id="convenio" class="studio-select">
+                            <option value="nueva-eps" selected>Nueva EPS</option>
+                            <option value="fomag">FOMAG Magisterio</option>
                             <option value="capital-salud">Capital Salud EPS</option>
-                            <option value="fomag" selected>FOMAG Magisterio</option>
                         </select>
                     </div>
                 </div>
@@ -639,14 +657,33 @@
                     </div>
                 </article>
 
-                <!-- ==================== 2. PAQUETES FOMAG (CPF) ==================== -->
+                <!-- ==================== 2. PAQUETES FOMAG (CPF) Y NUEVA EPS ==================== -->
                 <article id="wiki-fomag-paquete" class="wiki-article oculto">
-                    <h1>📦 2. Paquetes FOMAG (CPF): Servicios, mínimos y máximos</h1>
+                    <h1>📦 2. Paquetes FOMAG (CPF) y Nueva EPS: Servicios, mínimos y máximos</h1>
                     <p class="wiki-intro">
-                        Aquí puedes consultar de forma rápida qué servicios componen cada paquete, cuáles son obligatorios u opcionales, y la cantidad mínima y máxima de atenciones permitida.
+                        Aquí puedes consultar de forma rápida qué servicios componen cada paquete tanto para <strong>FOMAG</strong> como para <strong>Nueva EPS</strong>, cuáles son obligatorios u opcionales, y la cantidad mínima y máxima de atenciones permitida.
                     </p>
 
-                    <h2>1. Estructura general de todo paquete CPF (4 grupos)</h2>
+                    <div class="wiki-note info">
+                        <strong>Equivalencia oficial FOMAG ↔ Nueva EPS:</strong> Nueva EPS maneja exactamente las mismas reglas clínicas y rangos de atención que los paquetes CPF de FOMAG, homologando los códigos correspondientes:
+                        <ul style="margin: 8px 0 0 16px; font-size: 11px;">
+                            <li><code>CPF1102 ↔ E890167</code> (Agudo baja complejidad por día)</li>
+                            <li><code>CPF1103 ↔ E890168</code> (Agudo mediana complejidad por día)</li>
+                            <li><code>CPF1104 ↔ E890169</code> (Agudo alta complejidad por día)</li>
+                            <li><code>CPF1108 ↔ E890190</code> (Crónico mensual intermedio - 0 terapias)</li>
+                            <li><code>CPF1105 ↔ E891863</code> (Rehabilitación neurológica - 12 a 30 terapias)</li>
+                            <li><code>CPF1111 ↔ E891864</code> (Heridas alta complejidad - 0 terapias)</li>
+                            <li><code>CPF1112 ↔ E891865</code> (Heridas mediana complejidad - 0 terapias)</li>
+                            <li><code>CPF1113 ↔ E891866</code> (Heridas baja complejidad - 0 terapias)</li>
+                            <li><code>CPF1110 ↔ E985110</code> (Crónico intensivo mensual - 12 a 20 terapias)</li>
+                            <li><code>CPF1109 ↔ E985111</code> (Crónico con terapias mensual - 6 a 12 terapias)</li>
+                            <li><code>CPF1106 ↔ E985112</code> (Traqueostomía mensual - 12 a 30 terapias)</li>
+                            <li><code>CPF1107 ↔ E985113</code> (Crónico paliativo mensual - 2 VM, 4 ENF, solo TF/TR/TRS)</li>
+                            <li><code>CPF1225 ↔ EC890290</code> (Ventilación mecánica diaria - 2 VM, todas las terapias)</li>
+                        </ul>
+                    </div>
+
+                    <h2>1. Estructura general de paquetes domiciliarios (4 grupos)</h2>
                     <div class="wiki-table">
                         <table>
                             <thead>
@@ -925,12 +962,16 @@
 
                     <h2>3. Archivos PDF exigidos dentro de la carpeta del paquete</h2>
                     <div class="wiki-chips">
-                        <span class="wiki-chip">📦 2 PAQ.pdf (1 solo por carpeta con el código CPF)</span>
+                        <span class="wiki-chip">📦 2 PAQ.pdf (1 solo por carpeta con el código CPF o código Nueva EPS)</span>
+                        <span class="wiki-chip">📋 3.pdf (ADRES — Obligatorio en Nueva EPS con validación de Cotizante/Beneficiario y documento)</span>
                         <span class="wiki-chip">✍️ 4 [servicio].pdf (Firmas de cada servicio prestado)</span>
                         <span class="wiki-chip">📑 5 [servicio].pdf (Evoluciones de cada servicio prestado)</span>
                     </div>
                     <div class="wiki-note danger">
-                        <strong>🚫 Regla del soporte 2 en paquetes:</strong> Nunca incluyas archivos individuales como <code>2 vm.pdf</code> o <code>2 tf.pdf</code> dentro de un paquete CPF. Todo paquete se respalda con un único archivo <code>2 PAQ.pdf</code> que debe contener el documento del paciente y el código del paquete (ej. <code>CPF1109</code>).
+                        <strong>🚫 Regla del soporte 2 en paquetes:</strong> Nunca incluyas archivos individuales como <code>2 vm.pdf</code> o <code>2 tf.pdf</code> dentro de un paquete. Todo paquete se respalda con un único archivo <code>2 PAQ.pdf</code> que debe contener el documento del paciente y el código del paquete correspondiente (ej. <code>CPF1109</code> o <code>E985111</code> para Nueva EPS).
+                    </div>
+                    <div class="wiki-note info">
+                        <strong>📌 Particularidad Nueva EPS (Soporte 3 ADRES):</strong> En paquetes de Nueva EPS es estrictamente obligatorio contar con el archivo <code>3.pdf</code>. El sistema verifica que contenga el texto <em>"Nueva EPS"</em>, la identificación del paciente y la palabra <em>"Cotizante"</em> o <em>"Beneficiario"</em>.
                     </div>
                 </article>
 
@@ -1125,17 +1166,20 @@
                     </div>
                     <ul class="wiki-list">
                         <li><strong>Validación de documento:</strong> Verifica que el número de identificación del paciente aparezca dentro del PDF (con respaldo OCR si es imagen).</li>
-                        <li><strong>Validación del código de paquete:</strong> Verifica que el código del paquete asignado (ej. <code>CPF1108</code>, <code>CPF1109</code>) aparezca explícitamente dentro del texto de <code>2 PAQ.pdf</code>.</li>
-                        <li><strong>Cruce de cantidades:</strong> En paquetes <code>CPF</code>, las cantidades por servicio se validan contra la matriz Excel y las reglas del paquete, por lo que <code>2 PAQ.pdf</code> actúa como soporte maestro del paquete.</li>
+                        <li><strong>Validación del código de paquete:</strong> Verifica que el código del paquete asignado (ej. <code>CPF1108</code> en FOMAG o <code>E890190</code> en Nueva EPS) aparezca explícitamente dentro del texto de <code>2 PAQ.pdf</code>.</li>
+                        <li><strong>Cruce de cantidades:</strong> En paquetes de FOMAG y Nueva EPS, las cantidades por servicio se validan contra la matriz Excel y las reglas del paquete, por lo que <code>2 PAQ.pdf</code> actúa como soporte maestro del paquete.</li>
                     </ul>
 
-                    <h2>📋 2. En FOMAG — Modo Evento (<code>2 [srv].pdf</code> o <code>2 paq.pdf</code>)</h2>
+                    <h2>📋 2. En FOMAG y Nueva EPS — Modo Evento (<code>2 [srv].pdf</code> o <code>2 paq.pdf</code>)</h2>
                     <div class="wiki-note warning">
                         <strong>Prioridad inteligente:</strong> Si existe <code>2 [servicio].pdf</code> (ej. <code>2 tf.pdf</code>), se usa ese archivo. Si no existe archivo individual, el sistema busca la autorización de ese servicio dentro de <code>2 paq.pdf</code>.
                     </div>
+                    <div class="wiki-note info">
+                        <strong>ℹ️ Nota para Nueva EPS en Evento:</strong> En Nueva EPS la autorización en <code>2 [srv].pdf</code> puede contener la descripción del servicio o su código CUPS/contrato (ej. <code>E890126</code> para 12 horas de enfermería). La parametrización final de eventos está en proceso de definición contractual.
+                    </div>
                     <ol class="wiki-list">
                         <li>Verifica el número de documento del paciente.</li>
-                        <li>Busca la leyenda oficial FOMAG del servicio (ver tabla en <em>Servicios y Textos Regla</em>).</li>
+                        <li>Busca la leyenda o código oficial del servicio (ver tabla en <em>Servicios y Textos Regla</em>).</li>
                         <li>Extrae la cantidad autorizada tomando el número entero que aparece inmediatamente después del texto del servicio.</li>
                         <li>Compara contra las evoluciones de <code>5 [srv].pdf</code>:
                             <ul>
@@ -1171,6 +1215,12 @@
                                 </tr>
                             </thead>
                             <tbody>
+                                <tr>
+                                    <td>Nueva EPS</td>
+                                    <td class="wiki-nowrap">Por Paquete y Evento</td>
+                                    <td class="wiki-nowrap"><span class="wiki-badge-req">Obligatorio (<code>3.pdf</code>)</span></td>
+                                    <td>Verifica obligatoriamente que exista el archivo <code>3.pdf</code> (ADRES). Debe contener: 1) El número de documento del paciente; 2) El texto <em>"Nueva EPS"</em>; y 3) La condición de afiliación: <em>"Cotizante"</em> o <em>"Beneficiario"</em>.</td>
+                                </tr>
                                 <tr>
                                     <td>Capital Salud EPS</td>
                                     <td class="wiki-nowrap">Por Evento</td>

@@ -1,3 +1,5 @@
+import { PAQUETES_INFO } from "../config/constants.js";
+
 /**
  * Servicio para generación de Certificado y Resumen Ejecutivo en PDF
  * Utiliza html2pdf.js con carga dinámica o impresión nativa de alta fidelidad.
@@ -28,7 +30,7 @@ export async function cargarHtml2Pdf() {
 }
 
 /**
- * Clasifica si un error es crítico (bloqueante) o una alerta informativa / posible falso positivo
+ * Clasifica si un error es posible error o una alerta
  */
 export function categorizarNaturalezaError(tipoOriginal, detalle = "") {
     const texto = `${tipoOriginal} ${detalle}`.toLowerCase();
@@ -43,16 +45,16 @@ export function categorizarNaturalezaError(tipoOriginal, detalle = "") {
         texto.includes("variante")
     ) {
         return {
-            categoria: "Alerta / Cotejo Manual",
+            categoria: "Alerta",
             esCritico: false,
             badgeClass: "badge-alerta",
             accion: "Verificar con facturación o visto bueno del auditor (posible adición o variante admitida)"
         };
     }
 
-    // Errores críticos que generan glosa obligatoria
+    // Inconsistencias reportadas como posibles errores
     return {
-        categoria: "Error Crítico",
+        categoria: "Posible Error",
         esCritico: true,
         badgeClass: "badge-critico",
         accion: "Corregir soporte clínico, adjuntar PDF faltante o ajustar cantidad facturada antes de enviar"
@@ -97,7 +99,9 @@ export function construirHTMLReporte({
         totalArchivosPDF += pdfsEnCarpeta;
 
         if (!porPaquete[paquete]) {
-            porPaquete[paquete] = { total: 0, aprobadas: 0, conError: 0, nombre: r.paqueteInfo?.nombre || paquete };
+            const infoConstante = PAQUETES_INFO[paquete];
+            const nombreCompleto = r.paqueteInfo?.nombre || infoConstante?.nombre || infoConstante?.descripcion || paquete;
+            porPaquete[paquete] = { total: 0, aprobadas: 0, conError: 0, nombre: nombreCompleto };
         }
         porPaquete[paquete].total++;
 
@@ -116,7 +120,9 @@ export function construirHTMLReporte({
 
             // Extraer detalle por servicio
             const agregarHallazgo = (srv, mensaje, esAlerta = false) => {
-                const nat = categorizarNaturalezaError(srv, mensaje);
+                const nat = esAlerta 
+                    ? { categoria: "Alerta", esCritico: false, badgeClass: "badge-alerta", accion: "Verificar con facturación o visto bueno del auditor" }
+                    : categorizarNaturalezaError(srv, mensaje);
                 if (nat.esCritico) totalCriticos++;
                 else totalAlertas++;
 
@@ -138,7 +144,7 @@ export function construirHTMLReporte({
                     paquete,
                     servicio: srv,
                     hallazgo: mensaje,
-                    dictamen: nat.esCritico ? "Rechazo: Subsanar antes de enviar" : "Observación / Cotejar"
+                    dictamen: nat.esCritico ? "Posible Error" : "Alerta"
                 });
             };
 
@@ -181,27 +187,39 @@ export function construirHTMLReporte({
         `;
     }).join("");
 
-    // Filas de clasificación de errores
-    const filasErroresHTML = Object.entries(porTipoError).map(([tipo, inf]) => `
-        <tr>
-            <td><b>${tipo}</b></td>
-            <td><span class="badge ${inf.badgeClass}">${inf.categoria}</span></td>
-            <td>${inf.ejemplo}</td>
-            <td class="text-center font-mono"><b>${inf.frecuencia}</b></td>
-            <td>${inf.accion}</td>
-        </tr>
-    `).join("") || `<tr><td colspan="5" class="text-center" style="padding:10px; color:#16a34a; font-weight:700;">✓ No se encontraron inconsistencias en este lote.</td></tr>`;
+    // Agrupar filas de detalle por Documento y Paquete para combinar celdas (rowspan)
+    const gruposDetalle = [];
+    detalleCuentas.forEach(d => {
+        const ultimoGrupo = gruposDetalle[gruposDetalle.length - 1];
+        if (ultimoGrupo && ultimoGrupo.documento === d.documento && ultimoGrupo.paquete === d.paquete) {
+            ultimoGrupo.items.push(d);
+        } else {
+            gruposDetalle.push({
+                documento: d.documento,
+                paquete: d.paquete,
+                items: [d]
+            });
+        }
+    });
 
-    // Filas de detalle cuentas
-    const filasDetalleHTML = detalleCuentas.slice(0, 35).map(d => `
-        <tr>
-            <td class="font-mono"><b>${d.documento}</b></td>
-            <td><span class="badge badge-pkg font-mono">${d.paquete}</span></td>
-            <td class="text-center"><span class="badge badge-srv font-mono">${d.servicio}</span></td>
-            <td>${d.hallazgo}</td>
-            <td><span class="badge ${d.dictamen.includes('Rechazo') ? 'badge-critico' : 'badge-alerta'}">${d.dictamen}</span></td>
-        </tr>
-    `).join("") || `<tr><td colspan="5" class="text-center" style="padding:10px; color:#16a34a; font-weight:700;">✓ 100% de las cuentas auditadas están conformes y listas para radicación.</td></tr>`;
+    const filasDetalleHTML = gruposDetalle.map(g => {
+        return g.items.map((item, idx) => {
+            const celdasAgrupadas = idx === 0 ? `
+                <td rowspan="${g.items.length}" class="font-mono" style="vertical-align: top; border-right: 1px solid #f1f5f9; background: #fff;"><b>${g.documento}</b></td>
+                <td rowspan="${g.items.length}" style="vertical-align: top; border-right: 1px solid #f1f5f9; background: #fff;"><span class="badge badge-pkg font-mono">${g.paquete}</span></td>
+            ` : '';
+
+            const esPosibleError = item.dictamen.includes("Posible Error");
+            return `
+                <tr>
+                    ${celdasAgrupadas}
+                    <td class="text-center"><span class="badge badge-srv font-mono">${item.servicio}</span></td>
+                    <td>${item.hallazgo}</td>
+                    <td><span class="badge ${esPosibleError ? 'badge-critico' : 'badge-alerta'}">${item.dictamen}</span></td>
+                </tr>
+            `;
+        }).join("");
+    }).join("") || `<tr><td colspan="5" class="text-center" style="padding:10px; color:#16a34a; font-weight:700;">✓ 100% de las cuentas auditadas están conformes y listas para radicación.</td></tr>`;
 
     return `
     <div id="certificadoContainer" style="padding: 10px; background: white; color: #0f172a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 10px; line-height: 1.35;">
@@ -215,7 +233,8 @@ export function construirHTMLReporte({
         .badge-alerta { background: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
         .mini-progress { width: 100%; height: 5px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 3px; }
         .mini-progress-fill { height: 100%; border-radius: 3px; }
-        table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0; margin-bottom: 12px; border: 1px solid #e2e8f0; border-radius: 6px; overflow: hidden; page-break-inside: auto; }
+        tr { page-break-inside: avoid; page-break-after: auto; }
         th { background: #f8fafc; color: #475569; font-weight: 700; font-size: 8.5px; text-transform: uppercase; padding: 6px 8px; border-bottom: 1px solid #cbd5e1; text-align: left; }
         td { padding: 5px 8px; font-size: 9px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
         tr:nth-child(even) td { background: #fafafa; }
@@ -277,13 +296,13 @@ export function construirHTMLReporte({
         </div>
         <div style="background:#fff; border:1px solid #e2e8f0; border-top:3.5px solid #f59e0b; border-radius:8px; padding:8px 10px;">
           <div style="font-size:18px; font-weight:800; color:#b45309;">${totalCriticos + totalAlertas}</div>
-          <div style="font-size:8.5px; color:#64748b; font-weight:600;">${totalCriticos} Críticos / ${totalAlertas} Alertas</div>
+          <div style="font-size:8.5px; color:#64748b; font-weight:600;">${totalCriticos} Posibles Errores / ${totalAlertas} Alertas</div>
         </div>
       </div>
 
       <!-- NOTA DE CRITERIO -->
       <div style="background:#fffbeb; border:1px solid #fef08a; border-left:4px solid #eab308; border-radius:6px; padding:7px 10px; margin-bottom:12px; font-size:9px; color:#713f12;">
-        <b>Criterio de Aceptación:</b> Los <b>Errores Críticos</b> deben corregirse antes de radicar la cuenta médica. Las <b>Alertas</b> (como diferencias en rótulos de cabecera o adiciones a la matriz) pueden ser admitidas bajo aval de auditoría.
+        <b>Criterio de Aceptación:</b> Los <b>Posibles Errores</b> deben cotejarse y subsanarse antes de radicar la cuenta médica. Las <b>Alertas</b> (como diferencias en rótulos de cabecera o adiciones a la matriz) pueden ser admitidas bajo aval de auditoría.
       </div>
 
       <!-- TABLA 1: POR PAQUETE -->
@@ -306,28 +325,9 @@ export function construirHTMLReporte({
         </tbody>
       </table>
 
-      <!-- TABLA 2: POR TIPO DE ERROR -->
+      <!-- TABLA 2: DETALLE CUENTAS -->
       <div style="font-size:10.5px; font-weight:800; text-transform:uppercase; color:#0f172a; margin:12px 0 5px 0; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-        2. Clasificación de Inconsistencias y Causas Raíz
-      </div>
-      <table>
-        <thead>
-          <tr>
-            <th style="width:24%;">Tipo de Inconsistencia</th>
-            <th style="width:16%;">Categoría</th>
-            <th>Detalle</th>
-            <th class="text-center" style="width:8%;">Cant.</th>
-            <th style="width:26%;">Instrucción Correctiva</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${filasErroresHTML}
-        </tbody>
-      </table>
-
-      <!-- TABLA 3: DETALLE CUENTAS -->
-      <div style="font-size:10.5px; font-weight:800; text-transform:uppercase; color:#0f172a; margin:12px 0 5px 0; border-bottom:1px solid #cbd5e1; padding-bottom:3px;">
-        3. Detalle Individual de Cuentas a Subsanar ${detalleCuentas.length > 35 ? `(Mostrando 35 de ${detalleCuentas.length})` : ''}
+        2. Detalle Individual de Cuentas a Subsanar (${detalleCuentas.length} hallazgos)
       </div>
       <table>
         <thead>
@@ -344,18 +344,6 @@ export function construirHTMLReporte({
         </tbody>
       </table>
 
-      <!-- FIRMAS -->
-      <div style="margin-top:22px; display:grid; grid-template-columns:1fr 1fr; gap:30px;">
-        <div style="border-top:1.5px dashed #94a3b8; padding-top:6px; text-align:center;">
-          <div style="font-weight:700; font-size:9.5px; color:#1e293b;">Responsable de Generación / Remisión</div>
-          <div style="font-size:8px; color:#64748b; margin-top:2px;">Declaro haber verificado y subsanado los soportes auditados.</div>
-        </div>
-        <div style="border-top:1.5px dashed #94a3b8; padding-top:6px; text-align:center;">
-          <div style="font-weight:700; font-size:9.5px; color:#1e293b;">Coordinación de Auditoría y Radicación</div>
-          <div style="font-size:8px; color:#64748b; margin-top:2px;">Revisión técnica y aval de conformidad para recepción.</div>
-        </div>
-      </div>
-
       <!-- FOOTER -->
       <div style="margin-top:14px; padding-top:6px; border-top:1px solid #e2e8f0; display:flex; justify-content:space-between; font-size:8px; color:#94a3b8;">
         <div><b>Validador FOMAG 2026</b> • Certificación Automatizada</div>
@@ -370,81 +358,61 @@ export function construirHTMLReporte({
  * Mostrando barra de progreso y sin mostrarlo en la interfaz de la página.
  */
 export async function exportarCertificadoPDF(datos) {
-    const modalProgreso = document.getElementById("modalProgresoBajada");
-    const modalTitulo = document.getElementById("modalProgresoBajadaTitulo");
-    const progresoFill = document.getElementById("progresoFillBajada");
-    const progresoPorcentaje = document.getElementById("progresoPorcentajeBajada");
-    const progresoTexto = document.getElementById("progresoTextoBajada");
-
-    if (modalTitulo) modalTitulo.textContent = "Generando Certificado Oficial en PDF...";
-    if (progresoTexto) progresoTexto.textContent = "Preparando datos del certificado...";
-    if (progresoFill) progresoFill.style.width = "15%";
-    if (progresoPorcentaje) progresoPorcentaje.textContent = "15%";
-    if (modalProgreso) modalProgreso.classList.remove("oculto");
-
     const htmlContenido = construirHTMLReporte(datos);
 
-    // Contenedor completamente fuera de pantalla (offscreen) para no estorbar ni laguear la vista
-    const container = document.createElement("div");
-    container.style.position = "fixed";
-    container.style.left = "-99999px";
-    container.style.top = "0";
-    container.style.width = "820px";
-    container.style.background = "#ffffff";
-    container.style.zIndex = "-1";
-    container.style.opacity = "0";
-    container.style.pointerEvents = "none";
-    container.innerHTML = htmlContenido;
-    document.body.appendChild(container);
-
-    if (progresoTexto) progresoTexto.textContent = "Cargando motor de renderizado PDF...";
-    if (progresoFill) progresoFill.style.width = "40%";
-    if (progresoPorcentaje) progresoPorcentaje.textContent = "40%";
-
-    const cargado = await cargarHtml2Pdf();
-
-    const opt = {
-        margin: [8, 10, 8, 10],
-        filename: `Certificado_Auditoria_${datos.convenio || "FOMAG"}_${Date.now()}.pdf`,
-        image: { type: "jpeg", quality: 0.98 },
-        html2canvas: { scale: 1.6, useCORS: true, logging: false },
-        jsPDF: { unit: "mm", format: "letter", orientation: "portrait" }
-    };
-
-    if (cargado && window.html2pdf) {
-        try {
-            if (progresoTexto) progresoTexto.textContent = "Generando páginas y tablas...";
-            if (progresoFill) progresoFill.style.width = "75%";
-            if (progresoPorcentaje) progresoPorcentaje.textContent = "75%";
-
-            await new Promise((resolve) => setTimeout(resolve, 80));
-
-            // Guardar directamente (descarga en segundo plano)
-            await window.html2pdf().set(opt).from(container).save();
-
-            if (progresoTexto) progresoTexto.textContent = "¡Certificado descargado con éxito!";
-            if (progresoFill) progresoFill.style.width = "100%";
-            if (progresoPorcentaje) progresoPorcentaje.textContent = "100%";
-        } catch (err) {
-            console.error("Error al generar PDF con html2pdf:", err);
-            alert("Ocurrió un error al generar el PDF. Verifica tu conexión.");
-        } finally {
-            if (document.body.contains(container)) {
-                document.body.removeChild(container);
-            }
-            setTimeout(() => {
-                if (modalProgreso) modalProgreso.classList.add("oculto");
-                if (modalTitulo) modalTitulo.textContent = "Generando archivo Excel XLSX...";
-            }, 800);
-        }
-        return true;
+    // Ventana emergente de impresión nativa (genera texto vectorial seleccionable y nítido)
+    const printWindow = window.open("", "_blank", "width=900,height=800");
+    if (!printWindow) {
+        alert("Por favor habilita las ventanas emergentes (pop-ups) en tu navegador para generar el certificado con texto seleccionable.");
+        return false;
     }
 
-    // Fallback silencioso si no se pudo cargar la librería externa
-    if (document.body.contains(container)) {
-        document.body.removeChild(container);
-    }
-    if (modalProgreso) modalProgreso.classList.add("oculto");
-    alert("No se pudo cargar el motor html2pdf. Verifica la conexión a internet para descargar el certificado.");
-    return false;
+    printWindow.document.open();
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <title>Certificado de Auditoría - ${datos.convenio || "FOMAG"}</title>
+            <style>
+                @page {
+                    size: letter portrait;
+                    margin: 12mm 10mm 12mm 10mm;
+                }
+                body {
+                    margin: 0;
+                    padding: 0;
+                    -webkit-print-color-adjust: exact !important;
+                    print-color-adjust: exact !important;
+                    background: #ffffff;
+                }
+                @media print {
+                    .no-print { display: none !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="no-print" style="position: sticky; top: 0; background: #0f172a; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); font-family: sans-serif; font-size: 13px;">
+                <div>
+                    <b>Vista de Certificado PDF (Texto Seleccionable / Vectorial)</b>
+                    <span style="margin-left: 10px; color: #94a3b8; font-size: 11px;">En la ventana de impresión selecciona <b>"Guardar como PDF"</b></span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="window.print()" style="background: #0284c7; color: white; border: none; padding: 6px 14px; border-radius: 4px; font-weight: bold; cursor: pointer;">Guardar / Imprimir PDF</button>
+                    <button onclick="window.close()" style="background: #475569; color: white; border: none; padding: 6px 14px; border-radius: 4px; cursor: pointer;">Cerrar</button>
+                </div>
+            </div>
+            ${htmlContenido}
+            <script>
+                window.addEventListener('load', () => {
+                    setTimeout(() => {
+                        window.print();
+                    }, 400);
+                });
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+    return true;
 }

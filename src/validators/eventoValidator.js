@@ -42,7 +42,7 @@ export function validarArchivosPermitidosEvento(
     ]);
     const archivosNoPermitidos = [];
 
-    // En FOMAG por evento, también se aceptan archivos por servicio:
+    // En FOMAG y Nueva EPS por evento, también se aceptan archivos por servicio:
     // Ej: "2 tf.pdf", "4 tr.pdf", "5 enf.pdf", "2 paq.pdf" (insensible a mayúsculas)
     const patronServicio = REGEX_SERVICIO_ARCHIVO;
     const es2Paq = (nombre) => nombre.toLowerCase() === "2 paq.pdf";
@@ -51,8 +51,8 @@ export function validarArchivosPermitidosEvento(
         const nombreLower = archivo.name.toLowerCase();
         const esGenerico = permitidosGenericos.has(nombreLower);
         const esServicio =
-            convenio === "fomag" && patronServicio.test(nombreLower);
-        const esPaq = convenio === "fomag" && es2Paq(archivo.name);
+            (convenio === "fomag" || convenio === "nueva-eps") && patronServicio.test(nombreLower);
+        const esPaq = (convenio === "fomag" || convenio === "nueva-eps") && es2Paq(archivo.name);
         if (!esGenerico && !esServicio && !esPaq) {
             archivosNoPermitidos.push(archivo.name);
         }
@@ -168,8 +168,8 @@ export async function validarPDF(
             resultados[carpeta].fechasPorServicio[servicioUpper] =
                 resultados[carpeta].fechasPorServicio[servicioUpper] || [];
 
-            // Para FOMAG evento: guardar fechas por servicio (del archivo 5 que tiene las evoluciones)
-            if (convenio === "fomag" && numeroArchivo === "5") {
+            // Para FOMAG y Nueva EPS evento: guardar fechas por servicio (del archivo 5 que tiene las evoluciones)
+            if ((convenio === "fomag" || convenio === "nueva-eps") && numeroArchivo === "5") {
                 const fechasServicio = servicioUpper === "PSI" ? fechas.slice(0, 1) : fechas;
                 resultados[carpeta].fechasPorServicio[servicioUpper].push(
                     ...fechasServicio
@@ -242,16 +242,20 @@ export async function validarPDF(
 
         // Validar número de documento
         // - FOMAG: en archivos 2 y 5 (genéricos o por servicio)
-        // - Otros convenios: en 2, 3 y 5 genéricos
+        // - Nueva EPS: en archivos 2, 3 y 5
+        // - Otros convenios (Capital Salud): en 2, 3 y 5 genéricos
         const debeValidarNumero = (() => {
             if (servicioUpper) {
                 return (
-                    convenio === "fomag" &&
+                    (convenio === "fomag" || convenio === "nueva-eps") &&
                     (numeroArchivo === "2" || numeroArchivo === "5")
                 );
             }
             if (convenio === "fomag") {
                 return file.name === "2.pdf" || file.name === "5.pdf";
+            }
+            if (convenio === "nueva-eps") {
+                return file.name === "2.pdf" || file.name === "3.pdf" || file.name === "5.pdf";
             }
             return (
                 file.name === "2.pdf" ||
@@ -266,8 +270,8 @@ export async function validarPDF(
             }
 
             if (!textoPlanoNorm.includes(nroDocumento)) {
-                // Error: va a erroresPorServicio si es FOMAG con servicio, sino a errores generales
-                if (servicioUpper && convenio === "fomag") {
+                // Error: va a erroresPorServicio si es FOMAG o Nueva EPS con servicio, sino a errores generales
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
                     resultados[carpeta].erroresPorServicio[servicioUpper].push(
                         `${file.name}: no contiene número ${nroDocumento}`
                     );
@@ -280,8 +284,8 @@ export async function validarPDF(
                     resultados[carpeta].pdfs[file.name] = "❌";
                 }
             } else {
-                // Éxito: va a exitosPorServicio si es FOMAG con servicio
-                if (servicioUpper && convenio === "fomag") {
+                // Éxito: va a exitosPorServicio si es FOMAG o Nueva EPS con servicio
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
                     resultados[carpeta].exitosPorServicio[servicioUpper].push(
                         `${file.name}: contiene número ${nroDocumento}`
                     );
@@ -357,8 +361,8 @@ export async function validarPDF(
                               .map((t) => `"${t}"`)
                               .join(" o ")})`;
 
-                // Error: va a erroresPorServicio si es FOMAG con servicio
-                if (servicioUpper && convenio === "fomag") {
+                // Error: va a erroresPorServicio si es FOMAG o Nueva EPS con servicio
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
                     resultados[carpeta].erroresPorServicio[servicioUpper].push(
                         mensajeFalta
                     );
@@ -371,7 +375,7 @@ export async function validarPDF(
             } else {
                 // Éxito: texto encontrado
                 const msg = `${file.name}: contiene "${textoEncontrado}"`;
-                if (servicioUpper && convenio === "fomag") {
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
                     resultados[carpeta].exitosPorServicio[servicioUpper].push(
                         msg
                     );
@@ -379,6 +383,33 @@ export async function validarPDF(
                     resultados[carpeta].exitosPorServicio["General"] =
                         resultados[carpeta].exitosPorServicio["General"] || [];
                     resultados[carpeta].exitosPorServicio["General"].push(msg);
+                }
+            }
+
+            // Si es archivo 3.pdf en Nueva EPS por evento: validar también "Nueva EPS" y "Cotizante"/"Beneficiario"
+            if (file.name === "3.pdf" && convenio === "nueva-eps") {
+                const tieneNuevaEps = textoPlanoNorm.includes("NUEVA EPS") || textoPlanoNorm.includes("NUEVAEPS");
+                if (!tieneNuevaEps) {
+                    resultados[carpeta].errores.push('3.pdf: no contiene el texto "Nueva EPS"');
+                    if (resultados[carpeta].pdfs?.["3.pdf"] !== undefined) {
+                        resultados[carpeta].pdfs["3.pdf"] = "❌";
+                    }
+                } else {
+                    resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+                    resultados[carpeta].exitosPorServicio["General"].push('3.pdf: contiene "Nueva EPS"');
+                }
+
+                const tieneCot = textoPlanoNorm.includes("COTIZANTE");
+                const tieneBen = textoPlanoNorm.includes("BENEFICIARIO");
+                if (!tieneCot && !tieneBen) {
+                    resultados[carpeta].errores.push('3.pdf: no especifica "cotizante" o "beneficiario"');
+                    if (resultados[carpeta].pdfs?.["3.pdf"] !== undefined) {
+                        resultados[carpeta].pdfs["3.pdf"] = "❌";
+                    }
+                } else {
+                    const tipoEncontrado = tieneCot ? "Cotizante" : "Beneficiario";
+                    resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+                    resultados[carpeta].exitosPorServicio["General"].push(`3.pdf: tipo de afiliado "${tipoEncontrado}"`);
                 }
             }
 
@@ -390,7 +421,7 @@ export async function validarPDF(
             if (esArchivo4) {
                 if (pdf.numPages > 1) {
                     const msg = `${file.name}: Tiene ${pdf.numPages} páginas (se espera 1)`;
-                    if (servicioUpper && convenio === "fomag") {
+                    if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
                         resultados[carpeta].alertasPorServicio[
                             servicioUpper
                         ].push(msg);
@@ -405,7 +436,7 @@ export async function validarPDF(
                     }
                 } else {
                     const msg = `${file.name}: 1 página (correcto)`;
-                    if (servicioUpper && convenio === "fomag") {
+                    if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
                         resultados[carpeta].exitosPorServicio[
                             servicioUpper
                         ].push(msg);
@@ -421,7 +452,7 @@ export async function validarPDF(
                 }
             }
 
-            // Para FOMAG: extraer el número que aparece después del texto
+            // Para FOMAG y Nueva EPS: extraer el número que aparece después del texto
             let numeroExtraido = null;
             if (regla.extraerNumero && textoEncontrado) {
                 numeroExtraido = extraerNumeroDelTexto(texto, textoEncontrado);
@@ -431,7 +462,7 @@ export async function validarPDF(
                     // Para archivos por servicio (2 tf.pdf, 4 tf.pdf), guardar en numerosPorServicio
                     if (
                         servicioUpper &&
-                        convenio === "fomag" &&
+                        (convenio === "fomag" || convenio === "nueva-eps") &&
                         (numeroArchivo === "2" || numeroArchivo === "4")
                     ) {
                         resultados[carpeta].numerosPorServicio =
@@ -448,7 +479,7 @@ export async function validarPDF(
             if (
                 regla.igualarConFechas &&
                 servicioUpper &&
-                convenio === "fomag" &&
+                (convenio === "fomag" || convenio === "nueva-eps") &&
                 numeroArchivo === "5"
             ) {
                 // Obtener cantidad de autorizaciones (del 2.pdf o 4.pdf ya procesado)

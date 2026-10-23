@@ -3,6 +3,8 @@ import {
     PAQUETES_SOPORTADOS,
     REGLAS_TERAPIAS_PAQUETES,
     obtenerInfoSoporte,
+    normalizarCodigoPaquete,
+    CODIGOS_APLICACION,
 } from "../config/constants.js";
 import {
     copiarTextoSimple,
@@ -20,7 +22,8 @@ export function mostrarCondicionesPaquete(tipoPaqueteSelect, paqueteCondicionesC
     if (!paqueteCondicionesContent || !tipoPaqueteSelect) return;
 
     const paquete = tipoPaqueteSelect.value;
-    const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(paquete);
+    const paqueteCanonico = normalizarCodigoPaquete(paquete);
+    const esPaqueteAplicacion = CODIGOS_APLICACION.has(paquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico);
     const regla = REGLAS_TERAPIAS_PAQUETES[paquete] || { descripcion: "Requisitos según paquete." };
     const tieneRangoTer = regla.min !== undefined && regla.max !== undefined;
     const minTer = tieneRangoTer ? regla.min : 0;

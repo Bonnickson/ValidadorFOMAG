@@ -129,8 +129,8 @@ export function actualizarHeadersTabla(
     let colgroup = tabla.querySelector("colgroup");
     if (colgroup) colgroup.remove();
 
-    if (tipoValidacion === "evento" && convenio === "fomag") {
-        // Evento FOMAG: vista por servicios (similar a paquete)
+    if (tipoValidacion === "evento" && (convenio === "fomag" || convenio === "nueva-eps")) {
+        // Evento FOMAG / Nueva EPS: vista por servicios (similar a paquete)
         tabla.classList.add("modo-evento-fomag");
         tablaHeader.innerHTML = `
             <tr>
@@ -260,10 +260,10 @@ export function createPlaceholderRow(
  * Actualiza una fila existente de la tabla
  */
 export function updateRow(tablaBody, carpeta, r, mostrarExitos = false) {
-    // Para paquetes o eventos FOMAG, eliminar las filas existentes del grupo y recrearlas
+    // Para paquetes o eventos FOMAG/Nueva EPS, eliminar las filas existentes del grupo y recrearlas
     if (
         r.tipoValidacion === "paquete" ||
-        (r.tipoValidacion === "evento" && r.convenio === "fomag")
+        (r.tipoValidacion === "evento" && (r.convenio === "fomag" || r.convenio === "nueva-eps"))
     ) {
         const existingRows = document.querySelectorAll(
             `tr[data-carpeta="${carpeta}"]`
@@ -323,8 +323,8 @@ export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
             erroresHTML,
             mostrarExitos
         );
-    } else if (r.tipoValidacion === "evento" && r.convenio === "fomag") {
-        // Para eventos FOMAG, crear filas por servicio detectado
+    } else if (r.tipoValidacion === "evento" && (r.convenio === "fomag" || r.convenio === "nueva-eps")) {
+        // Para eventos FOMAG y Nueva EPS, crear filas por servicio detectado
         renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos);
     } else {
         // Para eventos normales (Capital Salud), mostrar vista clásica
@@ -427,12 +427,32 @@ function renderPaqueteFilas(
         }
     }
 
+    // Badge para 3.pdf (ADRES) si existe o si es Nueva EPS
+    let badge3AdresHTML = "";
+    const tiene3 = (r.listaArchivos || []).some(a => a.toLowerCase() === "3.pdf");
+    const esNuevaEps = r.convenio === "nueva-eps" || (document.getElementById("convenioSelect")?.value === "nueva-eps");
+    if (tiene3 || esNuevaEps) {
+        const nombreArchivo3 = (r.listaArchivos || []).find(a => a.toLowerCase() === "3.pdf") || "3.pdf";
+        const urlKey3 = Object.keys(r.fileUrls || {}).find(k => k.toLowerCase() === "3.pdf");
+        const url3 = urlKey3 ? r.fileUrls[urlKey3] : null;
+        const status3 = r.pdfs?.["3.pdf"] || (tiene3 ? "✔" : "—");
+        const cls3 = status3 === "✔" ? "ok" : status3 === "—" ? "missing" : "fail";
+        const label3 = `3 ${status3}`;
+        if (url3) {
+            badge3AdresHTML = `<a href="#" onclick="abrirPDFModal('${url3}', '${nombreArchivo3}', this); return false;" class="archivo-link ${cls3}" title="Abrir ${nombreArchivo3} (ADRES)">${label3}</a>`;
+        } else {
+            badge3AdresHTML = `<span class="archivo-link ${cls3}" title="Soporte 3 ADRES">${label3}</span>`;
+        }
+    }
+
+    const badgesPaqueteHTML = [badge2PaqHTML, badge3AdresHTML].filter(Boolean).join(" ") || "—";
+
     // 1. Fila de Encabezado del Lote con celda de Documento que abarca todas las filas (rowspan)
     const totalFilasLote = serviciosArray.length + 1;
     const trHeader = document.createElement("tr");
     trHeader.setAttribute("data-carpeta", carpeta);
     trHeader.setAttribute("data-documento", r.nroDocumento || carpeta);
-    trHeader.setAttribute("data-paquete", r.tipoPaquete || "CPF1108");
+    trHeader.setAttribute("data-paquete", r.tipoPaquete || "");
     trHeader.setAttribute("data-responsable", r.auditor || r.datosMatriz?.nombre || "");
     trHeader.classList.add("paquete-row", "paquete-doc-header-row", grupoClase, "grupo-inicio");
     
@@ -448,12 +468,12 @@ function renderPaqueteFilas(
         renderErrorItems(erroresGenerales, carpeta, "General")
     ].filter(Boolean).join("") || "";
 
-    const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
-    const estaParametrizado = Boolean(PAQUETES_INFO[paqueteCodigo]);
+    const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "");
+    const estaParametrizado = Boolean(paqueteCodigo && PAQUETES_INFO[paqueteCodigo]);
     const paqueteInfo = estaParametrizado
         ? PAQUETES_INFO[paqueteCodigo]
-        : { nombre: `${paqueteCodigo} - No parametrizado`, descripcion: "No parametrizado" };
-    const paqueteClase = `pkg-${paqueteCodigo.toLowerCase()}`;
+        : { nombre: `${paqueteCodigo || 'Sin Paquete'} - No parametrizado`, descripcion: paqueteCodigo || "Sin paquete" };
+    const paqueteClase = `pkg-${(paqueteCodigo || 'unknown').toLowerCase()}`;
 
     const esMatrizVirtual = Boolean(r.esDesdeMatriz || (r.datosMatriz && totalArchivos === 0));
     const iconoBadgeSVG = esMatrizVirtual
@@ -509,7 +529,7 @@ function renderPaqueteFilas(
             </div>
         </td>
         <td class="servicio-nombre">📦 Paquete</td>
-        <td class="archivos-cell center-cell">${badge2PaqHTML || "—"}</td>
+        <td class="archivos-cell center-cell">${badgesPaqueteHTML}</td>
         <td class="count-evol-cell">—</td>
         <td class="fechas">—</td>
         <td class="errores-cell">${erroresGeneralesHeaderHTML || (estadoGeneral === "sin-errores" ? '<div class="badge-exito">✔ Todo correcto</div>' : "—")}</td>
@@ -521,7 +541,7 @@ function renderPaqueteFilas(
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
         tr.setAttribute("data-documento", r.nroDocumento || carpeta);
-        tr.setAttribute("data-paquete", r.tipoPaquete || "CPF1108");
+        tr.setAttribute("data-paquete", r.tipoPaquete || "");
         tr.setAttribute("data-responsable", r.auditor || r.datosMatriz?.nombre || "");
         tr.setAttribute("data-servicio", s);
         if (esMatrizVirtual) {
