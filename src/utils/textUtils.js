@@ -86,14 +86,17 @@ export function extraerCantidadAutorizacion(texto, textoEncontrado = "", servici
         ? textoEncontrado
         : (textoEncontrado ? [textoEncontrado] : []);
 
-    // 1. Si tenemos textos buscados del servicio (ej: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL"):
+    // 1. Si tenemos textos buscados del servicio (ej: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL" o "MEDICINA GENERAL"):
     for (const target of textosBuscar) {
         if (!target) continue;
         const targetNorm = normalizeForSearch(target);
 
         // A) Número ANTES de la descripción (formato tabla Nueva EPS: "890101 1 ATENCION..." o "1 ATENCION...")
-        // Permite opcionalmente un código CUPS (5 a 7 dígitos) antes del número de cantidad
-        const regexAntes = new RegExp(`(?:\\b\\d{5,7}\\s+)?\\b(\\d{1,3})\\s+${escapeRegExp(targetNorm)}`, "i");
+        // Permite código CUPS (ej. 890101 o E890146) y prefijo opcional "ATENCION (VISITA) DOMICILIARIA POR"
+        const regexAntes = new RegExp(
+            `(?:\\b[A-Z]{0,2}\\d{5,7}\\s+)?\\b(\\d{1,3})\\s+(?:ATENCION(?:\\s+\\(?VISITA\\)?)?\\s+DOMICILIARIA\\s+(?:POR\\s+)?)?${escapeRegExp(targetNorm)}`,
+            "i"
+        );
         const matchAntes = textoNorm.match(regexAntes);
         if (matchAntes) {
             const val = parseInt(matchAntes[1], 10);
@@ -114,17 +117,17 @@ export function extraerCantidadAutorizacion(texto, textoEncontrado = "", servici
     if (idxCantidad !== -1) {
         const ventana = textoNorm.substring(idxCantidad, idxCantidad + 350);
 
+        // Caso fila con código CUPS (ej: 890101 o E890146) seguido de cantidad en la tabla:
+        const matchCups = ventana.match(/\b[A-Z]{0,2}\d{5,7}\s+(\d{1,3})\b/i);
+        if (matchCups) {
+            const val = parseInt(matchCups[1], 10);
+            if (val > 0) return val;
+        }
+
         // Caso directo: "CANTIDAD: 1", "CANTIDAD 1", "CANTIDAD - 1"
         const matchDirecto = ventana.match(/CANTIDAD\s*[:.\-]?\s*(\d{1,3})\b/i);
         if (matchDirecto) {
             const val = parseInt(matchDirecto[1], 10);
-            if (val > 0) return val;
-        }
-
-        // Caso fila con código CUPS (ej: 890101) seguido de cantidad en la tabla:
-        const matchCups = ventana.match(/\b\d{5,7}\s+(\d{1,3})\b/);
-        if (matchCups) {
-            const val = parseInt(matchCups[1], 10);
             if (val > 0) return val;
         }
 

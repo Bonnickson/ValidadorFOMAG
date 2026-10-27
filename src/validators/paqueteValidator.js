@@ -24,6 +24,7 @@ import {
 } from "../utils/textUtils.js";
 import {
     extraerTextoPDF,
+    extraerCantidadTablaNuevaEps,
     extraerTextoOCRDePDF,
     extraerFechas,
     validarOrdenFechas,
@@ -170,6 +171,25 @@ export async function validarPorPaquete(
         );
     }
 
+    // Procesar "2 paq.pdf" de forma general ANTES de los servicios para tener cantidades de autorización disponibles
+    const archivo2Paq = archivos.find(
+        (f) => f.name.toLowerCase() === "2 paq.pdf" && (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"))
+    );
+    if (archivo2Paq) {
+        estado.textContent = `Procesando: ${carpeta} / ${archivo2Paq.name} (General)`;
+        if (onProgresoArchivo) onProgresoArchivo(archivo2Paq.name);
+        await validarPDFPaquete(
+            archivo2Paq,
+            carpeta,
+            nroDocumento,
+            "General",
+            resultados,
+            convenio,
+            tipoPaquete,
+            periodoPermitido
+        );
+    }
+
     // Procesar cada servicio encontrado para validar PDFs (excepto "General")
     for (const servicio of serviciosEncontrados) {
         // Saltar "General" ya que no tiene PDFs específicos para procesar
@@ -177,17 +197,17 @@ export async function validarPorPaquete(
 
         const servicioLower = servicio.toLowerCase();
 
-        // IMPORTANTE: Procesar 5 para comparar, luego 4 (y 2 si es evento con 2 individual)
-        const listaNumsAProcesar = esEventoValidacion ? ["5", "4", "2"] : ["5", "4"];
+        // IMPORTANTE: Si es evento, procesar PRIMERO el 2 para extraer Cant Auto antes de comparar en el 5, y luego el 4
+        const listaNumsAProcesar = esEventoValidacion ? ["2", "5", "4"] : ["5", "4"];
         for (const numArchivo of listaNumsAProcesar) {
             let archivoParaProcesar = null;
 
-            // 1. Buscar el archivo específico del servicio (ej: "5 vm.pdf", "2 vm.pdf")
+            // 1. Buscar el archivo específico del servicio (ej: "2 vm.pdf", "5 vm.pdf")
             const nombreEspecifico = `${numArchivo} ${servicioLower}.pdf`;
             archivoParaProcesar = archivos.find(
                 (f) =>
                     f.name.toLowerCase() === nombreEspecifico &&
-                    f.type === "application/pdf"
+                    (f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf"))
             );
 
             // 3. Procesar el archivo si se encontró
@@ -221,25 +241,6 @@ export async function validarPorPaquete(
         }
 
         updateRow(carpeta, resultados[carpeta]);
-    }
-
-    // Procesar "2 paq.pdf" de forma general si existe
-    const archivo2Paq = archivos.find(
-        (f) => f.name.toLowerCase() === "2 paq.pdf" && f.type === "application/pdf"
-    );
-    if (archivo2Paq) {
-        estado.textContent = `Procesando: ${carpeta} / ${archivo2Paq.name} (General)`;
-        if (onProgresoArchivo) onProgresoArchivo(archivo2Paq.name);
-        await validarPDFPaquete(
-            archivo2Paq,
-            carpeta,
-            nroDocumento,
-            "General",
-            resultados,
-            convenio,
-            tipoPaquete,
-            periodoPermitido
-        );
     }
 
     // Procesar "3.pdf" (ADRES) si existe o si es Nueva EPS
@@ -963,40 +964,18 @@ async function validarPDFPaquete(
                 }
             }
 
-            // Extraer número del texto para archivo 2 (paquetes)
+            // Extraer número del texto para archivo 2 (paquetes / evento en paquete)
             if (numArchivo === "2" && servicio !== "PAQ") {
                 const REGLAS_PAQUETE = obtenerReglasPaquete(convenio);
                 const textoBuscar =
                     REGLAS_PAQUETE[servicio]?.["2.pdf"]?.debeContener || "";
-                const numeroExtraido = extraerCantidadAutorizacion(texto, textoBuscar, servicio, convenio);
-
-                // Log limpio con información relevante del 2.pdf - SIEMPRE mostrar
-                // console.log(
-                //     `\n📄 VALIDACIÓN ARCHIVO 2.pdf\n` +
-                //         `   Carpeta: ${carpeta}\n` +
-                //         `   Servicio: ${servicio}\n` +
-                //         `   Archivo: ${file.name}\n` +
-                //         `   Convenio: ${convenio}\n` +
-                //         `   Reglas obtenidas: ${JSON.stringify(
-                //             REGLAS_PAQUETE[servicio],
-                //             null,
-                //             2
-                //         )}\n` +
-                //         `   Texto buscado: "${textoBuscar || "N/A"}"\n` +
-                //         `   Cant. Auto encontrada: ${
-                //             numeroExtraido !== null
-                //                 ? numeroExtraido
-                //                 : "NO ENCONTRADO"
-                //         }\n` +
-                //         `   Documento (${nroDocumento}): ${
-                //             textoPlanoNorm.includes(nroDocumento)
-                //                 ? "✓ Encontrado"
-                //                 : "✗ NO encontrado"
-                //         }\n` +
-                //         `\n--- TEXTO COMPLETO DEL PDF ---\n${texto}\n--- FIN TEXTO ---\n`
-                // );
+                let numeroExtraido = await extraerCantidadTablaNuevaEps(pdf);
+                if (numeroExtraido === null) {
+                    numeroExtraido = extraerCantidadAutorizacion(texto, textoBuscar, servicio, convenio);
+                }
 
                 if (numeroExtraido !== null) {
+                    resultados[carpeta].numeroAutorizaciones = numeroExtraido;
                     resultados[carpeta].numerosPorServicio =
                         resultados[carpeta].numerosPorServicio || {};
                     resultados[carpeta].numerosPorServicio[servicio] =
@@ -1121,6 +1100,30 @@ async function validarPDFPaquete(
                     resultados[carpeta].exitosPorServicio[servicio].push(
                         `${nombreMostrar}: contiene "${textoEncontrado}"`
                     );
+
+                    // Si es archivo 2 y aún no tenía cantidad extraída (ej. requirió OCR), extraer ahora con el textoEncontrado
+                    if (numArchivo === "2") {
+                        let cantExtraida = resultados[carpeta].numerosPorServicio?.[servicio] ?? null;
+                        if (cantExtraida === null) {
+                            cantExtraida = extraerCantidadAutorizacion(
+                                texto,
+                                textoEncontrado || textosABuscar,
+                                servicio,
+                                convenio
+                            );
+                            if (cantExtraida !== null) {
+                                resultados[carpeta].numeroAutorizaciones = cantExtraida;
+                                resultados[carpeta].numerosPorServicio =
+                                    resultados[carpeta].numerosPorServicio || {};
+                                resultados[carpeta].numerosPorServicio[servicio] = cantExtraida;
+                            }
+                        }
+                        if (cantExtraida !== null) {
+                            resultados[carpeta].exitosPorServicio[servicio].push(
+                                `${nombreMostrar}: Cantidad autorizada: ${cantExtraida}`
+                            );
+                        }
+                    }
                 }
 
                 // COMPARACIÓN: Solo para archivo 5.pdf y solo si NO es un nuevo paquete (en paquetes modernos se valida contra la matriz)

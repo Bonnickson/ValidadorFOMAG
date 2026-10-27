@@ -800,7 +800,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
             .join(" ");
 
         // Cantidad de autorizaciones del servicio
-        const cantAuto = r.numerosPorServicio?.[servicio] || 0;
+        const cantAuto = r.numerosPorServicio?.[servicio] || r.numeroAutorizaciones || 0;
 
         // Extraer fechas de los archivos 5 de este servicio
         const fechasServicio = r.fechasPorServicio?.[servicio] || [];

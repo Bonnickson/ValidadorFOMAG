@@ -303,3 +303,94 @@ export function validarOrdenFechas(fechas) {
 export async function leerArchivoComoBuffer(file) {
     return await file.arrayBuffer();
 }
+
+/**
+ * Extrae la cantidad autorizada directamente desde la tabla de Nueva EPS (2da fila, 2da columna)
+ * detectando la columna "Cantidad" y la celda numérica situada debajo.
+ *
+ * @param {Object} pdf - Objeto PDF de PDF.js
+ * @returns {Promise<number|null>}
+ */
+export async function extraerCantidadTablaNuevaEps(pdf) {
+    if (!pdf) return null;
+    try {
+        const totalPags = Math.min(pdf.numPages, 2);
+        for (let p = 1; p <= totalPags; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const items = content.items
+                .map((it) => ({
+                    str: (it.str || "").trim(),
+                    x: it.transform[4],
+                    y: it.transform[5],
+                    w: it.width,
+                    h: it.height,
+                }))
+                .filter((it) => it.str.length > 0);
+
+            // 1. Localizar cabecera "Cantidad" (para asegurar que buscamos dentro de la tabla y no en datos del afiliado)
+            const cabeceraCantidad = items.find((it) =>
+                /^(?:cantidad|cant\.?)$/i.test(it.str)
+            );
+
+            if (cabeceraCantidad) {
+                const yCabecera = cabeceraCantidad.y;
+                const xMinCol = cabeceraCantidad.x - 45;
+                const xMaxCol = cabeceraCantidad.x + (cabeceraCantidad.w || 30) + 45;
+
+                // A) Buscar celdas numéricas en la misma columna y debajo de la cabecera
+                const candidatos = items.filter(
+                    (it) =>
+                        it.y < yCabecera &&
+                        it.y >= yCabecera - 95 &&
+                        it.x >= xMinCol &&
+                        it.x <= xMaxCol &&
+                        /^\d{1,3}$/.test(it.str)
+                );
+
+                if (candidatos.length > 0) {
+                    candidatos.sort((a, b) => b.y - a.y);
+                    const val = parseInt(candidatos[0].str, 10);
+                    if (val > 0) return val;
+                }
+
+                // B) Buscar fila con código CUPS (ej. 890101 o E890146) debajo de la cabecera y tomar el número a su derecha
+                const itemCupsDebajo = items.find(
+                    (it) =>
+                        it.y < yCabecera &&
+                        it.y >= yCabecera - 95 &&
+                        /^[A-Z]{0,2}\d{5,7}$/i.test(it.str)
+                );
+                if (itemCupsDebajo) {
+                    const candidatosCups = items.filter(
+                        (it) =>
+                            Math.abs(it.y - itemCupsDebajo.y) <= 15 &&
+                            it.x > itemCupsDebajo.x &&
+                            it.x <= itemCupsDebajo.x + 220 &&
+                            /^\d{1,3}$/.test(it.str)
+                    );
+                    if (candidatosCups.length > 0) {
+                        candidatosCups.sort((a, b) => a.x - b.x);
+                        const val = parseInt(candidatosCups[0].str, 10);
+                        if (val > 0) return val;
+                    }
+                }
+
+                // C) Fallback por fila horizontal: buscar la fila debajo de cabeceras
+                const itemsDebajo = items.filter(
+                    (it) => it.y < yCabecera && it.y >= yCabecera - 95
+                );
+                itemsDebajo.sort((a, b) => a.x - b.x);
+                for (const item of itemsDebajo) {
+                    if (/^\d{1,3}$/.test(item.str)) {
+                        const val = parseInt(item.str, 10);
+                        if (val > 0) return val;
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.warn("[extraerCantidadTablaNuevaEps] Error:", err);
+    }
+    return null;
+}

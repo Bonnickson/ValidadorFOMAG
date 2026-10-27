@@ -529,7 +529,13 @@ export function actualizarResumen(
     if (statAlertas) statAlertas.textContent = conAlertas;
     if (statErrores) statErrores.textContent = conErrores;
 
-    if (resumenDiv) resumenDiv.classList.remove("oculto");
+    if (resumenDiv) {
+        if (incremental) {
+            resumenDiv.classList.add("oculto");
+        } else {
+            resumenDiv.classList.remove("oculto");
+        }
+    }
 
     if (incremental) return;
 
@@ -597,6 +603,9 @@ export function actualizarResumen(
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="13"></line></svg>
                         Exportar XLSX
                     </button>
+                    <button type="button" id="btnToggleCollapseResumen" class="btn-resumen-collapse" title="Expandir / Colapsar resumen de incidencias">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    </button>
                 </div>
             </div>
         `;
@@ -604,6 +613,10 @@ export function actualizarResumen(
         listaErroresDiv.innerHTML = exportBtnHtml + `<div class="error-cards-grid">${errorItems}</div>`;
         if (resumenErroresDiv) {
             resumenErroresDiv.classList.remove("oculto");
+            // Al terminar la validación, iniciar en estado colapsado si es la primera carga
+            if (!resumenErroresDiv.dataset.initialized) {
+                resumenErroresDiv.classList.add("colapsado");
+            }
             // Asegurar que el resizer esté al final del contenedor resumenErrores
             let resizer = resumenErroresDiv.querySelector(":scope > #resumenResizer");
             if (!resizer) {
@@ -614,6 +627,15 @@ export function actualizarResumen(
                 resizer.innerHTML = `<div class="resizer-grip"></div>`;
                 resumenErroresDiv.appendChild(resizer);
             }
+        }
+
+        const btnToggleColapso = document.getElementById("btnToggleCollapseResumen");
+        if (btnToggleColapso && resumenErroresDiv) {
+            btnToggleColapso.addEventListener("click", (e) => {
+                e.stopPropagation();
+                resumenErroresDiv.classList.toggle("colapsado");
+                resumenErroresDiv.dataset.initialized = "true";
+            });
         }
 
         const btnExport = document.getElementById("btnExportarErrores");

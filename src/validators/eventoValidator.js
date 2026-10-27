@@ -15,6 +15,7 @@ import {
 } from "../utils/textUtils.js";
 import {
     extraerTextoPDF,
+    extraerCantidadTablaNuevaEps,
     extraerTextoOCRDePDF,
     extraerFechas,
     tieneTextoCorrupto,
@@ -312,13 +313,14 @@ export async function validarPDF(
             regla = REGLAS_EVENTO[tipo][file.name];
         }
 
+        let textoEncontrado = null;
+
         if (regla) {
             // Convertir debeContener a array si no lo es (compatibilidad)
             const textosABuscar = Array.isArray(regla.debeContener)
                 ? regla.debeContener
                 : [regla.debeContener];
 
-            let textoEncontrado = null;
             let vecesTexto = 0;
 
             // Buscar cualquiera de los textos
@@ -386,155 +388,161 @@ export async function validarPDF(
                     resultados[carpeta].exitosPorServicio["General"].push(msg);
                 }
             }
+        }
 
-            // Si es archivo 3.pdf en Nueva EPS por evento: validar también "Nueva EPS" y estado "ACTIVO"
-            if (file.name === "3.pdf" && convenio === "nueva-eps") {
-                const tieneNuevaEps = textoPlanoNorm.includes("NUEVA EPS") || textoPlanoNorm.includes("NUEVAEPS");
-                if (!tieneNuevaEps) {
-                    resultados[carpeta].errores.push('3.pdf: no contiene el texto "Nueva EPS"');
-                    if (resultados[carpeta].pdfs?.["3.pdf"] !== undefined) {
-                        resultados[carpeta].pdfs["3.pdf"] = "❌";
-                    }
-                } else {
-                    resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
-                    resultados[carpeta].exitosPorServicio["General"].push('3.pdf: contiene "Nueva EPS"');
+        // Si es archivo 3.pdf en Nueva EPS por evento: validar también "Nueva EPS" y estado "ACTIVO"
+        if (file.name === "3.pdf" && convenio === "nueva-eps") {
+            const tieneNuevaEps = textoPlanoNorm.includes("NUEVA EPS") || textoPlanoNorm.includes("NUEVAEPS");
+            if (!tieneNuevaEps) {
+                resultados[carpeta].errores.push('3.pdf: no contiene el texto "Nueva EPS"');
+                if (resultados[carpeta].pdfs?.["3.pdf"] !== undefined) {
+                    resultados[carpeta].pdfs["3.pdf"] = "❌";
                 }
-
-                const tieneInactivo = textoPlanoNorm.includes("INACTIVO") || textoPlanoNorm.includes("INACTIVA");
-                const tieneActivo = textoPlanoNorm.includes("ACTIVO") || textoPlanoNorm.includes("ACTIVA");
-
-                if (tieneInactivo) {
-                    const alertaInactivo = '3.pdf: afiliado se encuentra en estado "INACTIVO"';
-                    if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
-                        resultados[carpeta].alertasPorServicio[servicioUpper] =
-                            resultados[carpeta].alertasPorServicio[servicioUpper] || [];
-                        resultados[carpeta].alertasPorServicio[servicioUpper].push(alertaInactivo);
-                    } else {
-                        resultados[carpeta].alertasPorServicio["General"] =
-                            resultados[carpeta].alertasPorServicio["General"] || [];
-                        resultados[carpeta].alertasPorServicio["General"].push(alertaInactivo);
-                    }
-                } else if (tieneActivo) {
-                    resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
-                    resultados[carpeta].exitosPorServicio["General"].push('3.pdf: estado de afiliado "Activo"');
-                }
+            } else {
+                resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+                resultados[carpeta].exitosPorServicio["General"].push('3.pdf: contiene "Nueva EPS"');
             }
 
-            // Validar páginas para archivo 4.pdf (Firmas) o archivos por servicio número 4
-            const esArchivo4 =
-                file.name === "4.pdf" ||
-                (servicioUpper && numeroArchivo === "4");
+            const tieneInactivo = textoPlanoNorm.includes("INACTIVO") || textoPlanoNorm.includes("INACTIVA");
+            const tieneActivo = textoPlanoNorm.includes("ACTIVO") || textoPlanoNorm.includes("ACTIVA");
 
-            if (esArchivo4) {
-                if (pdf.numPages > 1) {
-                    const msg = `${file.name}: Tiene ${pdf.numPages} páginas (se espera 1)`;
-                    if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
+            if (tieneInactivo) {
+                const alertaInactivo = '3.pdf: afiliado se encuentra en estado "INACTIVO"';
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
+                    resultados[carpeta].alertasPorServicio[servicioUpper] =
+                        resultados[carpeta].alertasPorServicio[servicioUpper] || [];
+                    resultados[carpeta].alertasPorServicio[servicioUpper].push(alertaInactivo);
+                } else {
+                    resultados[carpeta].alertasPorServicio["General"] =
+                        resultados[carpeta].alertasPorServicio["General"] || [];
+                    resultados[carpeta].alertasPorServicio["General"].push(alertaInactivo);
+                }
+            } else if (tieneActivo) {
+                resultados[carpeta].exitosPorServicio["General"] = resultados[carpeta].exitosPorServicio["General"] || [];
+                resultados[carpeta].exitosPorServicio["General"].push('3.pdf: estado de afiliado "Activo"');
+            }
+        }
+
+        // Validar páginas para archivo 4.pdf (Firmas) o archivos por servicio número 4
+        const esArchivo4 =
+            file.name === "4.pdf" ||
+            (servicioUpper && numeroArchivo === "4");
+
+        if (esArchivo4) {
+            if (pdf.numPages > 1) {
+                const msg = `${file.name}: Tiene ${pdf.numPages} páginas (se espera 1)`;
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
+                    resultados[carpeta].alertasPorServicio[
+                        servicioUpper
+                    ].push(msg);
+                } else {
+                    resultados[carpeta].alertasPorServicio["General"] =
                         resultados[carpeta].alertasPorServicio[
-                            servicioUpper
-                        ].push(msg);
-                    } else {
-                        resultados[carpeta].alertasPorServicio["General"] =
-                            resultados[carpeta].alertasPorServicio[
-                            "General"
-                            ] || [];
-                        resultados[carpeta].alertasPorServicio["General"].push(
-                            msg
-                        );
-                    }
+                        "General"
+                        ] || [];
+                    resultados[carpeta].alertasPorServicio["General"].push(
+                        msg
+                    );
+                }
+            } else {
+                const msg = `${file.name}: 1 página (correcto)`;
+                if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
+                    resultados[carpeta].exitosPorServicio[
+                        servicioUpper
+                    ].push(msg);
                 } else {
-                    const msg = `${file.name}: 1 página (correcto)`;
-                    if (servicioUpper && (convenio === "fomag" || convenio === "nueva-eps")) {
+                    resultados[carpeta].exitosPorServicio["General"] =
                         resultados[carpeta].exitosPorServicio[
-                            servicioUpper
-                        ].push(msg);
-                    } else {
-                        resultados[carpeta].exitosPorServicio["General"] =
-                            resultados[carpeta].exitosPorServicio[
-                            "General"
-                            ] || [];
-                        resultados[carpeta].exitosPorServicio["General"].push(
-                            msg
-                        );
-                    }
+                        "General"
+                        ] || [];
+                    resultados[carpeta].exitosPorServicio["General"].push(
+                        msg
+                    );
                 }
             }
+        }
 
-            // Servicio efectivo (por nombre de archivo "2 vm.pdf" o por tipo de carpeta)
-            const servicioEfectivo = servicioUpper || tipo;
+        // Servicio efectivo (por nombre de archivo "2 vm.pdf" o por tipo de carpeta)
+        const servicioEfectivo = servicioUpper || tipo;
 
-            // Para FOMAG y Nueva EPS: extraer la cantidad de autorizaciones
-            let numeroExtraido = null;
-            if (regla.extraerNumero) {
+        // Extraer cantidad de autorizaciones (tabla posicional Nueva EPS o formato texto)
+        const esArchivoAutorizacion =
+            numeroArchivo === "2" ||
+            file.name.toLowerCase().startsWith("2") ||
+            regla?.extraerNumero;
+
+        if (esArchivoAutorizacion) {
+            // 1. Extraer directamente de la 2da fila, 2da columna de la tabla del PDF
+            let numeroExtraido = await extraerCantidadTablaNuevaEps(pdf);
+
+            // 2. Si no se obtuvo posicionalmente, usar extracción textual de contingencia
+            if (numeroExtraido === null) {
                 numeroExtraido = extraerCantidadAutorizacion(
                     texto,
-                    textoEncontrado || regla.debeContener,
+                    textoEncontrado || regla?.debeContener,
                     servicioEfectivo,
                     convenio
                 );
-                if (numeroExtraido !== null) {
-                    resultados[carpeta].numeroFomag = numeroExtraido;
-                    resultados[carpeta].numeroAutorizaciones = numeroExtraido;
-
-                    // Para archivos por servicio (2 tf.pdf, 4 tf.pdf) o archivo 2.pdf genérico
-                    if (
-                        servicioEfectivo &&
-                        (convenio === "fomag" || convenio === "nueva-eps") &&
-                        (numeroArchivo === "2" || numeroArchivo === "4" || file.name === "2.pdf")
-                    ) {
-                        resultados[carpeta].numerosPorServicio =
-                            resultados[carpeta].numerosPorServicio || {};
-                        resultados[carpeta].numerosPorServicio[servicioEfectivo] =
-                            numeroExtraido;
-                    }
-                }
             }
 
-            // COMPARACIÓN AUTORIZACIONES VS EVOLUCIONES
-            // Solo para archivo 5.pdf (donde están las evoluciones)
-            const esArchivo5 = numeroArchivo === "5" || file.name === "5.pdf";
-            if (
-                regla.igualarConFechas &&
-                servicioEfectivo &&
-                (convenio === "fomag" || convenio === "nueva-eps") &&
-                esArchivo5
-            ) {
-                // Obtener cantidad de autorizaciones (del 2.pdf o 4.pdf ya procesado)
-                const cantAuto =
-                    resultados[carpeta].numerosPorServicio?.[servicioEfectivo] ??
-                    resultados[carpeta].numeroAutorizaciones ??
-                    0;
-                // Obtener cantidad de evoluciones (fechas del 5.pdf actual)
-                const fechasComparar = servicioEfectivo === "PSI" ? fechas.slice(0, 1) : fechas;
-                const cantHC = fechasComparar.length;
+            if (numeroExtraido !== null) {
+                resultados[carpeta].numeroFomag = numeroExtraido;
+                resultados[carpeta].numeroAutorizaciones = numeroExtraido;
 
-                const servicioKey = servicioUpper || servicioEfectivo || "General";
-                resultados[carpeta].erroresPorServicio[servicioKey] =
-                    resultados[carpeta].erroresPorServicio[servicioKey] || [];
-                resultados[carpeta].exitosPorServicio[servicioKey] =
-                    resultados[carpeta].exitosPorServicio[servicioKey] || [];
+                if (servicioEfectivo) {
+                    resultados[carpeta].numerosPorServicio =
+                        resultados[carpeta].numerosPorServicio || {};
+                    resultados[carpeta].numerosPorServicio[servicioEfectivo] =
+                        numeroExtraido;
+                }
+            }
+        }
 
-                if (cantAuto !== cantHC) {
-                    if (cantAuto < cantHC) {
-                        // ERROR: autorizaciones < evoluciones
-                        resultados[carpeta].erroresPorServicio[servicioKey].push(
-                            `Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
-                        );
-                    } else {
-                        // ALERTA: autorizaciones > evoluciones
-                        resultados[carpeta].alertasPorServicio =
-                            resultados[carpeta].alertasPorServicio || {};
-                        resultados[carpeta].alertasPorServicio[servicioKey] =
-                            resultados[carpeta].alertasPorServicio[servicioKey] || [];
-                        resultados[carpeta].alertasPorServicio[servicioKey].push(
-                            `Cant autorizaciones ${cantAuto} > cant evoluciones ${cantHC}`
-                        );
-                    }
-                } else if (cantAuto > 0) {
-                    // ÉXITO: coinciden
-                    resultados[carpeta].exitosPorServicio[servicioKey].push(
-                        `Cant autorizaciones ${cantAuto} = cant evoluciones ${cantHC}`
+        // COMPARACIÓN AUTORIZACIONES VS EVOLUCIONES
+        // Solo para archivo 5.pdf (donde están las evoluciones)
+        const esArchivo5 = numeroArchivo === "5" || file.name === "5.pdf";
+        if (
+            regla?.igualarConFechas &&
+            servicioEfectivo &&
+            (convenio === "fomag" || convenio === "nueva-eps") &&
+            esArchivo5
+        ) {
+            // Obtener cantidad de autorizaciones (del 2.pdf o 4.pdf ya procesado)
+            const cantAuto =
+                resultados[carpeta].numerosPorServicio?.[servicioEfectivo] ??
+                resultados[carpeta].numeroAutorizaciones ??
+                0;
+            // Obtener cantidad de evoluciones (fechas del 5.pdf actual)
+            const fechasComparar = servicioEfectivo === "PSI" ? fechas.slice(0, 1) : fechas;
+            const cantHC = fechasComparar.length;
+
+            const servicioKey = servicioUpper || servicioEfectivo || "General";
+            resultados[carpeta].erroresPorServicio[servicioKey] =
+                resultados[carpeta].erroresPorServicio[servicioKey] || [];
+            resultados[carpeta].exitosPorServicio[servicioKey] =
+                resultados[carpeta].exitosPorServicio[servicioKey] || [];
+
+            if (cantAuto !== cantHC) {
+                if (cantAuto < cantHC) {
+                    // ERROR: autorizaciones < evoluciones
+                    resultados[carpeta].erroresPorServicio[servicioKey].push(
+                        `Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
+                    );
+                } else {
+                    // ALERTA: autorizaciones > evoluciones
+                    resultados[carpeta].alertasPorServicio =
+                        resultados[carpeta].alertasPorServicio || {};
+                    resultados[carpeta].alertasPorServicio[servicioKey] =
+                        resultados[carpeta].alertasPorServicio[servicioKey] || [];
+                    resultados[carpeta].alertasPorServicio[servicioKey].push(
+                        `Cant autorizaciones ${cantAuto} > cant evoluciones ${cantHC}`
                     );
                 }
+            } else if (cantAuto > 0) {
+                // ÉXITO: coinciden
+                resultados[carpeta].exitosPorServicio[servicioKey].push(
+                    `Cant autorizaciones ${cantAuto} = cant evoluciones ${cantHC}`
+                );
             }
         }
     } catch (err) {
@@ -571,20 +579,27 @@ export async function procesarArchivo2PaqEvento(
         const texto = await extraerTextoPDF(pdf);
         const textoPlanoNorm = normalizeForSearch(texto);
 
+        const convenioActual = resultados[carpeta]?.convenio || "fomag";
+        const reglasConvenio = obtenerReglasEvento(convenioActual);
+
         for (const servicio of serviciosDetectados) {
             // Verificar si ya tiene número de autorizaciones (de un 2 individual)
             if (resultados[carpeta].numerosPorServicio?.[servicio]) {
                 continue; // Ya tiene datos del archivo individual
             }
 
-            const textoABuscar = obtenerTextoServicioFomag(servicio);
-            if (!textoABuscar) continue;
+            const textosABuscar = [
+                ...(reglasConvenio?.[servicio]?.["2.pdf"]?.debeContener || []),
+                obtenerTextoServicioFomag(servicio),
+            ].filter(Boolean);
+            if (textosABuscar.length === 0) continue;
 
-            const textoNorm = normalizeForSearch(textoABuscar);
-            const encontrado = textoPlanoNorm.includes(textoNorm);
+            const encontrado = textosABuscar.some((t) =>
+                textoPlanoNorm.includes(normalizeForSearch(t))
+            );
 
             if (encontrado) {
-                const numero = extraerCantidadAutorizacion(texto, textoABuscar, servicio, "fomag");
+                const numero = extraerCantidadAutorizacion(texto, textosABuscar, servicio, convenioActual);
                 if (numero !== null) {
                     resultados[carpeta].numerosPorServicio =
                         resultados[carpeta].numerosPorServicio || {};

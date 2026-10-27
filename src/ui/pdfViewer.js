@@ -9,6 +9,8 @@ let currentPdfPage = 1;
 let currentPdfScale = 1.0;
 let currentPdfRotation = 0;
 let isRenderingDocument = false;
+let currentPdfTexto = "";
+let mostrandoTexto = false;
 
 /**
  * Renderiza todas las páginas del PDF con scroll continuo centrado
@@ -319,6 +321,7 @@ export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallba
         const loadingTask = pdfjsLib.getDocument({ url: url });
         currentPdfDoc = await loadingTask.promise;
         await renderizarDocumentoPDF();
+        extraerYMostrarTexto(currentPdfDoc);
     } catch (error) {
         console.error("Error abriendo PDF en modal:", error);
         if (pageInfo) pageInfo.textContent = "Error al abrir";
@@ -331,6 +334,7 @@ export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallba
 export function cerrarModal() {
     const modal = document.getElementById("pdfModal");
     if (modal) modal.style.display = "none";
+    ocultarTextoExtraido();
 
     // Remover badge flotante de fechas al cerrar
     const badge = document.getElementById("pdfFloatingFechasBadge");
@@ -411,6 +415,105 @@ export function inicializarControlesPDF() {
         });
     }
 
+    const btnToggleTexto = document.getElementById("btnPdfToggleTexto");
+    if (btnToggleTexto && !btnToggleTexto._bound) {
+        btnToggleTexto._bound = true;
+        btnToggleTexto.addEventListener("click", () => {
+            mostrandoTexto = !mostrandoTexto;
+            const txtContainer = document.getElementById("pdfTextoContainer");
+            const pagesContainer = document.getElementById("pdfPagesContainer");
+            const searchInput = document.getElementById("pdfTextoBuscarInput");
+            if (txtContainer && pagesContainer) {
+                if (mostrandoTexto) {
+                    txtContainer.classList.remove("oculto");
+                    pagesContainer.classList.add("oculto");
+                    btnToggleTexto.classList.add("active");
+                    if (searchInput) {
+                        setTimeout(() => searchInput.focus(), 80);
+                    }
+                } else {
+                    txtContainer.classList.add("oculto");
+                    pagesContainer.classList.remove("oculto");
+                    btnToggleTexto.classList.remove("active");
+                }
+            }
+        });
+    }
+
+    // Buscador interactivo en texto extraído
+    const searchInput = document.getElementById("pdfTextoBuscarInput");
+    const searchCount = document.getElementById("pdfTextoBuscarCoincidencias");
+    const btnClearSearch = document.getElementById("pdfTextoBuscarLimpiar");
+    const btnPrevSearch = document.getElementById("btnPdfTextoPrev");
+    const btnNextSearch = document.getElementById("btnPdfTextoNext");
+
+    if (searchInput && !searchInput._bound) {
+        searchInput._bound = true;
+        const ejecutarBusqueda = () => {
+            const query = (searchInput.value || "").trim();
+            if (btnClearSearch) {
+                if (query.length > 0) btnClearSearch.classList.remove("oculto");
+                else btnClearSearch.classList.add("oculto");
+            }
+            resaltarTextoExtraido(query);
+        };
+
+        searchInput.addEventListener("input", ejecutarBusqueda);
+        searchInput.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") {
+                searchInput.value = "";
+                ejecutarBusqueda();
+            } else if (e.key === "Enter") {
+                e.preventDefault();
+                if (e.shiftKey) {
+                    navegarCoincidenciaTexto(-1);
+                } else {
+                    navegarCoincidenciaTexto(1);
+                }
+            }
+        });
+    }
+
+    if (btnPrevSearch && !btnPrevSearch._bound) {
+        btnPrevSearch._bound = true;
+        btnPrevSearch.addEventListener("click", () => {
+            navegarCoincidenciaTexto(-1);
+        });
+    }
+
+    if (btnNextSearch && !btnNextSearch._bound) {
+        btnNextSearch._bound = true;
+        btnNextSearch.addEventListener("click", () => {
+            navegarCoincidenciaTexto(1);
+        });
+    }
+
+    if (btnClearSearch && !btnClearSearch._bound) {
+        btnClearSearch._bound = true;
+        btnClearSearch.addEventListener("click", () => {
+            if (searchInput) {
+                searchInput.value = "";
+                searchInput.focus();
+                if (btnClearSearch) btnClearSearch.classList.add("oculto");
+                resaltarTextoExtraido("");
+            }
+        });
+    }
+
+    const btnCopiarTexto = document.getElementById("btnCopiarTextoExtraido");
+    if (btnCopiarTexto && !btnCopiarTexto._bound) {
+        btnCopiarTexto._bound = true;
+        btnCopiarTexto.addEventListener("click", () => {
+            if (currentPdfTexto) {
+                navigator.clipboard.writeText(currentPdfTexto).then(() => {
+                    const original = btnCopiarTexto.textContent;
+                    btnCopiarTexto.textContent = "✔ Copiado!";
+                    setTimeout(() => { btnCopiarTexto.textContent = original; }, 2000);
+                });
+            }
+        });
+    }
+
     // Cerrar modal al hacer clic fuera del contenido
     const modal = document.getElementById("pdfModal");
     if (modal && !modal._boundClose) {
@@ -421,4 +524,141 @@ export function inicializarControlesPDF() {
             }
         });
     }
+}
+
+async function extraerYMostrarTexto(pdf) {
+    currentPdfTexto = "";
+    const pre = document.getElementById("pdfTextoExtraidoPre");
+    const searchInput = document.getElementById("pdfTextoBuscarInput");
+    const searchCount = document.getElementById("pdfTextoBuscarCoincidencias");
+    const btnClear = document.getElementById("pdfTextoBuscarLimpiar");
+    if (searchInput) searchInput.value = "";
+    if (searchCount) searchCount.textContent = "";
+    if (btnClear) btnClear.classList.add("oculto");
+
+    if (!pre) return;
+    pre.textContent = "Extrayendo texto del documento...";
+    try {
+        let textoTotal = "";
+        for (let p = 1; p <= pdf.numPages; p++) {
+            const page = await pdf.getPage(p);
+            const content = await page.getTextContent();
+            const textoPag = content.items.map((it) => it.str).join(" ").trim();
+            textoTotal += `=== PAGINA ${p} ===\n${textoPag}\n\n`;
+            if (page.cleanup) page.cleanup();
+        }
+        currentPdfTexto = textoTotal.trim();
+        pre.textContent = currentPdfTexto || "(No se detectó texto seleccionable o vectorial en este PDF)";
+    } catch (err) {
+        pre.textContent = "Error extrayendo texto: " + err.message;
+    }
+}
+
+let coincidenciaActualIdx = -1;
+let totalCoincidencias = 0;
+
+function navegarCoincidenciaTexto(direccion = 1) {
+    const pre = document.getElementById("pdfTextoExtraidoPre");
+    const countEl = document.getElementById("pdfTextoBuscarCoincidencias");
+    if (!pre) return;
+
+    const marcas = pre.querySelectorAll(".pdf-text-highlight");
+    if (!marcas || marcas.length === 0) return;
+
+    totalCoincidencias = marcas.length;
+
+    // Remover clase de coincidencia activa anterior
+    if (coincidenciaActualIdx >= 0 && coincidenciaActualIdx < marcas.length) {
+        marcas[coincidenciaActualIdx].classList.remove("active-highlight");
+    }
+
+    if (coincidenciaActualIdx === -1) {
+        coincidenciaActualIdx = direccion > 0 ? 0 : marcas.length - 1;
+    } else {
+        coincidenciaActualIdx += direccion;
+        if (coincidenciaActualIdx >= marcas.length) coincidenciaActualIdx = 0;
+        if (coincidenciaActualIdx < 0) coincidenciaActualIdx = marcas.length - 1;
+    }
+
+    const marcaActual = marcas[coincidenciaActualIdx];
+    if (marcaActual) {
+        marcaActual.classList.add("active-highlight");
+        marcaActual.scrollIntoView({ block: "center", behavior: "smooth" });
+        if (countEl) {
+            countEl.textContent = `${coincidenciaActualIdx + 1}/${totalCoincidencias}`;
+        }
+    }
+}
+
+function resaltarTextoExtraido(query) {
+    const pre = document.getElementById("pdfTextoExtraidoPre");
+    const countEl = document.getElementById("pdfTextoBuscarCoincidencias");
+    const navBtns = document.getElementById("pdfTextoNavBtns");
+    coincidenciaActualIdx = -1;
+    totalCoincidencias = 0;
+
+    if (!pre) return;
+
+    if (!query) {
+        pre.textContent = currentPdfTexto || "";
+        if (countEl) countEl.textContent = "";
+        if (navBtns) navBtns.classList.add("oculto");
+        return;
+    }
+
+    if (!currentPdfTexto) {
+        if (countEl) countEl.textContent = "0";
+        if (navBtns) navBtns.classList.add("oculto");
+        return;
+    }
+
+    // Escapar caracteres para RegExp y para HTML
+    const escapeHTML = (str) =>
+        str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+    const escapedRegex = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`(${escapedRegex})`, "gi");
+
+    let matchesCount = 0;
+    const partes = currentPdfTexto.split(regex);
+    const htmlPartes = partes.map((parte) => {
+        if (parte.toLowerCase() === query.toLowerCase()) {
+            matchesCount++;
+            return `<mark class="pdf-text-highlight">${escapeHTML(parte)}</mark>`;
+        }
+        return escapeHTML(parte);
+    });
+
+    pre.innerHTML = htmlPartes.join("");
+    totalCoincidencias = matchesCount;
+
+    if (matchesCount > 0) {
+        if (navBtns) navBtns.classList.remove("oculto");
+        navegarCoincidenciaTexto(1);
+    } else {
+        if (countEl) countEl.textContent = "0";
+        if (navBtns) navBtns.classList.add("oculto");
+    }
+}
+
+function ocultarTextoExtraido() {
+    mostrandoTexto = false;
+    coincidenciaActualIdx = -1;
+    totalCoincidencias = 0;
+    const txtContainer = document.getElementById("pdfTextoContainer");
+    const pagesContainer = document.getElementById("pdfPagesContainer");
+    const btnToggle = document.getElementById("btnPdfToggleTexto");
+    const searchInput = document.getElementById("pdfTextoBuscarInput");
+    const searchCount = document.getElementById("pdfTextoBuscarCoincidencias");
+    const btnClear = document.getElementById("pdfTextoBuscarLimpiar");
+    const navBtns = document.getElementById("pdfTextoNavBtns");
+
+    if (searchInput) searchInput.value = "";
+    if (searchCount) searchCount.textContent = "";
+    if (btnClear) btnClear.classList.add("oculto");
+    if (navBtns) navBtns.classList.add("oculto");
+
+    if (txtContainer) txtContainer.classList.add("oculto");
+    if (pagesContainer) pagesContainer.classList.remove("oculto");
+    if (btnToggle) btnToggle.classList.remove("active");
 }

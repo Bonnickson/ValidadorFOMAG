@@ -236,6 +236,7 @@ function limpiarResultados(limpiarInput = false) {
     if (btnDescargarPDF) btnDescargarPDF.classList.add("oculto");
     btnDescargarMatriz.classList.add("oculto");
     resumenErroresDiv.classList.add("oculto");
+    delete resumenErroresDiv.dataset.initialized;
 
     if (limpiarInput && input) {
         input.value = "";
@@ -323,7 +324,7 @@ function inicializarURLsArchivos(archivos, resultado) {
     };
 
     for (const f of archivos) {
-        if (f.type === "application/pdf") {
+        if ((f.type && f.type.includes("pdf")) || f.name.toLowerCase().endsWith(".pdf")) {
             const url = URL.createObjectURL(f);
             resultado.fileUrls[f.name] = url;
             if (resultado.fileUrls.hasOwnProperty(f.name)) {
@@ -378,8 +379,7 @@ async function procesarValidacionEvento(
         });
     }
 
-    const archivosPDF = archivos
-        .filter((f) => f.type === "application/pdf")
+    const archivosPDF = archivos.filter((f) => (f.type && f.type.includes("pdf")) || f.name.toLowerCase().endsWith(".pdf"))
         .sort((a, b) => {
             const numA = parseInt(a.name.match(/^(\d+)/)?.[1] || "99");
             const numB = parseInt(b.name.match(/^(\d+)/)?.[1] || "99");
@@ -473,6 +473,62 @@ async function procesarValidacionEvento(
             mostrarExitosCheckbox ? mostrarExitosCheckbox.checked : false
         );
     }
+
+    // Reconciliación definitiva de Cant Autorizaciones vs Cant Evoluciones
+    if (convenio === "fomag" || convenio === "nueva-eps") {
+        const serviciosDetectados = new Set();
+        for (const nombre of nombres) {
+            const match = nombre.match(/^([245])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/i);
+            if (match) {
+                let s = match[2].toLowerCase();
+                if (s === "suc") s = "succion";
+                serviciosDetectados.add(s.toUpperCase());
+            }
+        }
+
+        for (const servicio of serviciosDetectados) {
+            const cantAuto = resultados[carpeta].numerosPorServicio?.[servicio] ?? resultados[carpeta].numeroAutorizaciones ?? 0;
+            const fechasServ = resultados[carpeta].fechasPorServicio?.[servicio] || [];
+            const fechasComp = servicio === "PSI" ? fechasServ.slice(0, 1) : fechasServ;
+            const cantHC = fechasComp.length;
+
+            if (resultados[carpeta].erroresPorServicio?.[servicio]) {
+                resultados[carpeta].erroresPorServicio[servicio] = resultados[carpeta].erroresPorServicio[servicio].filter(
+                    (msg) => !msg.startsWith("Cant autorizaciones")
+                );
+            }
+            if (resultados[carpeta].alertasPorServicio?.[servicio]) {
+                resultados[carpeta].alertasPorServicio[servicio] = resultados[carpeta].alertasPorServicio[servicio].filter(
+                    (msg) => !msg.startsWith("Cant autorizaciones")
+                );
+            }
+            if (resultados[carpeta].exitosPorServicio?.[servicio]) {
+                resultados[carpeta].exitosPorServicio[servicio] = resultados[carpeta].exitosPorServicio[servicio].filter(
+                    (msg) => !msg.startsWith("Cant autorizaciones")
+                );
+            }
+
+            if (cantAuto !== cantHC) {
+                if (cantAuto < cantHC) {
+                    resultados[carpeta].erroresPorServicio[servicio] = resultados[carpeta].erroresPorServicio[servicio] || [];
+                    resultados[carpeta].erroresPorServicio[servicio].push(
+                        `Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
+                    );
+                } else {
+                    resultados[carpeta].alertasPorServicio = resultados[carpeta].alertasPorServicio || {};
+                    resultados[carpeta].alertasPorServicio[servicio] = resultados[carpeta].alertasPorServicio[servicio] || [];
+                    resultados[carpeta].alertasPorServicio[servicio].push(
+                        `Cant autorizaciones ${cantAuto} > cant evoluciones ${cantHC}`
+                    );
+                }
+            } else if (cantAuto > 0) {
+                resultados[carpeta].exitosPorServicio[servicio] = resultados[carpeta].exitosPorServicio[servicio] || [];
+                resultados[carpeta].exitosPorServicio[servicio].push(
+                    `Cant autorizaciones ${cantAuto} = cant evoluciones ${cantHC}`
+                );
+            }
+        }
+    }
 }
 
 /**
@@ -486,6 +542,10 @@ async function procesarLoteArchivos(archivosLista) {
         barraProgresoDiv.classList.remove("oculto");
         btnLimpiarTodo.classList.remove("oculto");
         resumenDiv.classList.add("oculto");
+        if (resumenErroresDiv) {
+            resumenErroresDiv.classList.add("oculto");
+            delete resumenErroresDiv.dataset.initialized;
+        }
         filtrosDiv.classList.add("oculto");
 
         const resultados = {};
