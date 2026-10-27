@@ -58,6 +58,33 @@ function detectarColumnasMatriz(rawRows) {
     let colApl2 = -1;
     let colApl3 = -1;
     let colApl4 = -1;
+    const colEvento = {
+        VM: -1,
+        VENF: -1,
+        NUT: -1,
+        FON: -1,
+        TF: -1,
+        TR: -1,
+        TRS: -1,
+        TO: -1,
+        TS: -1,
+        PSI: -1,
+        ENF6: -1,
+        ENF8: -1,
+        ENF12: -1,
+        ENF12N: -1,
+        ENF24: -1,
+        CUID6: -1,
+        CUID8: -1,
+        CUID12: -1,
+        CUID12N: -1,
+        CUID24: -1,
+        MED1: -1,
+        MED2: -1,
+        MED3: -1,
+        MED4: -1,
+        ESP: -1,
+    };
 
     const filasHeaders = [rawRows[0] || [], rawRows[1] || []];
 
@@ -66,6 +93,71 @@ function detectarColumnasMatriz(rawRows) {
         fila.forEach((celda, idx) => {
             const h = normalizarEncabezado(celda);
             if (!h) return;
+
+            // Detección de columnas de Evento (Eve. Médica General, Eve. Turno Enfermería..., etc.)
+            if (h.includes("eve") || h.includes("evento")) {
+                if (h.includes("medica general") || h.includes("medicina general") || h.includes("general 2") || (h.includes("medica") && !h.includes("especial"))) {
+                    if (colEvento.VM === -1) colEvento.VM = idx;
+                } else if (h.includes("enfermeria profesional") || h.includes("profesional 3")) {
+                    if (colEvento.VENF === -1) colEvento.VENF = idx;
+                } else if (h.includes("nutricion")) {
+                    if (colEvento.NUT === -1) colEvento.NUT = idx;
+                } else if (h.includes("fonoaudiologia") || h.includes("fono")) {
+                    if (colEvento.FON === -1) colEvento.FON = idx;
+                } else if (h.includes("terapia fisica") || h.includes("fisica")) {
+                    if (colEvento.TF === -1) colEvento.TF = idx;
+                } else if (h.includes("succion")) {
+                    if (colEvento.TRS === -1) colEvento.TRS = idx;
+                } else if (h.includes("terapia respiratoria") || h.includes("respiratoria")) {
+                    if (colEvento.TR === -1) colEvento.TR = idx;
+                } else if (h.includes("terapia ocupacional") || h.includes("ocupacional")) {
+                    if (colEvento.TO === -1) colEvento.TO = idx;
+                } else if (h.includes("trabajo social") || h.includes("social")) {
+                    if (colEvento.TS === -1) colEvento.TS = idx;
+                } else if (h.includes("psicologia") || h.includes("psico")) {
+                    if (colEvento.PSI === -1) colEvento.PSI = idx;
+                } else if (h.includes("turno enfermeria") || h.includes("enfermeria")) {
+                    if (h.includes("6") || h.includes("seis")) {
+                        if (colEvento.ENF6 === -1) colEvento.ENF6 = idx;
+                    } else if (h.includes("8") || h.includes("ocho")) {
+                        if (colEvento.ENF8 === -1) colEvento.ENF8 = idx;
+                    } else if (h.includes("12") || h.includes("doce")) {
+                        if (h.includes("nocturn")) {
+                            if (colEvento.ENF12N === -1) colEvento.ENF12N = idx;
+                        } else {
+                            if (colEvento.ENF12 === -1) colEvento.ENF12 = idx;
+                        }
+                    } else if (h.includes("24") || h.includes("veinticuatro")) {
+                        if (colEvento.ENF24 === -1) colEvento.ENF24 = idx;
+                    }
+                } else if (h.includes("cuidador")) {
+                    if (h.includes("6") || h.includes("seis")) {
+                        if (colEvento.CUID6 === -1) colEvento.CUID6 = idx;
+                    } else if (h.includes("8") || h.includes("ocho")) {
+                        if (colEvento.CUID8 === -1) colEvento.CUID8 = idx;
+                    } else if (h.includes("12") || h.includes("doce")) {
+                        if (h.includes("nocturn")) {
+                            if (colEvento.CUID12N === -1) colEvento.CUID12N = idx;
+                        } else {
+                            if (colEvento.CUID12 === -1) colEvento.CUID12 = idx;
+                        }
+                    } else if (h.includes("24") || h.includes("veinticuatro")) {
+                        if (colEvento.CUID24 === -1) colEvento.CUID24 = idx;
+                    }
+                } else if (h.includes("aplicacion") || h.includes("medicamento")) {
+                    if (h.includes("1 dosis") || h.includes("1dosis")) {
+                        if (colEvento.MED1 === -1) colEvento.MED1 = idx;
+                    } else if (h.includes("2 dosis") || h.includes("2dosis")) {
+                        if (colEvento.MED2 === -1) colEvento.MED2 = idx;
+                    } else if (h.includes("3 dosis") || h.includes("3dosis")) {
+                        if (colEvento.MED3 === -1) colEvento.MED3 = idx;
+                    } else if (h.includes("4 dosis") || h.includes("4dosis")) {
+                        if (colEvento.MED4 === -1) colEvento.MED4 = idx;
+                    }
+                } else if (h.includes("medicina especial") || h.includes("especial")) {
+                    if (colEvento.ESP === -1) colEvento.ESP = idx;
+                }
+            }
 
             // Cant Paquete Diario
             if (
@@ -117,6 +209,7 @@ function detectarColumnasMatriz(rawRows) {
         APL_2_DOSIS: colApl2,
         APL_3_DOSIS: colApl3,
         APL_4_DOSIS: colApl4,
+        EVENTO_COLS: colEvento,
     };
 }
 
@@ -190,11 +283,103 @@ export function normalizarDocumentoMatriz(doc) {
 }
 
 /**
+ * Obtiene la lista de columnas detectadas con sus etiquetas de encabezado y claves de servicio
+ * para permitir al usuario seleccionar cuáles columnas omitir.
+ * @param {Array<Array<any>>} rawRows
+ * @returns {Array<{ key: string, label: string, colIdx: number, letra: string, defaultOmitir: boolean }>}
+ */
+export function listarColumnasConfigurablesMatriz(rawRows) {
+    if (!rawRows || rawRows.length < 2) return [];
+
+    const headerRow0 = rawRows[0] || [];
+    const headerRow1 = rawRows[1] || [];
+    const maxCols = Math.max(headerRow0.length, headerRow1.length);
+    const columnasDetectadas = detectarColumnasMatriz(rawRows);
+
+    const obtenerLetraCol = (idx) => {
+        let n = idx;
+        let letra = "";
+        while (n >= 0) {
+            letra = String.fromCharCode((n % 26) + 65) + letra;
+            n = Math.floor(n / 26) - 1;
+        }
+        return letra;
+    };
+
+    const columnas = [];
+    // Mapeo inverso de índice a clave de servicio
+    const idxToServicioKey = {};
+    if (columnasDetectadas.VM !== undefined && columnasDetectadas.VM !== -1) idxToServicioKey[columnasDetectadas.VM] = "VM";
+    if (columnasDetectadas.ENF_PROF !== undefined && columnasDetectadas.ENF_PROF !== -1) idxToServicioKey[columnasDetectadas.ENF_PROF] = "VENF";
+    if (columnasDetectadas.ENF_AUX !== undefined && columnasDetectadas.ENF_AUX !== -1) idxToServicioKey[columnasDetectadas.ENF_AUX] = "ENF";
+    if (columnasDetectadas.TF !== undefined && columnasDetectadas.TF !== -1) idxToServicioKey[columnasDetectadas.TF] = "TF";
+    if (columnasDetectadas.TR !== undefined && columnasDetectadas.TR !== -1) idxToServicioKey[columnasDetectadas.TR] = "TR";
+    if (columnasDetectadas.TRS !== undefined && columnasDetectadas.TRS !== -1) idxToServicioKey[columnasDetectadas.TRS] = "TRS";
+    if (columnasDetectadas.FON !== undefined && columnasDetectadas.FON !== -1) idxToServicioKey[columnasDetectadas.FON] = "FON";
+    if (columnasDetectadas.TO !== undefined && columnasDetectadas.TO !== -1) idxToServicioKey[columnasDetectadas.TO] = "TO";
+    if (columnasDetectadas.NUT !== undefined && columnasDetectadas.NUT !== -1) idxToServicioKey[columnasDetectadas.NUT] = "NUT";
+    if (columnasDetectadas.TS !== undefined && columnasDetectadas.TS !== -1) idxToServicioKey[columnasDetectadas.TS] = "TS";
+    if (columnasDetectadas.PSI !== undefined && columnasDetectadas.PSI !== -1) idxToServicioKey[columnasDetectadas.PSI] = "PSI";
+
+    // Columnas base fijas que no deben ser omitidas por ser identificadores principales
+    const colsFijasNoOmitibles = new Set([
+        columnasDetectadas.TIPO_DOC,
+        columnasDetectadas.DOCUMENTO,
+        columnasDetectadas.NOMBRE,
+        columnasDetectadas.PAQUETE,
+        columnasDetectadas.FACTURAR_EVENTO,
+    ]);
+
+    for (let c = 0; c < maxCols; c++) {
+        if (colsFijasNoOmitibles.has(c)) continue;
+
+        const h1 = String(headerRow1[c] ?? "").trim();
+        const h0 = String(headerRow0[c] ?? "").trim();
+        const letra = obtenerLetraCol(c);
+        const label = h1 || h0 || `Columna ${letra}`;
+
+        // Determinar clave asociada
+        let key = idxToServicioKey[c];
+        if (!key) {
+            if (c === 5 || normalizarEncabezado(label).includes("geriatria")) {
+                key = "GERIATRIA";
+            } else if (c === columnasDetectadas.CANT_PAQ_DIARIO) {
+                key = "CANT_PAQ_DIARIO";
+            } else if (c === columnasDetectadas.APL_1_DOSIS) {
+                key = "APL_1";
+            } else if (c === columnasDetectadas.APL_2_DOSIS) {
+                key = "APL_2";
+            } else if (c === columnasDetectadas.APL_3_DOSIS) {
+                key = "APL_3";
+            } else if (c === columnasDetectadas.APL_4_DOSIS) {
+                key = "APL_4";
+            } else {
+                key = `COL_${letra}_${c}`;
+            }
+        }
+
+        columnas.push({
+            key,
+            label,
+            colIdx: c,
+            letra,
+            defaultOmitir: key === "GERIATRIA",
+        });
+    }
+
+    return columnas;
+}
+
+/**
  * Procesa las filas crudas de la matriz a partir de la fila 3 (índice 2)
  * @param {Array<Array<any>>} rawRows 
+ * @param {Set<string>|Array<string>} [columnasOmitidasSet] Claves o índices de columnas a omitir (ej: 'GERIATRIA', 'PSI', 'NUT')
  * @returns {Object} { pacientesPorDoc: Map, pacientesList: Array, diagnosticoGlobal: Object }
  */
-export function parsearMatriz(rawRows) {
+export function parsearMatriz(rawRows, columnasOmitidasSet = null) {
+    const omitidas = new Set(
+        columnasOmitidasSet ? Array.from(columnasOmitidasSet).map(s => String(s).toUpperCase()) : ["GERIATRIA"]
+    );
     const pacientesPorDoc = new Map();
     const pacientesPorDocYPaquete = new Map();
     const pacientesList = [];
@@ -256,30 +441,63 @@ export function parsearMatriz(rawRows) {
             // Si la fila no tiene nombre de paquete, se cataloga para validación por EVENTO (solo tag informativo por ahora)
             paquete = "EVENTO";
             conteoPorPaquete["EVENTO"] = (conteoPorPaquete["EVENTO"] || 0) + 1;
-            alertasFila.push(`Fila ${filaExcel}: Sin paquete asignado en la matriz. Se cataloga como EVENTO.`);
         }
+
+        const esFilaSoloEvento = paquete === "EVENTO" || (!paqueteRaw && esFacturarEventoSi);
 
         // Parsear servicios
         const geriatria = parseCantidad(fila[5]); // Col F: Geriatría
-        const vm = parseCantidad(fila[columnasDetectadas.VM]);
-        const venf = parseCantidad(fila[columnasDetectadas.ENF_PROF]); // Col H: Paq. Enfermería Profesional (VENF)
-        const enf = parseCantidad(fila[columnasDetectadas.ENF_AUX]);   // Col I: Paq. Aux Enfermeria (ENF)
+        const vm = omitidas.has("VM") ? 0 : parseCantidad(fila[columnasDetectadas.VM]);
+        const venf = omitidas.has("VENF") ? 0 : parseCantidad(fila[columnasDetectadas.ENF_PROF]); // Col H: Paq. Enfermería Profesional (VENF)
+        const enf = omitidas.has("ENF") ? 0 : parseCantidad(fila[columnasDetectadas.ENF_AUX]);   // Col I: Paq. Aux Enfermeria (ENF)
 
-        const tf = parseCantidad(fila[columnasDetectadas.TF]);
-        const tr = parseCantidad(fila[columnasDetectadas.TR]);
-        const trs = parseCantidad(fila[columnasDetectadas.TRS]);
-        const fon = parseCantidad(fila[columnasDetectadas.FON]);
-        const to = parseCantidad(fila[columnasDetectadas.TO]);
-        const nut = parseCantidad(fila[columnasDetectadas.NUT]);
-        const ts = parseCantidad(fila[columnasDetectadas.TS]);
-        const psi = parseCantidad(fila[columnasDetectadas.PSI]);
+        const tf = omitidas.has("TF") ? 0 : parseCantidad(fila[columnasDetectadas.TF]);
+        const tr = omitidas.has("TR") ? 0 : parseCantidad(fila[columnasDetectadas.TR]);
+        const trs = omitidas.has("TRS") ? 0 : parseCantidad(fila[columnasDetectadas.TRS]);
+        const fon = omitidas.has("FON") ? 0 : parseCantidad(fila[columnasDetectadas.FON]);
+        const to = omitidas.has("TO") ? 0 : parseCantidad(fila[columnasDetectadas.TO]);
+        const nut = omitidas.has("NUT") ? 0 : parseCantidad(fila[columnasDetectadas.NUT]);
+        const ts = omitidas.has("TS") ? 0 : parseCantidad(fila[columnasDetectadas.TS]);
+        const psi = omitidas.has("PSI") ? 0 : parseCantidad(fila[columnasDetectadas.PSI]);
 
         // Parsear datos de paquete diario y aplicación de medicamento (APL)
-        const cantPaqDiario = columnasDetectadas.CANT_PAQ_DIARIO !== -1 ? parseCantidad(fila[columnasDetectadas.CANT_PAQ_DIARIO]) : 0;
-        const apl1 = columnasDetectadas.APL_1_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_1_DOSIS]) : 0;
-        const apl2 = columnasDetectadas.APL_2_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_2_DOSIS]) : 0;
-        const apl3 = columnasDetectadas.APL_3_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_3_DOSIS]) : 0;
-        const apl4 = columnasDetectadas.APL_4_DOSIS !== -1 ? parseCantidad(fila[columnasDetectadas.APL_4_DOSIS]) : 0;
+        const cantPaqDiario = (omitidas.has("CANT_PAQ_DIARIO") || columnasDetectadas.CANT_PAQ_DIARIO === -1)
+            ? 0
+            : parseCantidad(fila[columnasDetectadas.CANT_PAQ_DIARIO]);
+        const apl1 = (omitidas.has("APL_1") || columnasDetectadas.APL_1_DOSIS === -1) ? 0 : parseCantidad(fila[columnasDetectadas.APL_1_DOSIS]);
+        const apl2 = (omitidas.has("APL_2") || columnasDetectadas.APL_2_DOSIS === -1) ? 0 : parseCantidad(fila[columnasDetectadas.APL_2_DOSIS]);
+        const apl3 = (omitidas.has("APL_3") || columnasDetectadas.APL_3_DOSIS === -1) ? 0 : parseCantidad(fila[columnasDetectadas.APL_3_DOSIS]);
+        const apl4 = (omitidas.has("APL_4") || columnasDetectadas.APL_4_DOSIS === -1) ? 0 : parseCantidad(fila[columnasDetectadas.APL_4_DOSIS]);
+
+        // Parsear columnas de evento
+        const evCols = columnasDetectadas.EVENTO_COLS || {};
+        const serviciosEvento = {
+            VM: evCols.VM !== -1 ? parseCantidad(fila[evCols.VM]) : 0,
+            VENF: evCols.VENF !== -1 ? parseCantidad(fila[evCols.VENF]) : 0,
+            NUT: evCols.NUT !== -1 ? parseCantidad(fila[evCols.NUT]) : 0,
+            FON: evCols.FON !== -1 ? parseCantidad(fila[evCols.FON]) : 0,
+            TF: evCols.TF !== -1 ? parseCantidad(fila[evCols.TF]) : 0,
+            TR: evCols.TR !== -1 ? parseCantidad(fila[evCols.TR]) : 0,
+            TRS: evCols.TRS !== -1 ? parseCantidad(fila[evCols.TRS]) : 0,
+            TO: evCols.TO !== -1 ? parseCantidad(fila[evCols.TO]) : 0,
+            TS: evCols.TS !== -1 ? parseCantidad(fila[evCols.TS]) : 0,
+            PSI: evCols.PSI !== -1 ? parseCantidad(fila[evCols.PSI]) : 0,
+            ENF6: evCols.ENF6 !== -1 ? parseCantidad(fila[evCols.ENF6]) : 0,
+            ENF8: evCols.ENF8 !== -1 ? parseCantidad(fila[evCols.ENF8]) : 0,
+            ENF12: evCols.ENF12 !== -1 ? parseCantidad(fila[evCols.ENF12]) : 0,
+            ENF12N: evCols.ENF12N !== -1 ? parseCantidad(fila[evCols.ENF12N]) : 0,
+            ENF24: evCols.ENF24 !== -1 ? parseCantidad(fila[evCols.ENF24]) : 0,
+            CUID6: evCols.CUID6 !== -1 ? parseCantidad(fila[evCols.CUID6]) : 0,
+            CUID8: evCols.CUID8 !== -1 ? parseCantidad(fila[evCols.CUID8]) : 0,
+            CUID12: evCols.CUID12 !== -1 ? parseCantidad(fila[evCols.CUID12]) : 0,
+            CUID12N: evCols.CUID12N !== -1 ? parseCantidad(fila[evCols.CUID12N]) : 0,
+            CUID24: evCols.CUID24 !== -1 ? parseCantidad(fila[evCols.CUID24]) : 0,
+            MED1: evCols.MED1 !== -1 ? parseCantidad(fila[evCols.MED1]) : 0,
+            MED2: evCols.MED2 !== -1 ? parseCantidad(fila[evCols.MED2]) : 0,
+            MED3: evCols.MED3 !== -1 ? parseCantidad(fila[evCols.MED3]) : 0,
+            MED4: evCols.MED4 !== -1 ? parseCantidad(fila[evCols.MED4]) : 0,
+            ESP: evCols.ESP !== -1 ? parseCantidad(fila[evCols.ESP]) : 0,
+        };
 
         // Capturar todas las celdas de la fila tal cual vienen en el Excel
         const headerRow1 = rawRows[1] || [];
@@ -348,7 +566,9 @@ export function parsearMatriz(rawRows) {
         const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(paquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[paquete]);
         const esPaqueteMedicamento = CODIGOS_APLICACION.has(paquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico);
 
-        if (paquete && paquete !== "EVENTO" && !esPaqueteParametrizado) {
+        if (esFilaSoloEvento) {
+            // En evento no se validan reglas de paquete
+        } else if (paquete && paquete !== "EVENTO" && !esPaqueteParametrizado) {
             // Si el código de paquete no está parametrizado en el sistema, solo indicar ese error y no inventar ni exigir reglas por defecto
             erroresFila.push(`Paquete ${paquete}: Código de paquete no parametrizado en el sistema.`);
         } else if (esPaqueteMedicamento) {
@@ -578,6 +798,7 @@ export function parsearMatriz(rawRows) {
                 nombre: dosisNombre,
             },
             servicios,
+            serviciosEvento,
             totalTerapias,
             celdasFila,
             errores: erroresFila,
@@ -612,6 +833,7 @@ export function parsearMatriz(rawRows) {
         pacientesPorDoc,
         pacientesPorDocYPaquete,
         pacientesList,
+        columnasOmitidas: Array.from(omitidas),
         diagnosticoGlobal: {
             valida: totalConErrores === 0 && pacientesList.length > 0,
             totalFilas: rawRows.length,

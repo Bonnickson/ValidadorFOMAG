@@ -31,6 +31,8 @@ import {
     cerrarTodosLosPopupsYModales,
     inicializarCierrePorEscape,
     solicitarPeriodoPermitidoModal,
+    solicitarColumnasAOmitirModal,
+    solicitarRegistrosAOmitirModal,
 } from "./ui/modalManager.js";
 import { formatearPeriodoLegible } from "./utils/textUtils.js";
 import {
@@ -64,6 +66,7 @@ import { exportarCertificadoPDF } from "./services/pdfExportService.js";
 import {
     leerArchivoMatriz,
     parsearMatriz,
+    listarColumnasConfigurablesMatriz,
     normalizarDocumentoMatriz,
     buscarPacienteEnMatriz,
 } from "./services/matrixService.js";
@@ -80,6 +83,8 @@ const matrizInfoBadge = document.getElementById("matrizInfoBadge");
 const matrizNombreArchivo = document.getElementById("matrizNombreArchivo");
 const matrizStatsTexto = document.getElementById("matrizStatsTexto");
 const btnVerPrevalidacion = document.getElementById("btnVerPrevalidacion");
+const btnOmitirColumnasMatriz = document.getElementById("btnOmitirColumnasMatriz");
+const btnOmitirRegistrosMatriz = document.getElementById("btnOmitirRegistrosMatriz");
 
 const input = document.getElementById("inputFolder");
 const btnAbrirFS = document.getElementById("btnAbrirFS");
@@ -140,6 +145,9 @@ const btnCambiarPeriodoSidebar = document.getElementById("btnCambiarPeriodoSideb
 let todosLosResultados = {};
 let todasLasCarpetas = [];
 let datosMatrizGlobal = null; // Almacena { pacientesPorDoc, pacientesList, diagnosticoGlobal }
+let rawRowsMatrizActual = null; // Filas crudas del Excel para permitir re-parseo dinámico
+let columnasOmitidasMatriz = new Set(["GERIATRIA"]);
+let registrosOmitidosMatriz = new Set(); // Documentos normalizados de pacientes a omitir de la validación
 const appState = {
     estadoFiltroActivo: "",
     erroresSeleccionados: new Set(),
@@ -236,6 +244,9 @@ function limpiarResultados(limpiarInput = false) {
     // Resetear también la matriz cargada si se limpia todo
     if (limpiarInput) {
         datosMatrizGlobal = null;
+        rawRowsMatrizActual = null;
+        columnasOmitidasMatriz = new Set(["GERIATRIA"]);
+        registrosOmitidosMatriz = new Set();
         if (inputMatriz) inputMatriz.value = "";
         if (matrizInfoBadge) matrizInfoBadge.classList.add("oculto");
         if (matrixDropzoneTitle) matrixDropzoneTitle.textContent = "Adjuntar Matriz";
@@ -563,6 +574,7 @@ async function procesarLoteArchivos(archivosLista) {
             resultados[carpetaKey].tipoPaquete = paqueteParaCarpeta;
             resultados[carpetaKey].nroDocumento = nroDocumento;
             resultados[carpetaKey].datosMatriz = datosMatrizPaciente;
+            resultados[carpetaKey].columnasOmitidasMatriz = Array.from(columnasOmitidasMatriz);
             resultados[carpetaKey].auditor = infoCarpeta.auditor || "";
             resultados[carpetaKey].rutaRelativa = infoCarpeta.rutaRelativa || "";
 
@@ -674,6 +686,13 @@ async function procesarLoteArchivos(archivosLista) {
                 const doc = pac.documento;
                 if (!doc) continue;
 
+                // Omitir validación bidireccional si el usuario marcó este paciente/registro para omitir
+                const docNorm = String(doc).trim().toUpperCase();
+                const docSoloNum = docNorm.replace(/\D/g, "");
+                if (registrosOmitidosMatriz.has(docNorm) || (docSoloNum && registrosOmitidosMatriz.has(docSoloNum))) {
+                    continue;
+                }
+
                 const paqueteAsignado = pac.paquete || "SIN_PAQUETE";
                 const claveDocPaq = `${doc}_${paqueteAsignado}`;
 
@@ -697,6 +716,7 @@ async function procesarLoteArchivos(archivosLista) {
                     resultados[carpetaVirtual].tipo = paqueteAsignado;
                     resultados[carpetaVirtual].tipoPaquete = paqueteAsignado;
                     resultados[carpetaVirtual].datosMatriz = pac;
+                    resultados[carpetaVirtual].columnasOmitidasMatriz = Array.from(columnasOmitidasMatriz);
                     resultados[carpetaVirtual].esDesdeMatriz = true;
                     resultados[carpetaVirtual].servicios.add("General");
                     
@@ -767,12 +787,19 @@ if (inputMatriz) {
         if (!file) return;
 
         try {
+            // Al cargar una nueva matriz se limpia todo para arrancar de 0
+            limpiarResultados(false);
+            if (input) input.value = "";
+
             estado.classList.remove("oculto");
             estado.textContent = "📊 Leyendo y analizando matriz...";
 
             const rawRows = await leerArchivoMatriz(file);
-            const resultadoMatriz = parsearMatriz(rawRows);
+            rawRowsMatrizActual = rawRows;
+            columnasOmitidasMatriz = new Set(["GERIATRIA"]);
 
+            const resultadoMatriz = parsearMatriz(rawRows, columnasOmitidasMatriz);
+            resultadoMatriz.nombreArchivo = file.name;
             datosMatrizGlobal = resultadoMatriz;
 
             // Actualizar Badge en la UI
@@ -802,7 +829,15 @@ if (inputMatriz) {
             estado.classList.add("oculto");
 
             // Mostrar modal de prevalidación inmediatamente para diagnóstico
-            mostrarModalPrevalidacionMatriz(datosMatrizGlobal);
+            mostrarModalPrevalidacionMatriz(datosMatrizGlobal, registrosOmitidosMatriz, (doc, omitir) => {
+                const docNorm = String(doc || "").trim().toUpperCase();
+                if (omitir) {
+                    registrosOmitidosMatriz.add(docNorm);
+                } else {
+                    registrosOmitidosMatriz.delete(docNorm);
+                }
+                actualizarBadgeMatrizStats();
+            });
         } catch (err) {
             console.error("Error al leer matriz:", err);
             estado.classList.remove("oculto");
@@ -812,12 +847,113 @@ if (inputMatriz) {
     });
 }
 
+function actualizarBadgeMatrizStats() {
+    if (!matrizInfoBadge || !datosMatrizGlobal) return;
+    const totalP = datosMatrizGlobal.diagnosticoGlobal.totalPacientes;
+    const errP = datosMatrizGlobal.diagnosticoGlobal.pacientesConErrores;
+    const warnP = datosMatrizGlobal.diagnosticoGlobal.pacientesConAlertas || 0;
+    const okP = Math.max(0, totalP - errP - warnP);
+    const omitidosTexto = registrosOmitidosMatriz.size > 0 ? ` • ${registrosOmitidosMatriz.size} filas omitidas` : "";
+    matrizStatsTexto.textContent = warnP > 0
+        ? `${totalP} pacientes (${okP} conformes, ${warnP} con alertas, ${errP} con novedades)${omitidosTexto}`
+        : `${totalP} pacientes (${okP} conformes, ${errP} con novedades)${omitidosTexto}`;
+}
+
 // Botón para reabrir diagnóstico de la matriz
 if (btnVerPrevalidacion) {
     btnVerPrevalidacion.addEventListener("click", () => {
         if (datosMatrizGlobal) {
-            mostrarModalPrevalidacionMatriz(datosMatrizGlobal);
+            mostrarModalPrevalidacionMatriz(datosMatrizGlobal, registrosOmitidosMatriz, (doc, omitir) => {
+                const docNorm = String(doc || "").trim().toUpperCase();
+                if (omitir) {
+                    registrosOmitidosMatriz.add(docNorm);
+                } else {
+                    registrosOmitidosMatriz.delete(docNorm);
+                }
+                actualizarBadgeMatrizStats();
+            });
         }
+    });
+}
+
+// Botón para configurar qué pacientes/filas omitir de la matriz
+if (btnOmitirRegistrosMatriz) {
+    btnOmitirRegistrosMatriz.addEventListener("click", async () => {
+        if (!datosMatrizGlobal || !datosMatrizGlobal.pacientesList) {
+            alert("Primero debes cargar una matriz Excel o CSV.");
+            return;
+        }
+
+        const seleccion = await solicitarRegistrosAOmitirModal(datosMatrizGlobal.pacientesList, registrosOmitidosMatriz);
+        if (seleccion === null) return; // Cancelado
+
+        registrosOmitidosMatriz = seleccion;
+        actualizarBadgeMatrizStats();
+
+        // Si ya había una auditoría cargada, limpiar para re-auditar con las filas omitidas actualizadas
+        if (Object.keys(todosLosResultados).length > 0) {
+            limpiarResultados(false);
+        }
+
+        mostrarModalPrevalidacionMatriz(datosMatrizGlobal, registrosOmitidosMatriz, (doc, omitir) => {
+            const docNorm = String(doc || "").trim().toUpperCase();
+            if (omitir) {
+                registrosOmitidosMatriz.add(docNorm);
+            } else {
+                registrosOmitidosMatriz.delete(docNorm);
+            }
+            actualizarBadgeMatrizStats();
+        });
+    });
+}
+
+// Botón para configurar columnas a omitir de la matriz
+if (btnOmitirColumnasMatriz) {
+    btnOmitirColumnasMatriz.addEventListener("click", async () => {
+        if (!rawRowsMatrizActual) {
+            alert("Primero debes cargar una matriz Excel o CSV.");
+            return;
+        }
+
+        const colsDisponibles = listarColumnasConfigurablesMatriz(rawRowsMatrizActual);
+        const seleccion = await solicitarColumnasAOmitirModal(colsDisponibles, columnasOmitidasMatriz);
+
+        if (seleccion === null) return; // Cancelado
+
+        columnasOmitidasMatriz = seleccion;
+
+        // Re-parsear matriz con las columnas omitidas actualizadas
+        const nombreArch = datosMatrizGlobal?.nombreArchivo || "matriz.xlsx";
+        const nuevoResultado = parsearMatriz(rawRowsMatrizActual, columnasOmitidasMatriz);
+        nuevoResultado.nombreArchivo = nombreArch;
+        datosMatrizGlobal = nuevoResultado;
+
+        // Actualizar Badge en la UI
+        if (matrizInfoBadge) {
+            const totalP = nuevoResultado.diagnosticoGlobal.totalPacientes;
+            const errP = nuevoResultado.diagnosticoGlobal.pacientesConErrores;
+            const warnP = nuevoResultado.diagnosticoGlobal.pacientesConAlertas || 0;
+            const okP = Math.max(0, totalP - errP - warnP);
+            const omitidasTexto = columnasOmitidasMatriz.size > 0 ? ` • ${columnasOmitidasMatriz.size} cols omitidas` : "";
+            matrizStatsTexto.textContent = warnP > 0
+                ? `${totalP} pacientes (${okP} conformes, ${warnP} con alertas, ${errP} con novedades)${omitidasTexto}`
+                : `${totalP} pacientes (${okP} conformes, ${errP} con novedades)${omitidasTexto}`;
+        }
+
+        // Si ya había una auditoría cargada, limpiar para re-auditar con la matriz actualizada
+        if (Object.keys(todosLosResultados).length > 0) {
+            limpiarResultados(false);
+        }
+
+        mostrarModalPrevalidacionMatriz(datosMatrizGlobal, registrosOmitidosMatriz, (doc, omitir) => {
+            const docNorm = String(doc || "").trim().toUpperCase();
+            if (omitir) {
+                registrosOmitidosMatriz.add(docNorm);
+            } else {
+                registrosOmitidosMatriz.delete(docNorm);
+            }
+            actualizarBadgeMatrizStats();
+        });
     });
 }
 

@@ -651,7 +651,22 @@ export function verProgramadoCarpeta(
             "TO": ["TO", "TERAPIA OCUPACIONAL", "OCUPACIONAL"],
             "NUT": ["NUT", "NUTRICION", "NUTRICIÓN"],
             "TS": ["TS", "TRABAJO SOCIAL"],
-            "PSI": ["PSI", "PSICOLOGIA", "PSICOLOGÍA"]
+            "PSI": ["PSI", "PSICOLOGIA", "PSICOLOGÍA"],
+            "ESP": ["ESP", "MEDICINA ESPECIAL", "ESPECIAL", "MEDICO ESPECIALISTA"],
+            "MED1": ["MED1", "APL1", "1 DOSIS", "1DOSIS"],
+            "MED2": ["MED2", "APL2", "2 DOSIS", "2DOSIS"],
+            "MED3": ["MED3", "APL3", "3 DOSIS", "3DOSIS"],
+            "MED4": ["MED4", "APL4", "4 DOSIS", "4DOSIS"],
+            "ENF6": ["ENF6", "ENFERMERIA 6H", "TURNO 6H"],
+            "ENF8": ["ENF8", "ENFERMERIA 8H", "TURNO 8H"],
+            "ENF12": ["ENF12", "ENFERMERIA 12H", "TURNO 12H"],
+            "ENF12N": ["ENF12N", "ENFERMERIA 12HN", "TURNO 12HN"],
+            "ENF24": ["ENF24", "ENFERMERIA 24H", "TURNO 24H"],
+            "CUID6": ["CUID6", "CUIDADOR 6H"],
+            "CUID8": ["CUID8", "CUIDADOR 8H"],
+            "CUID12": ["CUID12", "CUIDADOR 12H"],
+            "CUID12N": ["CUID12N", "CUIDADOR 12HN"],
+            "CUID24": ["CUID24", "CUIDADOR 24H"]
         };
 
         const validNames = exactKeysMap[cod] || [cod];
@@ -744,54 +759,123 @@ export function verProgramadoCarpeta(
             `;
         };
 
-        // 1. Servicios Fijos
-        const grupoFijos = [
-            { id: "VM", label: "Médica (VM)", progCount: s.VM ?? 0 },
-            { id: "VENF", label: "Enf. Profesional (VENF)", progCount: s.VENF ?? 0 },
-            { id: "ENF", label: "Aux. Enfermería (ENF)", progCount: s.ENF ?? 0 },
-        ].map(f => {
-            const cantFechas = calcularSoportesServicio(f.id);
-            const sop4 = buscarSoporte(f.id, "4");
-            const sop5 = buscarSoporte(f.id, "5");
-            const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
-            return { ...f, sopCount, sop4, sop5 };
-        });
+        const esPacienteSoloEvento = pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean(mat.esFacturarEvento)) || (Boolean(mat.esFacturarEvento) && !mat.paquete);
+        const evs = mat.serviciosEvento || {};
 
-        // 2. Terapias
-        const grupoTerapias = [
-            { id: "TF", label: "Terapia Física (TF)", progCount: s.TF || 0 },
-            { id: "TR", label: "Terapia Respiratoria (TR)", progCount: s.TR || 0 },
-            { id: "TRS", label: "T. Resp. Succión (TRS)", progCount: s.TRS || s.SUCCION || 0 },
-            { id: "FON", label: "Fonoaudiología (FON)", progCount: s.FON || 0 },
-            { id: "TO", label: "Terapia Ocupacional (TO)", progCount: s.TO || 0 },
-        ].map(t => {
-            const sopCount = calcularSoportesServicio(t.id);
-            const sop4 = buscarSoporte(t.id, "4");
-            const sop5 = buscarSoporte(t.id, "5");
-            return { ...t, sopCount, sop4, sop5 };
-        });
+        let grupoFijos = [];
+        let grupoTerapias = [];
+        let grupoOtros = [];
+        let grupoAplicacion = [];
 
-        // 3. Otros Servicios
-        const grupoOtros = [
-            { id: "PSI", label: "Psicología (PSI)", progCount: s.PSI || 0 },
-            { id: "TS", label: "Trabajo Social (TS)", progCount: s.TS || 0 },
-            { id: "NUT", label: "Nutrición (NUT)", progCount: s.NUT || 0 },
-        ].map(o => {
-            const sopCount = calcularSoportesServicio(o.id);
-            const sop4 = buscarSoporte(o.id, "4");
-            const sop5 = buscarSoporte(o.id, "5");
-            return { ...o, sopCount, sop4, sop5 };
-        });
+        if (esPacienteSoloEvento) {
+            // Servicios que empiezan por Eve. en la Matriz
+            grupoFijos = [
+                { id: "VM", label: "Eve. Médica General (VM)", progCount: evs.VM || 0 },
+                { id: "VENF", label: "Eve. Enf. Profesional (VENF)", progCount: evs.VENF || 0 },
+                { id: "ENF6", label: "Eve. Turno Enf. 6 Horas", progCount: evs.ENF6 || 0 },
+                { id: "ENF8", label: "Eve. Turno Enf. 8 Horas", progCount: evs.ENF8 || 0 },
+                { id: "ENF12", label: "Eve. Turno Enf. 12 Horas", progCount: evs.ENF12 || 0 },
+                { id: "ENF12N", label: "Eve. Turno Enf. 12H Nocturno", progCount: evs.ENF12N || 0 },
+                { id: "ENF24", label: "Eve. Turno Enf. 24 Horas", progCount: evs.ENF24 || 0 },
+                { id: "CUID6", label: "Eve. Turno Cuidador 6H", progCount: evs.CUID6 || 0 },
+                { id: "CUID8", label: "Eve. Turno Cuidador 8H", progCount: evs.CUID8 || 0 },
+                { id: "CUID12", label: "Eve. Turno Cuidador 12H", progCount: evs.CUID12 || 0 },
+                { id: "CUID12N", label: "Eve. Turno Cuidador 12HN", progCount: evs.CUID12N || 0 },
+                { id: "CUID24", label: "Eve. Turno Cuidador 24H", progCount: evs.CUID24 || 0 },
+            ].map(f => {
+                const cantFechas = calcularSoportesServicio(f.id);
+                const sop4 = buscarSoporte(f.id, "4") || buscarSoporte("ENF", "4");
+                const sop5 = buscarSoporte(f.id, "5") || buscarSoporte("ENF", "5");
+                const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
+                return { ...f, sopCount, sop4, sop5 };
+            });
 
-        // 4. Aplicación de Medicamentos (APL)
-        const grupoAplicacion = [
-            { id: "APL", label: "Aplicación Medicamento (APL)", progCount: s.APL || 0 },
-        ].map(a => {
-            const sopCount = calcularSoportesServicio(a.id);
-            const sop4 = buscarSoporte(a.id, "4");
-            const sop5 = buscarSoporte(a.id, "5");
-            return { ...a, sopCount, sop4, sop5 };
-        });
+            grupoTerapias = [
+                { id: "TF", label: "Eve. Terapia Física (TF)", progCount: evs.TF || 0 },
+                { id: "TR", label: "Eve. Terapia Respiratoria (TR)", progCount: evs.TR || 0 },
+                { id: "TRS", label: "Eve. T. Resp. Succión (TRS)", progCount: evs.TRS || 0 },
+                { id: "FON", label: "Eve. Fonoaudiología (FON)", progCount: evs.FON || 0 },
+                { id: "TO", label: "Eve. Terapia Ocupacional (TO)", progCount: evs.TO || 0 },
+            ].map(t => {
+                const sopCount = calcularSoportesServicio(t.id);
+                const sop4 = buscarSoporte(t.id, "4");
+                const sop5 = buscarSoporte(t.id, "5");
+                return { ...t, sopCount, sop4, sop5 };
+            });
+
+            grupoOtros = [
+                { id: "NUT", label: "Eve. Nutrición (NUT)", progCount: evs.NUT || 0 },
+                { id: "TS", label: "Eve. Trabajo Social (TS)", progCount: evs.TS || 0 },
+                { id: "PSI", label: "Eve. Psicología (PSI)", progCount: evs.PSI || 0 },
+                { id: "ESP", label: "Eve. Medicina Especial (ESP)", progCount: evs.ESP || 0 },
+            ].map(o => {
+                const sopCount = calcularSoportesServicio(o.id);
+                const sop4 = buscarSoporte(o.id, "4");
+                const sop5 = buscarSoporte(o.id, "5");
+                return { ...o, sopCount, sop4, sop5 };
+            });
+
+            grupoAplicacion = [
+                { id: "MED1", label: "Eve. Aplicación Med. 1 Dosis", progCount: evs.MED1 || 0 },
+                { id: "MED2", label: "Eve. Aplicación Med. 2 Dosis", progCount: evs.MED2 || 0 },
+                { id: "MED3", label: "Eve. Aplicación Med. 3 Dosis", progCount: evs.MED3 || 0 },
+                { id: "MED4", label: "Eve. Aplicación Med. 4 Dosis", progCount: evs.MED4 || 0 },
+            ].map(a => {
+                const sopCount = calcularSoportesServicio(a.id) || calcularSoportesServicio("APL");
+                const sop4 = buscarSoporte(a.id, "4") || buscarSoporte("APL", "4");
+                const sop5 = buscarSoporte(a.id, "5") || buscarSoporte("APL", "5");
+                return { ...a, sopCount, sop4, sop5 };
+            });
+        } else {
+            // 1. Servicios Fijos Estándar (Paquetes)
+            grupoFijos = [
+                { id: "VM", label: "Médica (VM)", progCount: s.VM ?? 0 },
+                { id: "VENF", label: "Enf. Profesional (VENF)", progCount: s.VENF ?? 0 },
+                { id: "ENF", label: "Aux. Enfermería (ENF)", progCount: s.ENF ?? 0 },
+            ].map(f => {
+                const cantFechas = calcularSoportesServicio(f.id);
+                const sop4 = buscarSoporte(f.id, "4");
+                const sop5 = buscarSoporte(f.id, "5");
+                const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
+                return { ...f, sopCount, sop4, sop5 };
+            });
+
+            // 2. Terapias
+            grupoTerapias = [
+                { id: "TF", label: "Terapia Física (TF)", progCount: s.TF || 0 },
+                { id: "TR", label: "Terapia Respiratoria (TR)", progCount: s.TR || 0 },
+                { id: "TRS", label: "T. Resp. Succión (TRS)", progCount: s.TRS || s.SUCCION || 0 },
+                { id: "FON", label: "Fonoaudiología (FON)", progCount: s.FON || 0 },
+                { id: "TO", label: "Terapia Ocupacional (TO)", progCount: s.TO || 0 },
+            ].map(t => {
+                const sopCount = calcularSoportesServicio(t.id);
+                const sop4 = buscarSoporte(t.id, "4");
+                const sop5 = buscarSoporte(t.id, "5");
+                return { ...t, sopCount, sop4, sop5 };
+            });
+
+            // 3. Otros Servicios
+            grupoOtros = [
+                { id: "PSI", label: "Psicología (PSI)", progCount: s.PSI || 0 },
+                { id: "TS", label: "Trabajo Social (TS)", progCount: s.TS || 0 },
+                { id: "NUT", label: "Nutrición (NUT)", progCount: s.NUT || 0 },
+            ].map(o => {
+                const sopCount = calcularSoportesServicio(o.id);
+                const sop4 = buscarSoporte(o.id, "4");
+                const sop5 = buscarSoporte(o.id, "5");
+                return { ...o, sopCount, sop4, sop5 };
+            });
+
+            // 4. Aplicación de Medicamentos (APL)
+            grupoAplicacion = [
+                { id: "APL", label: "Aplicación Medicamento (APL)", progCount: s.APL || 0 },
+            ].map(a => {
+                const sopCount = calcularSoportesServicio(a.id);
+                const sop4 = buscarSoporte(a.id, "4");
+                const sop5 = buscarSoporte(a.id, "5");
+                return { ...a, sopCount, sop4, sop5 };
+            });
+        }
 
         const totalTerapiasProg = mat.totalTerapias !== undefined 
             ? mat.totalTerapias 
@@ -986,7 +1070,22 @@ export function mostrarModalProgramadoDetallado(
             "TO": ["TO", "TERAPIA OCUPACIONAL", "OCUPACIONAL"],
             "NUT": ["NUT", "NUTRICION", "NUTRICIÓN"],
             "TS": ["TS", "TRABAJO SOCIAL"],
-            "PSI": ["PSI", "PSICOLOGIA", "PSICOLOGÍA"]
+            "PSI": ["PSI", "PSICOLOGIA", "PSICOLOGÍA"],
+            "ESP": ["ESP", "MEDICINA ESPECIAL", "ESPECIAL", "MEDICO ESPECIALISTA"],
+            "MED1": ["MED1", "APL1", "1 DOSIS", "1DOSIS"],
+            "MED2": ["MED2", "APL2", "2 DOSIS", "2DOSIS"],
+            "MED3": ["MED3", "APL3", "3 DOSIS", "3DOSIS"],
+            "MED4": ["MED4", "APL4", "4 DOSIS", "4DOSIS"],
+            "ENF6": ["ENF6", "ENFERMERIA 6H", "TURNO 6H"],
+            "ENF8": ["ENF8", "ENFERMERIA 8H", "TURNO 8H"],
+            "ENF12": ["ENF12", "ENFERMERIA 12H", "TURNO 12H"],
+            "ENF12N": ["ENF12N", "ENFERMERIA 12HN", "TURNO 12HN"],
+            "ENF24": ["ENF24", "ENFERMERIA 24H", "TURNO 24H"],
+            "CUID6": ["CUID6", "CUIDADOR 6H"],
+            "CUID8": ["CUID8", "CUIDADOR 8H"],
+            "CUID12": ["CUID12", "CUIDADOR 12H"],
+            "CUID12N": ["CUID12N", "CUIDADOR 12HN"],
+            "CUID24": ["CUID24", "CUIDADOR 24H"]
         };
 
         const validNames = exactKeysMap[cod] || [cod];
@@ -1082,54 +1181,123 @@ export function mostrarModalProgramadoDetallado(
         `;
     };
 
-    // 1. Servicios Fijos
-    const grupoFijos = [
-        { id: "VM", label: "Médica (VM)", progCount: s.VM ?? 0 },
-        { id: "VENF", label: "Enf. Profesional (VENF)", progCount: s.VENF ?? 0 },
-        { id: "ENF", label: "Aux. Enfermería (ENF)", progCount: s.ENF ?? 0 },
-    ].map(f => {
-        const cantFechas = calcularSoportesServicio(f.id);
-        const sop4 = buscarSoporte(f.id, "4");
-        const sop5 = buscarSoporte(f.id, "5");
-        const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
-        return { ...f, sopCount, sop4, sop5 };
-    });
+const esPacienteSoloEvento = pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean(mat.esFacturarEvento)) || (Boolean(mat.esFacturarEvento) && !mat.paquete);
+        const evs = mat.serviciosEvento || {};
 
-    // 2. Terapias
-    const grupoTerapias = [
-        { id: "TF", label: "Terapia Física (TF)", progCount: s.TF || 0 },
-        { id: "TR", label: "Terapia Respiratoria (TR)", progCount: s.TR || 0 },
-        { id: "TRS", label: "T. Resp. Succión (TRS)", progCount: s.TRS || s.SUCCION || 0 },
-        { id: "FON", label: "Fonoaudiología (FON)", progCount: s.FON || 0 },
-        { id: "TO", label: "Terapia Ocupacional (TO)", progCount: s.TO || 0 },
-    ].map(t => {
-        const sopCount = calcularSoportesServicio(t.id);
-        const sop4 = buscarSoporte(t.id, "4");
-        const sop5 = buscarSoporte(t.id, "5");
-        return { ...t, sopCount, sop4, sop5 };
-    });
+        let grupoFijos = [];
+        let grupoTerapias = [];
+        let grupoOtros = [];
+        let grupoAplicacion = [];
 
-    // 3. Otros Servicios
-    const grupoOtros = [
-        { id: "PSI", label: "Psicología (PSI)", progCount: s.PSI || 0 },
-        { id: "TS", label: "Trabajo Social (TS)", progCount: s.TS || 0 },
-        { id: "NUT", label: "Nutrición (NUT)", progCount: s.NUT || 0 },
-    ].map(o => {
-        const sopCount = calcularSoportesServicio(o.id);
-        const sop4 = buscarSoporte(o.id, "4");
-        const sop5 = buscarSoporte(o.id, "5");
-        return { ...o, sopCount, sop4, sop5 };
-    });
+        if (esPacienteSoloEvento) {
+            // Servicios que empiezan por Eve. en la Matriz
+            grupoFijos = [
+                { id: "VM", label: "Eve. Médica General (VM)", progCount: evs.VM || 0 },
+                { id: "VENF", label: "Eve. Enf. Profesional (VENF)", progCount: evs.VENF || 0 },
+                { id: "ENF6", label: "Eve. Turno Enf. 6 Horas", progCount: evs.ENF6 || 0 },
+                { id: "ENF8", label: "Eve. Turno Enf. 8 Horas", progCount: evs.ENF8 || 0 },
+                { id: "ENF12", label: "Eve. Turno Enf. 12 Horas", progCount: evs.ENF12 || 0 },
+                { id: "ENF12N", label: "Eve. Turno Enf. 12H Nocturno", progCount: evs.ENF12N || 0 },
+                { id: "ENF24", label: "Eve. Turno Enf. 24 Horas", progCount: evs.ENF24 || 0 },
+                { id: "CUID6", label: "Eve. Turno Cuidador 6H", progCount: evs.CUID6 || 0 },
+                { id: "CUID8", label: "Eve. Turno Cuidador 8H", progCount: evs.CUID8 || 0 },
+                { id: "CUID12", label: "Eve. Turno Cuidador 12H", progCount: evs.CUID12 || 0 },
+                { id: "CUID12N", label: "Eve. Turno Cuidador 12HN", progCount: evs.CUID12N || 0 },
+                { id: "CUID24", label: "Eve. Turno Cuidador 24H", progCount: evs.CUID24 || 0 },
+            ].map(f => {
+                const cantFechas = calcularSoportesServicio(f.id);
+                const sop4 = buscarSoporte(f.id, "4") || buscarSoporte("ENF", "4");
+                const sop5 = buscarSoporte(f.id, "5") || buscarSoporte("ENF", "5");
+                const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
+                return { ...f, sopCount, sop4, sop5 };
+            });
 
-    // 4. Aplicación de Medicamentos (APL)
-    const grupoAplicacion = [
-        { id: "APL", label: "Aplicación Medicamento (APL)", progCount: s.APL || 0 },
-    ].map(a => {
-        const sopCount = calcularSoportesServicio(a.id);
-        const sop4 = buscarSoporte(a.id, "4");
-        const sop5 = buscarSoporte(a.id, "5");
-        return { ...a, sopCount, sop4, sop5 };
-    });
+            grupoTerapias = [
+                { id: "TF", label: "Eve. Terapia Física (TF)", progCount: evs.TF || 0 },
+                { id: "TR", label: "Eve. Terapia Respiratoria (TR)", progCount: evs.TR || 0 },
+                { id: "TRS", label: "Eve. T. Resp. Succión (TRS)", progCount: evs.TRS || 0 },
+                { id: "FON", label: "Eve. Fonoaudiología (FON)", progCount: evs.FON || 0 },
+                { id: "TO", label: "Eve. Terapia Ocupacional (TO)", progCount: evs.TO || 0 },
+            ].map(t => {
+                const sopCount = calcularSoportesServicio(t.id);
+                const sop4 = buscarSoporte(t.id, "4");
+                const sop5 = buscarSoporte(t.id, "5");
+                return { ...t, sopCount, sop4, sop5 };
+            });
+
+            grupoOtros = [
+                { id: "NUT", label: "Eve. Nutrición (NUT)", progCount: evs.NUT || 0 },
+                { id: "TS", label: "Eve. Trabajo Social (TS)", progCount: evs.TS || 0 },
+                { id: "PSI", label: "Eve. Psicología (PSI)", progCount: evs.PSI || 0 },
+                { id: "ESP", label: "Eve. Medicina Especial (ESP)", progCount: evs.ESP || 0 },
+            ].map(o => {
+                const sopCount = calcularSoportesServicio(o.id);
+                const sop4 = buscarSoporte(o.id, "4");
+                const sop5 = buscarSoporte(o.id, "5");
+                return { ...o, sopCount, sop4, sop5 };
+            });
+
+            grupoAplicacion = [
+                { id: "MED1", label: "Eve. Aplicación Med. 1 Dosis", progCount: evs.MED1 || 0 },
+                { id: "MED2", label: "Eve. Aplicación Med. 2 Dosis", progCount: evs.MED2 || 0 },
+                { id: "MED3", label: "Eve. Aplicación Med. 3 Dosis", progCount: evs.MED3 || 0 },
+                { id: "MED4", label: "Eve. Aplicación Med. 4 Dosis", progCount: evs.MED4 || 0 },
+            ].map(a => {
+                const sopCount = calcularSoportesServicio(a.id) || calcularSoportesServicio("APL");
+                const sop4 = buscarSoporte(a.id, "4") || buscarSoporte("APL", "4");
+                const sop5 = buscarSoporte(a.id, "5") || buscarSoporte("APL", "5");
+                return { ...a, sopCount, sop4, sop5 };
+            });
+        } else {
+            // 1. Servicios Fijos Estándar (Paquetes)
+            grupoFijos = [
+                { id: "VM", label: "Médica (VM)", progCount: s.VM ?? 0 },
+                { id: "VENF", label: "Enf. Profesional (VENF)", progCount: s.VENF ?? 0 },
+                { id: "ENF", label: "Aux. Enfermería (ENF)", progCount: s.ENF ?? 0 },
+            ].map(f => {
+                const cantFechas = calcularSoportesServicio(f.id);
+                const sop4 = buscarSoporte(f.id, "4");
+                const sop5 = buscarSoporte(f.id, "5");
+                const sopCount = cantFechas > 0 ? cantFechas : ((sop4 || sop5) ? 1 : 0);
+                return { ...f, sopCount, sop4, sop5 };
+            });
+
+            // 2. Terapias
+            grupoTerapias = [
+                { id: "TF", label: "Terapia Física (TF)", progCount: s.TF || 0 },
+                { id: "TR", label: "Terapia Respiratoria (TR)", progCount: s.TR || 0 },
+                { id: "TRS", label: "T. Resp. Succión (TRS)", progCount: s.TRS || s.SUCCION || 0 },
+                { id: "FON", label: "Fonoaudiología (FON)", progCount: s.FON || 0 },
+                { id: "TO", label: "Terapia Ocupacional (TO)", progCount: s.TO || 0 },
+            ].map(t => {
+                const sopCount = calcularSoportesServicio(t.id);
+                const sop4 = buscarSoporte(t.id, "4");
+                const sop5 = buscarSoporte(t.id, "5");
+                return { ...t, sopCount, sop4, sop5 };
+            });
+
+            // 3. Otros Servicios
+            grupoOtros = [
+                { id: "PSI", label: "Psicología (PSI)", progCount: s.PSI || 0 },
+                { id: "TS", label: "Trabajo Social (TS)", progCount: s.TS || 0 },
+                { id: "NUT", label: "Nutrición (NUT)", progCount: s.NUT || 0 },
+            ].map(o => {
+                const sopCount = calcularSoportesServicio(o.id);
+                const sop4 = buscarSoporte(o.id, "4");
+                const sop5 = buscarSoporte(o.id, "5");
+                return { ...o, sopCount, sop4, sop5 };
+            });
+
+            // 4. Aplicación de Medicamentos (APL)
+            grupoAplicacion = [
+                { id: "APL", label: "Aplicación Medicamento (APL)", progCount: s.APL || 0 },
+            ].map(a => {
+                const sopCount = calcularSoportesServicio(a.id);
+                const sop4 = buscarSoporte(a.id, "4");
+                const sop5 = buscarSoporte(a.id, "5");
+                return { ...a, sopCount, sop4, sop5 };
+            });
+        }
 
     const totalTerapiasProg = mat.totalTerapias !== undefined 
         ? mat.totalTerapias 
@@ -1244,10 +1412,14 @@ export function mostrarModalFilaMatriz(p) {
     backdrop.style.zIndex = "2150";
 
     const s = p.servicios || {};
+    const evs = p.serviciosEvento || {};
     const pkgCode = p.paquete || p.paqueteRaw || "—";
     const pkgCls = p.paquete ? `pkg-${p.paquete.toLowerCase()}` : "";
     const pkgInfo = PAQUETES_INFO[pkgCode] || {};
-    const pkgNombreFull = pkgInfo.descripcion || pkgInfo.nombre || (p.paqueteRaw || "Sin paquete asignado");
+    const esPacienteEvento = pkgCode === "EVENTO" || (!p.paqueteRaw && Boolean(p.esFacturarEvento)) || (Boolean(p.esFacturarEvento) && !p.paquete);
+    const pkgNombreFull = esPacienteEvento
+        ? "Facturar por Evento"
+        : (pkgInfo.descripcion || pkgInfo.nombre || (p.paqueteRaw || "Sin paquete asignado"));
     const reglaTer = REGLAS_TERAPIAS_PAQUETES[pkgCode] || {};
     const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(pkgCode);
 
@@ -1283,91 +1455,150 @@ export function mostrarModalFilaMatriz(p) {
         `;
     };
 
-    // 1. Servicios Fijos
-    const vmReq = (pkgCode === "CPF1107" || pkgCode === "CPF1225") ? 2 : 1;
-    const vmVal = s.VM ?? 0;
-    const probVM = vmVal < vmReq ? "falta" : (vmVal > vmReq ? "excede" : "");
-    const detVM = vmVal < vmReq ? `Falta (requiere ${vmReq})` : (vmVal > vmReq ? `Excede (requiere ${vmReq})` : "");
+    let filasFijosHTML = "";
+    let filasTerapiasHTML = "";
+    let filasOtrosHTML = "";
+    let filasAplHTML = "";
+    let totalTer = 0;
+    let terHeaderStyle = "";
+    let terHeaderExtra = "";
 
-    let probVENF = "", detVENF = "";
-    let probENF = "", detENF = "";
-    const venfVal = s.VENF ?? 0;
-    const enfVal = s.ENF ?? 0;
+    if (esPacienteEvento) {
+        // En paciente por Evento se muestran los servicios que en la matriz empiezan por Eve.
+        filasFijosHTML = [
+            renderFilaCompacta("Eve. Médica General (VM)", evs.VM || 0),
+            renderFilaCompacta("Eve. Enfermería Profesional (VENF)", evs.VENF || 0),
+            renderFilaCompacta("Eve. Turno Enfermería 6 Horas", evs.ENF6 || 0),
+            renderFilaCompacta("Eve. Turno Enfermería 8 Horas", evs.ENF8 || 0),
+            renderFilaCompacta("Eve. Turno Enfermería 12 Horas", evs.ENF12 || 0),
+            renderFilaCompacta("Eve. Turno Enfermería 12 Horas Nocturno", evs.ENF12N || 0),
+            renderFilaCompacta("Eve. Turno Enfermería 24 Horas", evs.ENF24 || 0),
+            renderFilaCompacta("Eve. Turno Cuidador 6 Horas", evs.CUID6 || 0),
+            renderFilaCompacta("Eve. Turno Cuidador 8 Horas", evs.CUID8 || 0),
+            renderFilaCompacta("Eve. Turno Cuidador 12 Horas", evs.CUID12 || 0),
+            renderFilaCompacta("Eve. Turno Cuidador 12 Horas Nocturno", evs.CUID12N || 0),
+            renderFilaCompacta("Eve. Turno Cuidador 24 Horas", evs.CUID24 || 0),
+        ].join("");
 
-    if (esPaqueteAplicacion) {
-        if (enfVal < 1) { probENF = "falta"; detENF = "Falta (requiere 1)"; }
-        else if (enfVal > 1) { probENF = "excede"; detENF = "Excede (requiere 1)"; }
-        if (venfVal > 0) { probVENF = "no_aplica"; detVENF = "No aplica (requiere 0)"; }
-    } else if (pkgCode === "CPF1107") {
-        if (enfVal < 4) { probENF = "falta"; detENF = "Falta (requiere 4)"; }
-        else if (enfVal > 4) { probENF = "excede"; detENF = "Excede (requiere 4)"; }
-        if (venfVal > 0) { probVENF = "excede"; detVENF = "No aplica (requiere 0)"; }
-    } else if (pkgCode.startsWith("CPF")) {
-        if (venfVal === 0 && enfVal === 0) {
-            probVENF = "falta"; detVENF = "Falta (requiere VENF o ENF)";
-            probENF = "falta"; detENF = "Falta (requiere VENF o ENF)";
-        } else {
-            if (venfVal > 1) { probVENF = "excede"; detVENF = "Excede (requiere 1)"; }
-            if (enfVal > 1) { probENF = "excede"; detENF = "Excede (requiere 1)"; }
-        }
-    }
+        const terapiasEvento = [
+            { label: "Eve. Terapia Física (TF)", val: evs.TF || 0 },
+            { label: "Eve. Terapia Respiratoria (TR)", val: evs.TR || 0 },
+            { label: "Eve. T. Resp. Succión (TRS)", val: evs.TRS || 0 },
+            { label: "Eve. Fonoaudiología (FON)", val: evs.FON || 0 },
+            { label: "Eve. Terapia Ocupacional (TO)", val: evs.TO || 0 },
+        ];
+        totalTer = terapiasEvento.reduce((acc, t) => acc + (t.val || 0), 0);
+        filasTerapiasHTML = terapiasEvento.map(t => renderFilaCompacta(t.label, t.val)).join("");
 
-    const filasFijosHTML = [
-        renderFilaCompacta("Médica (VM)", vmVal, probVM, detVM),
-        renderFilaCompacta("Enf. Profesional (VENF)", venfVal, probVENF, detVENF),
-        renderFilaCompacta("Aux. Enfermería (ENF)", enfVal, probENF, detENF),
-    ].join("");
+        filasOtrosHTML = [
+            renderFilaCompacta("Eve. Nutrición (NUT)", evs.NUT || 0),
+            renderFilaCompacta("Eve. Trabajo Social (TS)", evs.TS || 0),
+            renderFilaCompacta("Eve. Psicología (PSI)", evs.PSI || 0),
+            renderFilaCompacta("Eve. Medicina Especial (ESP)", evs.ESP || 0),
+        ].join("");
 
-    // 2. Terapias
-    const getProbTerapia = (val) => {
-        const v = val || 0;
-        if (v > 0 && (esPaqueteAplicacion || reglaTer.permiteTerapias === false)) {
-            return { prob: "no_aplica", det: "No aplica (requiere 0)" };
-        }
-        return { prob: "", det: "" };
-    };
+        filasAplHTML = [
+            renderFilaCompacta("Eve. Aplicación Medicamento 1 Dosis", evs.MED1 || 0),
+            renderFilaCompacta("Eve. Aplicación Medicamento 2 Dosis", evs.MED2 || 0),
+            renderFilaCompacta("Eve. Aplicación Medicamento 3 Dosis", evs.MED3 || 0),
+            renderFilaCompacta("Eve. Aplicación Medicamento 4 Dosis", evs.MED4 || 0),
+        ].join("");
+    } else {
+        // 1. Servicios Fijos Estándar (Paquetes)
+        const vmReq = (pkgCode === "CPF1107" || pkgCode === "CPF1225") ? 2 : 1;
+        const vmVal = s.VM ?? 0;
+        const probVM = vmVal < vmReq ? "falta" : (vmVal > vmReq ? "excede" : "");
+        const detVM = vmVal < vmReq ? `Falta (requiere ${vmReq})` : (vmVal > vmReq ? `Excede (requiere ${vmReq})` : "");
 
-    const filasTerapiasHTML = [
-        { label: "Terapia Física (TF)", val: s.TF || 0 },
-        { label: "Terapia Respiratoria (TR)", val: s.TR || 0 },
-        { label: "T. Resp. Succión (TRS)", val: s.TRS || 0 },
-        { label: "Fonoaudiología (FON)", val: s.FON || 0 },
-        { label: "Terapia Ocupacional (TO)", val: s.TO || 0 },
-    ].map(t => {
-        const { prob, det } = getProbTerapia(t.val);
-        return renderFilaCompacta(t.label, t.val, prob, det);
-    }).join("");
+        let probVENF = "", detVENF = "";
+        let probENF = "", detENF = "";
+        const venfVal = s.VENF ?? 0;
+        const enfVal = s.ENF ?? 0;
 
-    // 3. Otros Servicios
-    const cantOptActivos = [s.PSI || 0, s.NUT || 0, s.TS || 0].filter((c) => c > 0).length;
-    const getProbOpt = (val) => {
-        const v = val || 0;
         if (esPaqueteAplicacion) {
-            return v > 0 ? { prob: "no_aplica", det: "No aplica (requiere 0)" } : { prob: "", det: "" };
+            if (enfVal < 1) { probENF = "falta"; detENF = "Falta (requiere 1)"; }
+            else if (enfVal > 1) { probENF = "excede"; detENF = "Excede (requiere 1)"; }
+            if (venfVal > 0) { probVENF = "no_aplica"; detVENF = "No aplica (requiere 0)"; }
+        } else if (pkgCode === "CPF1107") {
+            if (enfVal < 4) { probENF = "falta"; detENF = "Falta (requiere 4)"; }
+            else if (enfVal > 4) { probENF = "excede"; detENF = "Excede (requiere 4)"; }
+            if (venfVal > 0) { probVENF = "excede"; detVENF = "No aplica (requiere 0)"; }
+        } else if (pkgCode.startsWith("CPF")) {
+            if (venfVal === 0 && enfVal === 0) {
+                probVENF = "falta"; detVENF = "Falta (requiere VENF o ENF)";
+                probENF = "falta"; detENF = "Falta (requiere VENF o ENF)";
+            } else {
+                if (venfVal > 1) { probVENF = "excede"; detVENF = "Excede (requiere 1)"; }
+                if (enfVal > 1) { probENF = "excede"; detENF = "Excede (requiere 1)"; }
+            }
         }
-        if (cantOptActivos === 0) {
-            return { prob: "falta", det: "Falta (requiere 1 opcional)" };
+
+        filasFijosHTML = [
+            renderFilaCompacta("Médica (VM)", vmVal, probVM, detVM),
+            renderFilaCompacta("Enf. Profesional (VENF)", venfVal, probVENF, detVENF),
+            renderFilaCompacta("Aux. Enfermería (ENF)", enfVal, probENF, detENF),
+        ].join("");
+
+        // 2. Terapias
+        const getProbTerapia = (val) => {
+            const v = val || 0;
+            if (v > 0 && (esPaqueteAplicacion || reglaTer.permiteTerapias === false)) {
+                return { prob: "no_aplica", det: "No aplica (requiere 0)" };
+            }
+            return { prob: "", det: "" };
+        };
+
+        filasTerapiasHTML = [
+            { label: "Terapia Física (TF)", val: s.TF || 0 },
+            { label: "Terapia Respiratoria (TR)", val: s.TR || 0 },
+            { label: "T. Resp. Succión (TRS)", val: s.TRS || 0 },
+            { label: "Fonoaudiología (FON)", val: s.FON || 0 },
+            { label: "Terapia Ocupacional (TO)", val: s.TO || 0 },
+        ].map(t => {
+            const { prob, det } = getProbTerapia(t.val);
+            return renderFilaCompacta(t.label, t.val, prob, det);
+        }).join("");
+
+        totalTer = p.totalTerapias ?? 0;
+        if (reglaTer.min !== undefined && totalTer < reglaTer.min) {
+            terHeaderStyle = "color:#dc2626; border-color:rgba(239,68,68,0.35); background:rgba(239,68,68,0.08);";
+            terHeaderExtra = ` · Falta (mín. ${reglaTer.min})`;
+        } else if (reglaTer.max !== undefined && totalTer > reglaTer.max) {
+            terHeaderStyle = "color:#d97706; border-color:rgba(245,158,11,0.35); background:rgba(245,158,11,0.1);";
+            terHeaderExtra = ` · Excede (máx. ${reglaTer.max})`;
         }
-        if (v === 0) return { prob: "", det: "" };
-        if (v > 1) return { prob: "excede", det: "Excede (requiere 1)" };
-        if (cantOptActivos > 1) return { prob: "excede", det: "Excede (solo 1 opcional)" };
-        return { prob: "", det: "" };
-    };
 
-    const filasOtrosHTML = [
-        { label: "Psicología (PSI)", val: s.PSI || 0 },
-        { label: "Trabajo Social (TS)", val: s.TS || 0 },
-        { label: "Nutrición (NUT)", val: s.NUT || 0 },
-    ].map(o => {
-        const { prob, det } = getProbOpt(o.val);
-        return renderFilaCompacta(o.label, o.val, prob, det);
-    }).join("");
+        // 3. Otros Servicios
+        const cantOptActivos = [s.PSI || 0, s.NUT || 0, s.TS || 0].filter((c) => c > 0).length;
+        const getProbOpt = (val) => {
+            const v = val || 0;
+            if (esPaqueteAplicacion) {
+                return v > 0 ? { prob: "no_aplica", det: "No aplica (requiere 0)" } : { prob: "", det: "" };
+            }
+            if (cantOptActivos === 0) {
+                return { prob: "falta", det: "Falta (requiere 1 opcional)" };
+            }
+            if (v === 0) return { prob: "", det: "" };
+            if (v > 1) return { prob: "excede", det: "Excede (requiere 1)" };
+            if (cantOptActivos > 1) return { prob: "excede", det: "Excede (solo 1 opcional)" };
+            return { prob: "", det: "" };
+        };
 
-    // 4. Aplicación de Medicamentos
-    const aplVal = s.APL || 0;
-    const probAPL = (esPaqueteAplicacion && aplVal === 0) ? "falta" : "";
-    const detAPL = (esPaqueteAplicacion && aplVal === 0) ? "Falta dosis" : "";
-    const filasAplHTML = renderFilaCompacta("Aplicación Medicamento (APL)", aplVal, probAPL, detAPL);
+        filasOtrosHTML = [
+            { label: "Psicología (PSI)", val: s.PSI || 0 },
+            { label: "Trabajo Social (TS)", val: s.TS || 0 },
+            { label: "Nutrición (NUT)", val: s.NUT || 0 },
+        ].map(o => {
+            const { prob, det } = getProbOpt(o.val);
+            return renderFilaCompacta(o.label, o.val, prob, det);
+        }).join("");
+
+        // 4. Aplicación de Medicamentos
+        const aplVal = s.APL || 0;
+        const probAPL = (esPaqueteAplicacion && aplVal === 0) ? "falta" : "";
+        const detAPL = (esPaqueteAplicacion && aplVal === 0) ? "Falta dosis" : "";
+        filasAplHTML = renderFilaCompacta("Aplicación Medicamento (APL)", aplVal, probAPL, detAPL);
+    }
 
     // Avisos al pie (mismo formato compacto que Soportes)
     let avisosHTML = "";
@@ -1381,19 +1612,8 @@ export function mostrarModalFilaMatriz(p) {
         `;
     }
 
-    const totalTer = p.totalTerapias ?? 0;
-    let terHeaderStyle = "";
-    let terHeaderExtra = "";
-    if (reglaTer.min !== undefined && totalTer < reglaTer.min) {
-        terHeaderStyle = "color:#dc2626; border-color:rgba(239,68,68,0.35); background:rgba(239,68,68,0.08);";
-        terHeaderExtra = ` · Falta (mín. ${reglaTer.min})`;
-    } else if (reglaTer.max !== undefined && totalTer > reglaTer.max) {
-        terHeaderStyle = "color:#d97706; border-color:rgba(245,158,11,0.35); background:rgba(245,158,11,0.1);";
-        terHeaderExtra = ` · Excede (máx. ${reglaTer.max})`;
-    }
-
     backdrop.innerHTML = `
-        <div class="programado-floating-popover floating-popover-movable" style="position:relative; width: 410px; min-width: 320px; max-width: 94vw; max-height: 88vh; resize:none;" onclick="event.stopPropagation()">
+        <div class="programado-floating-popover floating-popover-movable" style="position:relative; width: 420px; min-width: 320px; max-width: 94vw; max-height: 88vh; resize:none;" onclick="event.stopPropagation()">
             <div class="popover-header">
                 <span class="popover-header-title">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:12px;height:12px;display:inline-block;vertical-align:middle;margin-right:4px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
@@ -1415,10 +1635,10 @@ export function mostrarModalFilaMatriz(p) {
                     <div style="font-size:10px; font-weight:600; color:var(--text-secondary); line-height:1.3; margin-top:2px;">${pkgNombreFull}</div>
                 </div>
 
-                <!-- Servicios Fijos -->
+                <!-- Servicios Fijos / Turnos -->
                 <div class="prog-category-block">
                     <div class="prog-category-header">
-                        <span>Servicios Fijos</span>
+                        <span>${esPacienteEvento ? 'Servicios Médicos / Turnos' : 'Servicios Fijos'}</span>
                     </div>
                     <div class="prog-category-list">
                         ${filasFijosHTML}
@@ -1468,7 +1688,7 @@ export function mostrarModalFilaMatriz(p) {
 /**
  * Modal de diagnóstico y prevalidación de matriz
  */
-export function mostrarModalPrevalidacionMatriz(matrizData) {
+export function mostrarModalPrevalidacionMatriz(matrizData, registrosOmitidosSet = new Set(), onToggleOmitirRegistro = null) {
     if (!matrizData) return;
 
     const prev = document.getElementById("modalPrevalidacionMatrizActivo");
@@ -1531,18 +1751,25 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
 
     // Filas de la tabla
     const filasHTML = pacientesList.map((p, idx) => {
+        const docUpper = String(p.documento || "").trim().toUpperCase();
+        const estaOmitido = registrosOmitidosSet && registrosOmitidosSet.has(docUpper);
+
         const tieneErroresFila = p.errores && p.errores.length > 0;
         const tieneAlertasFila = p.alertas && p.alertas.length > 0;
 
-        const estadoBadge = tieneErroresFila
-            ? `<span class="preval-badge error">✗ Novedades</span>`
-            : (tieneAlertasFila
-                ? `<span class="preval-badge warning">⚠️ Alerta</span>`
-                : `<span class="preval-badge success">✔ Conforme</span>`);
+        const estadoBadge = estaOmitido
+            ? `<span class="preval-badge omitido">🚫 Omitido</span>`
+            : (tieneErroresFila
+                ? `<span class="preval-badge error">✗ Novedades</span>`
+                : (tieneAlertasFila
+                    ? `<span class="preval-badge warning">⚠️ Alerta</span>`
+                    : `<span class="preval-badge success">✔ Conforme</span>`));
 
-        const estadoDataAttr = tieneErroresFila
-            ? "novedades"
-            : (tieneAlertasFila ? "alerta" : "conforme");
+        const estadoDataAttr = estaOmitido
+            ? "omitido"
+            : (tieneErroresFila
+                ? "novedades"
+                : (tieneAlertasFila ? "alerta" : "conforme"));
 
         const renderDiagItem = (texto, tipo) => {
             const icon = tipo === "error" ? "✕" : "⚠️";
@@ -1588,11 +1815,44 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             .map((t) => `<span class="pserv-ter-item ${t.cant === 0 ? 'zero' : 'active'}">${t.nombre}:${t.cant}</span>`)
             .join(" ");
 
+        const esFilaSoloEvento = pkgCode === "EVENTO" || (!p.paqueteRaw && p.esFacturarEvento) || (p.esFacturarEvento && !p.paquete);
+
+        const nombresEventoCompleto = {
+            VM: "Valoración medicina general",
+            ENF6: "Turno enfermería 6 horas",
+            ENF8: "Turno enfermería 8 horas",
+            ENF12: "Turno enfermería 12 horas",
+            ENF12N: "Turno enfermería 12 horas nocturno",
+            ENF24: "Turno enfermería 24 horas",
+            CUID6: "Turno cuidador 6 horas",
+            CUID8: "Turno cuidador 8 horas",
+            CUID12: "Turno cuidador 12 horas",
+            CUID12N: "Turno cuidador 12 horas nocturno",
+            CUID24: "Turno cuidador 24 horas",
+            TS: "Trabajo social",
+        };
+
         const esPaqueteAplicacion = ["CPF1102", "CPF1103", "CPF1104"].includes(pkgCode);
 
         // Grupos ordenados, alineados en columnas consistentes con semáforo según reglas reales del paquete
         let chipsServicios = "";
-        if (esPaqueteAplicacion) {
+        if (esFilaSoloEvento) {
+            const evs = p.serviciosEvento || {};
+            const evItems = Object.entries(evs)
+                .filter(([_, cant]) => cant > 0)
+                .map(([cod, cant]) => `<span class="pserv-tag active" style="font-weight:700;" title="${nombresEventoCompleto[cod] || cod}: ${cant}">${cod}: ${cant}</span>`);
+
+            chipsServicios = `
+                <div class="preval-services-structured">
+                    <div class="pserv-group">
+                        <span class="pserv-group-title">Eventos:</span>
+                        <div class="pserv-group-items">
+                            ${evItems.length > 0 ? evItems.join(" ") : '<span class="pserv-tag dim">Sin eventos asignados</span>'}
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else if (esPaqueteAplicacion) {
             const clsVM = s.VM < 1 ? "err" : (s.VM === 1 ? "ok" : "warn");
             const clsENF = s.ENF < 1 ? "err" : (s.ENF === 1 ? "ok" : "warn");
             const clsVENF = s.VENF > 0 ? "err" : "dim";
@@ -1711,9 +1971,25 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
             `;
         }
 
+        let packageDescText = (PAQUETES_INFO[pkgCode] || {}).descripcion || "No parametrizado";
+        let packageDescStyle = PAQUETES_INFO[pkgCode] ? "" : "color:#ef4444; font-weight:700;";
+        if (esFilaSoloEvento) {
+            const evs = p.serviciosEvento || {};
+            const listaNombres = Object.entries(evs)
+                .filter(([_, cant]) => cant > 0)
+                .map(([cod]) => nombresEventoCompleto[cod] || cod);
+            packageDescText = listaNombres.length > 0 ? listaNombres.join("<br>") : "Validación por Evento";
+            packageDescStyle = "white-space: normal; line-height: 1.25; color: var(--text-secondary);";
+        }
+
         return `
-            <tr class="preval-row ${tieneErroresFila ? 'con-novedad' : (tieneAlertasFila ? 'con-alerta' : 'valido')}" data-row-idx="${idx}" data-doc="${p.documento || ''}" data-nombre="${(p.nombre || '').toLowerCase()}" data-pkg="${pkgCode}" data-estado="${estadoDataAttr}">
-                <td class="preval-cell-num">${p.filaExcel}</td>
+            <tr class="preval-row ${estaOmitido ? 'fila-omitida' : (tieneErroresFila ? 'con-novedad' : (tieneAlertasFila ? 'con-alerta' : 'valido'))}" data-row-idx="${idx}" data-doc="${p.documento || ''}" data-nombre="${(p.nombre || '').toLowerCase()}" data-pkg="${pkgCode}" data-estado="${estadoDataAttr}">
+                <td class="preval-cell-num" style="text-align:center;">
+                    <label style="cursor:pointer; display:flex; flex-direction:column; align-items:center; gap:2px;" title="${estaOmitido ? 'Registro omitido (click para incluir)' : 'Click para omitir este registro'}">
+                        <input type="checkbox" class="btn-preval-omitir-chk" data-doc="${p.documento || ''}" ${estaOmitido ? 'checked' : ''} />
+                        <span style="font-size:10px; color:var(--text-muted);">${p.filaExcel}</span>
+                    </label>
+                </td>
                 <td class="preval-cell-doc">
                     <div class="doc-badge-stack preval-doc-badge-stack">
                         <div class="doc-package-container">
@@ -1723,7 +1999,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:10px;height:10px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
                                 </button>
                             </div>
-                            <div class="doc-package-desc" style="${PAQUETES_INFO[pkgCode] ? '' : 'color:#ef4444; font-weight:700;'}" title="${(PAQUETES_INFO[pkgCode] || {}).nombre || 'No parametrizado'}">${(PAQUETES_INFO[pkgCode] || {}).descripcion || 'No parametrizado'}</div>
+                            <div class="doc-package-desc" style="${packageDescStyle}" title="${(PAQUETES_INFO[pkgCode] || {}).nombre || 'No parametrizado'}">${packageDescText}</div>
                         </div>
                         <div class="doc-title-line preval-doc-title-line">
                             <span class="carpeta-nombre preval-doc-num">${p.documento || "—"}</span>
@@ -1766,6 +2042,9 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                 </div>
 
                 <div class="preval-header-actions">
+                    <button type="button" class="btn-subtle-pill" id="btnModalOmitirRegistros" title="Seleccionar qué pacientes o filas ignorar para no auditarlos">
+                        🚫 Omitir Filas (${registrosOmitidosSet ? registrosOmitidosSet.size : 0})
+                    </button>
                     <div class="preval-kpi-compact">
                         <span class="kpi-tag total">Total <strong>${totalPacientes}</strong></span>
                         <span class="kpi-tag ok">Conformes <strong>${conformes}</strong></span>
@@ -1804,6 +2083,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                             <button type="button" class="btn-segmented" data-filter-estado="conforme">Conformes</button>
                             <button type="button" class="btn-segmented" data-filter-estado="alerta">Alertas</button>
                             <button type="button" class="btn-segmented" data-filter-estado="novedades">Con novedades</button>
+                            <button type="button" class="btn-segmented" data-filter-estado="omitido">Omitidos</button>
                         </div>
                     </div>
                 </div>
@@ -1813,7 +2093,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                     <table class="preval-table" id="prevalTableMain">
                         <thead>
                             <tr>
-                                <th style="width: 44px; text-align: center;">Fila</th>
+                                <th style="width: 52px; text-align: center;" title="Casilla para omitir fila de la validación">Omitir</th>
                                 <th style="width: 220px;">Documento / Paquete</th>
                                 <th style="width: 195px;">Nombre Paciente</th>
                                 <th style="width: 300px;">Programación Matriz</th>
@@ -2034,6 +2314,65 @@ export function mostrarModalPrevalidacionMatriz(matrizData) {
                 btnCopiarTodas.style.color = "";
                 btnCopiarTodas.style.borderColor = "";
             }, 2000);
+        });
+    }
+    // Manejo del checkbox individual de omitir en cada fila
+    if (tbody) {
+        tbody.addEventListener("change", (e) => {
+            const chk = e.target.closest(".btn-preval-omitir-chk");
+            if (!chk) return;
+            const doc = chk.getAttribute("data-doc");
+            const tr = chk.closest("tr.preval-row");
+            const omitir = chk.checked;
+
+            if (tr) {
+                if (omitir) {
+                    tr.classList.add("fila-omitida");
+                    tr.setAttribute("data-estado", "omitido");
+                    const badge = tr.querySelector(".preval-cell-status");
+                    if (badge) badge.innerHTML = `<span class="preval-badge omitido">🚫 Omitido</span>`;
+                } else {
+                    tr.classList.remove("fila-omitida");
+                    const tieneErrores = tr.classList.contains("con-novedad");
+                    const tieneAlertas = tr.classList.contains("con-alerta");
+                    const estadoRecov = tieneErrores ? "novedades" : (tieneAlertas ? "alerta" : "conforme");
+                    tr.setAttribute("data-estado", estadoRecov);
+                    const badge = tr.querySelector(".preval-cell-status");
+                    if (badge) {
+                        badge.innerHTML = tieneErrores
+                            ? `<span class="preval-badge error">✗ Novedades</span>`
+                            : (tieneAlertas
+                                ? `<span class="preval-badge warning">⚠️ Alerta</span>`
+                                : `<span class="preval-badge success">✔ Conforme</span>`);
+                    }
+                }
+            }
+
+            if (typeof onToggleOmitirRegistro === "function") {
+                onToggleOmitirRegistro(doc, omitir);
+            }
+        });
+    }
+
+    // Botón para abrir modal de gestión masiva de registros omitidos
+    const btnModalOmitirReg = document.getElementById("btnModalOmitirRegistros");
+    if (btnModalOmitirReg) {
+        btnModalOmitirReg.addEventListener("click", () => {
+            const btnSidebar = document.getElementById("btnOmitirRegistrosMatriz");
+            if (btnSidebar) {
+                btnSidebar.click();
+            }
+        });
+    }
+
+    // Botón para abrir configuración de omitir columnas desde el modal de prevalidación
+    const btnModalOmitirColumnas = document.getElementById("btnModalOmitirColumnas");
+    if (btnModalOmitirColumnas) {
+        btnModalOmitirColumnas.addEventListener("click", () => {
+            const btnSidebar = document.getElementById("btnOmitirColumnasMatriz");
+            if (btnSidebar) {
+                btnSidebar.click();
+            }
         });
     }
 }
@@ -2340,6 +2679,352 @@ export function solicitarPeriodoPermitidoModal({ desdeInicial = "", hastaInicial
                 e.preventDefault();
                 cerrarConRespuesta(null);
             }
+        });
+    });
+}
+
+/**
+ * Modal para seleccionar y gestionar qué registros o filas de la matriz omitir en la validación
+ */
+export function solicitarRegistrosAOmitirModal(pacientesList, registrosOmitidosActuales = new Set()) {
+    return new Promise((resolve) => {
+        const modalId = "modalOmitirRegistrosMatrizActivo";
+        const prev = document.getElementById(modalId);
+        if (prev) prev.remove();
+
+        const omitidosIniciales = new Set(
+            Array.from(registrosOmitidosActuales || []).map((d) => String(d).trim().toUpperCase())
+        );
+
+        const overlay = document.createElement("div");
+        overlay.id = modalId;
+        overlay.className = "modal-rules-backdrop";
+        overlay.style.zIndex = "2150";
+
+        const lista = pacientesList || [];
+
+        // Generar items individuales de pacientes
+        const itemsHTML = lista
+            .map((p, idx) => {
+                const docNorm = String(p.documento || "").trim().toUpperCase();
+                const isChecked = omitidosIniciales.has(docNorm);
+                const pkg = p.paquete || p.paqueteRaw || "SIN_PAQUETE";
+                return `
+                    <label class="registro-omit-item ${isChecked ? 'active' : ''}" data-doc="${docNorm}" data-idx="${idx}">
+                        <input type="checkbox" class="registro-omit-chk" value="${docNorm}" ${isChecked ? 'checked' : ''} />
+                        <span class="col-omit-letra" style="font-size:10px;">#${p.filaExcel}</span>
+                        <div class="col-omit-info">
+                            <span class="col-omit-title">${p.documento || 'Sin doc'} - ${pkg}</span>
+                            <span class="col-omit-sub">${p.nombre || 'Sin nombre'}</span>
+                        </div>
+                        <span class="col-omit-status-badge">${isChecked ? 'Omitido' : 'Activo'}</span>
+                    </label>
+                `;
+            })
+            .join("");
+
+        overlay.innerHTML = `
+            <div class="modal-rules-card modal-omit-card" onclick="event.stopPropagation()">
+                <div class="modal-rules-header">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="preval-header-icon" style="background:rgba(239, 68, 68, 0.12); color:#ef4444;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        </div>
+                        <div>
+                            <h3 class="modal-rules-title">Omitir Registros / Filas de la Matriz</h3>
+                            <p class="modal-rules-subtitle">Selecciona los pacientes que deseas ignorar para no exigir soportes ni auditarlos</p>
+                        </div>
+                    </div>
+                    <button type="button" class="modal-rules-close" id="btnCerrarModalOmitirReg">&times;</button>
+                </div>
+
+                <div class="modal-omit-body">
+                    <div class="modal-omit-hint">
+                        💡 <strong>¿Cómo funciona?</strong> Los pacientes o filas que marques como <em>Omitidos</em> no generarán faltantes de soporte en la auditoría y quedarán excluidos de los reportes.
+                    </div>
+
+                    <!-- Pegado en lote de cédulas -->
+                    <div style="display:flex; flex-direction:column; gap:6px;">
+                        <label style="font-size:11px; font-weight:700; color:var(--text-secondary); text-transform:uppercase;">
+                            Pegar Cédulas a Omitir en Lote (separadas por coma, espacio o salto de línea):
+                        </label>
+                        <div style="display:flex; gap:8px;">
+                            <textarea id="txtLoteCedulasOmitir" class="registro-omit-textarea" placeholder="Ejemplo: 10234567, 79456123, 52987412"></textarea>
+                        </div>
+                        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                            <button type="button" class="btn-subtle-pill" id="btnProcesarLoteCedulas">Procesar Cédulas Pegadas</button>
+                            <button type="button" class="btn-subtle-pill" id="btnDesmarcarTodosReg">Limpiar Omitidos (Incluir Todos)</button>
+                            <span style="font-size:11px; color:var(--text-muted);" id="lblFeedbackLote"></span>
+                        </div>
+                    </div>
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:6px;">
+                        <span style="font-size:11.5px; font-weight:700; color:var(--text-pure);">Listado de Pacientes en Matriz:</span>
+                        <input type="text" id="filtroRegistroOmitirInput" class="studio-search-input" placeholder="Buscar cédula o nombre..." style="width:200px;" />
+                    </div>
+
+                    <div class="modal-omit-grid" id="contenedorOmitirRegistros" style="max-height: 260px;">
+                        ${itemsHTML}
+                    </div>
+                </div>
+
+                <div class="modal-rules-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="omit-selected-count" id="lblConteoRegistrosOmitidos">0 registros omitidos</span>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-studio btn-studio-ghost" id="btnCancelarOmitirReg">Cancelar</button>
+                        <button type="button" class="btn-studio btn-studio-primary" id="btnAplicarOmitirReg">Guardar y Aplicar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const contenedor = overlay.querySelector("#contenedorOmitirRegistros");
+        const lblConteo = overlay.querySelector("#lblConteoRegistrosOmitidos");
+        const filtroInput = overlay.querySelector("#filtroRegistroOmitirInput");
+        const txtLote = overlay.querySelector("#txtLoteCedulasOmitir");
+        const btnProcesarLote = overlay.querySelector("#btnProcesarLoteCedulas");
+        const lblFeedback = overlay.querySelector("#lblFeedbackLote");
+
+        const actualizarConteoYEstilos = () => {
+            const checks = overlay.querySelectorAll(".registro-omit-chk");
+            let count = 0;
+            checks.forEach((chk) => {
+                const parent = chk.closest(".registro-omit-item");
+                const badge = parent?.querySelector(".col-omit-status-badge");
+                if (chk.checked) {
+                    count++;
+                    parent?.classList.add("active");
+                    if (badge) badge.textContent = "Omitido";
+                } else {
+                    parent?.classList.remove("active");
+                    if (badge) badge.textContent = "Activo";
+                }
+            });
+            if (lblConteo) {
+                lblConteo.textContent = `${count} registro(s) omitido(s)`;
+            }
+        };
+
+        actualizarConteoYEstilos();
+
+        // Cambio individual
+        contenedor?.addEventListener("change", (e) => {
+            if (e.target && e.target.classList.contains("registro-omit-chk")) {
+                actualizarConteoYEstilos();
+            }
+        });
+
+        // Filtrado en tiempo real
+        filtroInput?.addEventListener("input", (e) => {
+            const q = (e.target.value || "").toLowerCase().trim();
+            const items = overlay.querySelectorAll(".registro-omit-item");
+            items.forEach((it) => {
+                const text = it.textContent.toLowerCase();
+                it.style.display = !q || text.includes(q) ? "" : "none";
+            });
+        });
+
+        // Procesar lote pegado
+        btnProcesarLote?.addEventListener("click", () => {
+            const raw = txtLote?.value || "";
+            const matches = raw.match(/\w+/g) || [];
+            if (matches.length === 0) {
+                if (lblFeedback) lblFeedback.textContent = "No se encontraron cédulas para procesar.";
+                return;
+            }
+            const setDocs = new Set(matches.map((m) => m.toUpperCase().trim()));
+            let marcados = 0;
+            overlay.querySelectorAll(".registro-omit-chk").forEach((chk) => {
+                const val = (chk.value || "").toUpperCase().trim();
+                const numOnly = val.replace(/\D/g, "");
+                if (setDocs.has(val) || (numOnly && setDocs.has(numOnly))) {
+                    chk.checked = true;
+                    marcados++;
+                }
+            });
+            actualizarConteoYEstilos();
+            if (lblFeedback) {
+                lblFeedback.textContent = `✓ ${marcados} paciente(s) marcados como omitidos`;
+                lblFeedback.style.color = "#10b981";
+            }
+        });
+
+        // Desmarcar todos
+        overlay.querySelector("#btnDesmarcarTodosReg")?.addEventListener("click", () => {
+            overlay.querySelectorAll(".registro-omit-chk").forEach((chk) => (chk.checked = false));
+            actualizarConteoYEstilos();
+            if (lblFeedback) lblFeedback.textContent = "Todos los pacientes están activos.";
+        });
+
+        const cerrarCon = (resultado) => {
+            overlay.remove();
+            resolve(resultado);
+        };
+
+        overlay.querySelector("#btnCerrarModalOmitirReg")?.addEventListener("click", () => cerrarCon(null));
+        overlay.querySelector("#btnCancelarOmitirReg")?.addEventListener("click", () => cerrarCon(null));
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) cerrarCon(null);
+        });
+
+        overlay.querySelector("#btnAplicarOmitirReg")?.addEventListener("click", () => {
+            const checks = overlay.querySelectorAll(".registro-omit-chk:checked");
+            const seleccionadas = new Set(Array.from(checks).map((chk) => chk.value.toUpperCase().trim()));
+            cerrarCon(seleccionadas);
+        });
+    });
+}
+
+/**
+ * Abre un modal interactivo para seleccionar qué columnas omitir de la matriz
+ * @param {Array<Object>} columnasDisponibles [{ key, label, colIdx, letra, defaultOmitir }]
+ * @param {Set<string>|Array<string>} columnasOmitidasActuales Claves actualmente omitidas
+ * @returns {Promise<Set<string>|null>} Devuelve Set con las claves a omitir o null si canceló
+ */
+export function solicitarColumnasAOmitirModal(columnasDisponibles, columnasOmitidasActuales = []) {
+    return new Promise((resolve) => {
+        const modalId = "modalOmitirColumnasMatrizActivo";
+        const prev = document.getElementById(modalId);
+        if (prev) prev.remove();
+
+        const omitidasIniciales = new Set(
+            (columnasOmitidasActuales || []).map((k) => String(k).toUpperCase())
+        );
+
+        const overlay = document.createElement("div");
+        overlay.id = modalId;
+        overlay.className = "modal-rules-backdrop";
+        overlay.style.zIndex = "2150";
+
+        // Generar items de columnas
+        const itemsHTML = columnasDisponibles
+            .map((col) => {
+                const isChecked = omitidasIniciales.has(col.key.toUpperCase());
+                return `
+                    <label class="col-omit-item ${isChecked ? 'active' : ''}" data-key="${col.key}">
+                        <input type="checkbox" class="col-omit-checkbox" value="${col.key}" ${isChecked ? 'checked' : ''} />
+                        <span class="col-omit-letra">${col.letra}</span>
+                        <div class="col-omit-info">
+                            <span class="col-omit-title">${col.label}</span>
+                            <span class="col-omit-sub">Clave: ${col.key}</span>
+                        </div>
+                        <span class="col-omit-status-badge">${isChecked ? 'Omitida' : 'Incluida'}</span>
+                    </label>
+                `;
+            })
+            .join("");
+
+        overlay.innerHTML = `
+            <div class="modal-rules-card modal-omit-card" onclick="event.stopPropagation()">
+                <div class="modal-rules-header">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="preval-header-icon" style="background:rgba(239, 68, 68, 0.12); color:#ef4444;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:17px;height:17px;"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        </div>
+                        <div>
+                            <h3 class="modal-rules-title">Omitir Columnas de la Matriz</h3>
+                            <p class="modal-rules-subtitle">Selecciona los servicios o columnas que deseas ignorar en la auditoría</p>
+                        </div>
+                    </div>
+                    <button type="button" class="modal-rules-close" id="btnCerrarModalOmitir">&times;</button>
+                </div>
+
+                <div class="modal-omit-body">
+                    <div class="modal-omit-hint">
+                        💡 <strong>¿Cómo funciona?</strong> Las columnas que marques como <em>Omitidas</em> no generarán alertas de soporte faltante ni causarán inconsistencias en las reglas de cantidad de la matriz.
+                    </div>
+
+                    <div class="modal-omit-actions-bar">
+                        <button type="button" class="btn-subtle-pill" id="btnMarcarTodasOmitir">Omitir Todas</button>
+                        <button type="button" class="btn-subtle-pill" id="btnRestablecerOmitir">Restablecer (Solo Geriatría)</button>
+                        <button type="button" class="btn-subtle-pill" id="btnDesmarcarTodasOmitir">Incluir Todas</button>
+                    </div>
+
+                    <div class="modal-omit-grid" id="contenedorOmitirColumnas">
+                        ${itemsHTML}
+                    </div>
+                </div>
+
+                <div class="modal-rules-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="omit-selected-count" id="lblConteoOmitidas">0 columnas omitidas</span>
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn-studio btn-studio-ghost" id="btnCancelarOmitir">Cancelar</button>
+                        <button type="button" class="btn-studio btn-studio-primary" id="btnAplicarOmitir">Aplicar y Revalidar</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const contenedor = overlay.querySelector("#contenedorOmitirColumnas");
+        const lblConteo = overlay.querySelector("#lblConteoOmitidas");
+
+        const actualizarConteoYEstilos = () => {
+            const checks = overlay.querySelectorAll(".col-omit-checkbox");
+            let count = 0;
+            checks.forEach((chk) => {
+                const parent = chk.closest(".col-omit-item");
+                const badge = parent?.querySelector(".col-omit-status-badge");
+                if (chk.checked) {
+                    count++;
+                    parent?.classList.add("active");
+                    if (badge) badge.textContent = "Omitida";
+                } else {
+                    parent?.classList.remove("active");
+                    if (badge) badge.textContent = "Incluida";
+                }
+            });
+            if (lblConteo) {
+                lblConteo.textContent = `${count} columna(s) omitida(s)`;
+            }
+        };
+
+        actualizarConteoYEstilos();
+
+        // Cambio en checkboxes
+        contenedor?.addEventListener("change", (e) => {
+            if (e.target && e.target.classList.contains("col-omit-checkbox")) {
+                actualizarConteoYEstilos();
+            }
+        });
+
+        // Botones de lote
+        overlay.querySelector("#btnMarcarTodasOmitir")?.addEventListener("click", () => {
+            overlay.querySelectorAll(".col-omit-checkbox").forEach((chk) => (chk.checked = true));
+            actualizarConteoYEstilos();
+        });
+
+        overlay.querySelector("#btnDesmarcarTodasOmitir")?.addEventListener("click", () => {
+            overlay.querySelectorAll(".col-omit-checkbox").forEach((chk) => (chk.checked = false));
+            actualizarConteoYEstilos();
+        });
+
+        overlay.querySelector("#btnRestablecerOmitir")?.addEventListener("click", () => {
+            columnasDisponibles.forEach((col) => {
+                const chk = overlay.querySelector(`.col-omit-checkbox[value="${col.key}"]`);
+                if (chk) chk.checked = col.defaultOmitir;
+            });
+            actualizarConteoYEstilos();
+        });
+
+        const cerrarCon = (resultado) => {
+            overlay.remove();
+            resolve(resultado);
+        };
+
+        overlay.querySelector("#btnCerrarModalOmitir")?.addEventListener("click", () => cerrarCon(null));
+        overlay.querySelector("#btnCancelarOmitir")?.addEventListener("click", () => cerrarCon(null));
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) cerrarCon(null);
+        });
+
+        overlay.querySelector("#btnAplicarOmitir")?.addEventListener("click", () => {
+            const checks = overlay.querySelectorAll(".col-omit-checkbox:checked");
+            const seleccionadas = new Set(Array.from(checks).map((chk) => chk.value.toUpperCase()));
+            cerrarCon(seleccionadas);
         });
     });
 }

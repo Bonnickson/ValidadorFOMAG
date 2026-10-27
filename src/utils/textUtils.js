@@ -16,7 +16,7 @@ export function escapeRegExp(string) {
  */
 export function normalizeForSearch(s) {
     if (!s) return "";
-    return s
+    return String(s)
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "")
         .replace(/[\u2010-\u2015\u2212\uFE58\uFE63\uFF0D\-_:.,;–—]/g, " ")
@@ -67,6 +67,96 @@ export function extraerNumeroDelTexto(texto, buscar) {
     const match = textoNorm.match(regex);
 
     return match ? parseInt(match[1]) : null;
+}
+
+/**
+ * Extrae la cantidad autorizada desde un documento de soporte (archivo 2.pdf / 2 servicio.pdf)
+ * Soporta formato FOMAG y formato tabla Nueva EPS (Código | Cantidad | Descripción Servicio).
+ *
+ * @param {string} texto - Texto completo extraído del PDF
+ * @param {string|string[]} [textoEncontrado] - Texto o lista de textos del servicio a contrastar
+ * @param {string} [servicio] - Sigla del servicio (VM, TF, ENF, etc.)
+ * @param {string} [convenio] - Convenio ("nueva-eps", "fomag", etc.)
+ * @returns {number|null} Cantidad autorizada detectada o null
+ */
+export function extraerCantidadAutorizacion(texto, textoEncontrado = "", servicio = "", convenio = "") {
+    if (!texto) return null;
+    const textoNorm = normalizeForSearch(texto);
+    const textosBuscar = Array.isArray(textoEncontrado)
+        ? textoEncontrado
+        : (textoEncontrado ? [textoEncontrado] : []);
+
+    // 1. Si tenemos textos buscados del servicio (ej: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL"):
+    for (const target of textosBuscar) {
+        if (!target) continue;
+        const targetNorm = normalizeForSearch(target);
+
+        // A) Número ANTES de la descripción (formato tabla Nueva EPS: "890101 1 ATENCION..." o "1 ATENCION...")
+        // Permite opcionalmente un código CUPS (5 a 7 dígitos) antes del número de cantidad
+        const regexAntes = new RegExp(`(?:\\b\\d{5,7}\\s+)?\\b(\\d{1,3})\\s+${escapeRegExp(targetNorm)}`, "i");
+        const matchAntes = textoNorm.match(regexAntes);
+        if (matchAntes) {
+            const val = parseInt(matchAntes[1], 10);
+            if (val > 0) return val;
+        }
+
+        // B) Número DESPUÉS de la descripción (formato FOMAG: "ATENCION... 1")
+        const regexDespues = new RegExp(`${escapeRegExp(targetNorm)}\\s+(\\d{1,3})\\b`, "i");
+        const matchDespues = textoNorm.match(regexDespues);
+        if (matchDespues) {
+            const val = parseInt(matchDespues[1], 10);
+            if (val > 0) return val;
+        }
+    }
+
+    // 2. Búsqueda contextual alrededor de la columna o palabra "CANTIDAD" (autorizaciones Nueva EPS)
+    const idxCantidad = textoNorm.indexOf("CANTIDAD");
+    if (idxCantidad !== -1) {
+        const ventana = textoNorm.substring(idxCantidad, idxCantidad + 350);
+
+        // Caso directo: "CANTIDAD: 1", "CANTIDAD 1", "CANTIDAD - 1"
+        const matchDirecto = ventana.match(/CANTIDAD\s*[:.\-]?\s*(\d{1,3})\b/i);
+        if (matchDirecto) {
+            const val = parseInt(matchDirecto[1], 10);
+            if (val > 0) return val;
+        }
+
+        // Caso fila con código CUPS (ej: 890101) seguido de cantidad en la tabla:
+        const matchCups = ventana.match(/\b\d{5,7}\s+(\d{1,3})\b/);
+        if (matchCups) {
+            const val = parseInt(matchCups[1], 10);
+            if (val > 0) return val;
+        }
+
+        // Caso donde la cantidad aparece inmediatamente antes de una palabra de servicio clínico:
+        const matchServicioSalud = ventana.match(/\b(\d{1,3})\s+(?:ATENCION|VISITA|VALORACION|MEDICINA|FISIOTERAPIA|TERAPIA|ENFERMERIA|CURACION|PSICOLOGIA|TRABAJO|FONOAUDIOLOGIA|NUTRICION|AUXILIAR)\b/i);
+        if (matchServicioSalud) {
+            const val = parseInt(matchServicioSalud[1], 10);
+            if (val > 0) return val;
+        }
+
+        // Caso lectura de columnas: tokens numéricos tras CANTIDAD antes de secciones posteriores
+        const tokens = ventana.replace(/CANTIDAD/gi, "").trim().split(/\s+/);
+        for (const token of tokens) {
+            if (/^\d{1,3}$/.test(token)) {
+                const val = parseInt(token, 10);
+                if (val > 0) return val;
+            }
+            if (/^(?:AFILIADO|FIRMA|TOTAL|DIRECCION|TELEFONO|FECHA|COPAGO|MODERADOR)$/i.test(token)) {
+                break;
+            }
+        }
+    }
+
+    // 3. Fallback: extraerNumeroDelTexto estándar si se proveyeron textos
+    if (textosBuscar.length > 0) {
+        for (const target of textosBuscar) {
+            const num = extraerNumeroDelTexto(texto, target);
+            if (num !== null && num > 0) return num;
+        }
+    }
+
+    return null;
 }
 
 /**

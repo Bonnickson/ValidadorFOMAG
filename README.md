@@ -73,7 +73,7 @@ Validador FOMAG/
 ### 3. Validación Por Paquete (FOMAG y Nueva EPS)
 Diseñado para la validación de paquetes integrales con documento maestro `2 PAQ.pdf`:
 - **Documento Maestro**: `2 PAQ.pdf` es la fuente única de autorizaciones. No se permiten archivos `2 [servicio].pdf` individuales en paquetes. Debe contener el documento del paciente y el código del paquete correspondiente (`CPF1108`, `E890190`, etc.).
-- **Soporte 3 (ADRES)**: En paquetes de Nueva EPS es estrictamente obligatorio el archivo `3.pdf`, verificando documento, texto "Nueva EPS" y afiliación ("Cotizante" o "Beneficiario").
+- **Soporte 3 (ADRES)**: En paquetes y eventos de Nueva EPS es estrictamente obligatorio el archivo `3.pdf`, verificando documento, texto "Nueva EPS" y estado de afiliación ("ACTIVO", generando alerta informativa si está "INACTIVO").
 - **Servicios Obligatorios**:
   - Estándar: Exige exactamente 1 evolución en `VM` (Valoración Médica) y al menos 1 servicio de enfermería (`ENF` o `VENF`).
   - **`CPF1107`**: Exige exactamente **2 VM** y **4 ENF** (auxiliar de enfermería; VENF en 0).
@@ -102,7 +102,7 @@ Valida cada servicio de manera individual mediante pares de archivos (`2 [servic
 
 | Convenio | Validación Archivo 2.pdf | Validación Soporte 3 (ADRES) | Validación Archivo 5.pdf | Documento Paciente |
 | :--- | :--- | :--- | :--- | :--- |
-| **🏢 Nueva EPS** | Valida código del paquete en `2 PAQ.pdf` o código/texto en `2 [srv].pdf` y extrae cantidad autorizada. | **Obligatorio en Paquete y Evento**: Exige `3.pdf`, texto "Nueva EPS", documento y "Cotizante" o "Beneficiario". | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2, 3 y 5 |
+| **🏢 Nueva EPS** | Valida código del paquete en `2 PAQ.pdf` o código/texto en `2 [srv].pdf` y extrae cantidad autorizada. | **Obligatorio en Paquete y Evento**: Exige `3.pdf`, texto "Nueva EPS", documento y estado "ACTIVO" (alerta si está "INACTIVO"). | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2, 3 y 5 |
 | **🏛️ FOMAG** | Valida texto específico y extrae cantidad autorizada. | No requerido en paquetes CPF (no aplica `3.pdf`). | Valida texto, cantidad de evoluciones vs autorizadas, duplicados y orden cronológico. | Valida coincidencia estricta en 2 y 5 |
 | **🏢 Capital Salud** | Valida presencia del texto del servicio. | Exige `3.pdf` en Evento con número de documento. | Valida texto y verifica duplicados/orden de fechas. | Validación estándar en 2, 3 y 5 |
 
@@ -123,6 +123,7 @@ Valida cada servicio de manera individual mediante pares de archivos (`2 [servic
 - 📐 **Panel de Incidencias Redimensionable**: Panel de resumen de errores interactivo con ajuste de altura fluido mediante `requestAnimationFrame`.
 - 🔍 **Filtros Dinámicos**: Filtrado en vivo por texto/cédula, tipo de servicio, estado y selección múltiple de tarjetas de error.
 - 📋 **Acciones Rápidas de Portapapeles**: Copiado rápido de identificadores, números de documento, formatos estándar, hallazgos estructurados (`Responsable - Documento - Paquete - Servicio - Archivo - Error`) y botón individual de copia para cada mensaje de error con sigla visible del servicio (`VM`, `ENF`, etc.).
+- 🚫 **Omitir Registros / Filas de la Matriz**: Permite omitir de la auditoría pacientes o filas específicas de la matriz Excel de forma individual (casilla de selección por fila) o masiva (pegando cédulas en lote), evitando falsas alarmas de carpetas virtuales faltantes y excluyéndolos de los reportes.
 - 📥 **Exportación a Excel y Certificación en PDF**:
   - **Certificado PDF**: Genera un certificado formal no editable con sello de estado (`APROBADO` o `RECHAZADO`), métricas por código de paquete (`CPF`), clasificación diferenciada entre errores críticos (bloqueantes) y alertas/falsos positivos, detalle individual de cuentas y firmas de responsabilidad.
   - **Descargar XLSX**: Reporte detallado de auditoría carpeta por carpeta con observaciones y estados.

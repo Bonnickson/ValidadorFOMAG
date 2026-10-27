@@ -18,6 +18,7 @@ import {
     normalizeForSearch,
     escapeRegExp,
     extraerNumeroDelTexto,
+    extraerCantidadAutorizacion,
     estaFechaEnPeriodo,
     formatearPeriodoLegible,
 } from "../utils/textUtils.js";
@@ -152,8 +153,11 @@ export async function validarPorPaquete(
         }
     }
 
-    // Solo validar paquetes con sus reglas si es paquete parametrizado
-    const esPaqueteValido = PAQUETES_SOPORTADOS.includes(tipoPaquete) || tipoPaquete.startsWith("CPF") || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
+    // Solo validar paquetes con sus reglas si es paquete parametrizado o evento
+    const esEventoValidacion = tipoPaquete === "EVENTO" || Boolean(
+        resultados[carpeta]?.datosMatriz?.esFacturarEvento && !resultados[carpeta]?.datosMatriz?.paquete
+    );
+    const esPaqueteValido = esEventoValidacion || PAQUETES_SOPORTADOS.includes(tipoPaquete) || tipoPaquete.startsWith("CPF") || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
     if (esPaqueteValido) {
         validarNuevoPaquete(
             carpeta,
@@ -173,11 +177,12 @@ export async function validarPorPaquete(
 
         const servicioLower = servicio.toLowerCase();
 
-        // IMPORTANTE: Procesar 5 para comparar, luego 4
-        for (const numArchivo of ["5", "4"]) {
+        // IMPORTANTE: Procesar 5 para comparar, luego 4 (y 2 si es evento con 2 individual)
+        const listaNumsAProcesar = esEventoValidacion ? ["5", "4", "2"] : ["5", "4"];
+        for (const numArchivo of listaNumsAProcesar) {
             let archivoParaProcesar = null;
 
-            // 1. Buscar el archivo específico del servicio (ej: "5 vm.pdf")
+            // 1. Buscar el archivo específico del servicio (ej: "5 vm.pdf", "2 vm.pdf")
             const nombreEspecifico = `${numArchivo} ${servicioLower}.pdf`;
             archivoParaProcesar = archivos.find(
                 (f) =>
@@ -273,6 +278,8 @@ export async function validarPorPaquete(
     if (resultados[carpeta].datosMatriz) {
         const mat = resultados[carpeta].datosMatriz;
         const servMatriz = mat.servicios || {};
+        const servEventoMatriz = mat.serviciosEvento || {};
+        const esPacienteSoloEvento = tipoPaquete === "EVENTO" || Boolean(mat.esFacturarEvento && !mat.paquete);
 
         // Validar si el paquete de la carpeta coincide con el de la matriz
         const matPaqCanonico = normalizarCodigoPaquete(mat.paquete);
@@ -283,11 +290,64 @@ export async function validarPorPaquete(
             );
         }
 
-        // Validar todos los servicios conocidos
+        // Validar todos los servicios conocidos (omitiendo aquellos marcados expresamente como omitidos en la matriz)
+        const colsOmitidas = new Set(
+            (mat.columnasOmitidas || resultados[carpeta].columnasOmitidasMatriz || []).map(c => String(c).toUpperCase())
+        );
         const todosServicios = ["VM", "VENF", "ENF", "TF", "TR", "TRS", "FON", "TO", "NUT", "TS", "PSI", "APL"];
 
         for (const s of todosServicios) {
-            const cantEsperada = servMatriz[s] || 0;
+            if (colsOmitidas.has(s) || (s === "TRS" && colsOmitidas.has("SUCCION"))) {
+                continue; // Servicio omitido por el usuario en la matriz
+            }
+
+            // Para pacientes por evento, tomar la cantidad programada de las columnas de evento (Eve. Médica General, etc.)
+            let cantEsperada = 0;
+            if (esPacienteSoloEvento) {
+                if (s === "VM") {
+                    cantEsperada = servEventoMatriz.VM || 0;
+                } else if (s === "VENF") {
+                    cantEsperada = servEventoMatriz.VENF || 0;
+                } else if (s === "ENF" || s === "ENF12") {
+                    // Considerar turnos de enfermería/cuidador de evento
+                    cantEsperada = (servEventoMatriz.ENF6 || 0) +
+                        (servEventoMatriz.ENF8 || 0) +
+                        (servEventoMatriz.ENF12 || 0) +
+                        (servEventoMatriz.ENF12N || 0) +
+                        (servEventoMatriz.ENF24 || 0) +
+                        (servEventoMatriz.CUID6 || 0) +
+                        (servEventoMatriz.CUID8 || 0) +
+                        (servEventoMatriz.CUID12 || 0) +
+                        (servEventoMatriz.CUID12N || 0) +
+                        (servEventoMatriz.CUID24 || 0);
+                } else if (s === "TF") {
+                    cantEsperada = servEventoMatriz.TF || 0;
+                } else if (s === "TR") {
+                    cantEsperada = servEventoMatriz.TR || 0;
+                } else if (s === "TRS" || s === "SUCCION") {
+                    cantEsperada = servEventoMatriz.TRS || 0;
+                } else if (s === "FON") {
+                    cantEsperada = servEventoMatriz.FON || 0;
+                } else if (s === "TO") {
+                    cantEsperada = servEventoMatriz.TO || 0;
+                } else if (s === "NUT") {
+                    cantEsperada = servEventoMatriz.NUT || 0;
+                } else if (s === "TS") {
+                    cantEsperada = servEventoMatriz.TS || 0;
+                } else if (s === "PSI") {
+                    cantEsperada = servEventoMatriz.PSI || 0;
+                } else if (s === "APL") {
+                    cantEsperada = (servEventoMatriz.MED1 || 0) +
+                        (servEventoMatriz.MED2 || 0) +
+                        (servEventoMatriz.MED3 || 0) +
+                        (servEventoMatriz.MED4 || 0);
+                } else {
+                    cantEsperada = servMatriz[s] || 0;
+                }
+            } else {
+                cantEsperada = servMatriz[s] || 0;
+            }
+
             // Para TRS o SUCCION, revisar ambas claves
             const cantEncontrada = s === "TRS" || s === "SUCCION"
                 ? (resultados[carpeta].fechasPorServicio?.["TRS"]?.length || resultados[carpeta].fechasPorServicio?.["SUCCION"]?.length || 0)
@@ -541,17 +601,21 @@ function validarNuevoPaquete(
         [...serviciosEncontrados].filter((s) => s !== "General" && s !== "PAQ")
     );
 
-    const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
+    const esEvento = tipoPaquete === "EVENTO" || Boolean(
+        resultados[carpeta]?.datosMatriz?.esFacturarEvento && !resultados[carpeta]?.datosMatriz?.paquete
+    );
+
+    const esPaqueteParametrizado = esEvento || PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
     if (!esPaqueteParametrizado) {
         resultados[carpeta].errores.push(`Paquete ${tipoPaquete}: Código de paquete no parametrizado en el sistema.`);
         return;
     }
 
     const paqueteCanonico = normalizarCodigoPaquete(tipoPaquete);
-    const esPaqueteAplicacion = CODIGOS_APLICACION.has(tipoPaquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico);
+    const esPaqueteAplicacion = !esEvento && (CODIGOS_APLICACION.has(tipoPaquete) || ["CPF1102", "CPF1103", "CPF1104"].includes(paqueteCanonico));
 
     // 1. Validar Obligatorios y Prohibiciones (solo si no hay matriz; si hay matriz se valida contra ella)
-    if (!resultados[carpeta].datosMatriz) {
+    if (!resultados[carpeta].datosMatriz && !esEvento) {
         if (!serviciosReales.has("VM")) {
             resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir servicio obligatorio VM`);
         }
@@ -638,20 +702,37 @@ function validarNuevoPaquete(
         }
     }
 
-    // Archivos requeridos por servicio para PAQUETE
-    // Validar que NO haya "2 [servicio].pdf"
-    for (const servicio of serviciosReales) {
-        const servicioLower = servicio.toLowerCase();
-        const num2Individual = `2 ${servicioLower}.pdf`;
-        if (nombres.some(n => n.toLowerCase() === num2Individual)) {
-            resultados[carpeta].errores.push(`Archivo no permitido: ${num2Individual} (Todo se valida desde el 2 PAQ)`);
-        }
-    }
-
-    // Exigir que exista "2 PAQ.pdf"
     const tienePaq = nombres.some(n => n.toLowerCase() === "2 paq.pdf");
-    if (!tienePaq) {
-        resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir archivo '2 PAQ.pdf'`);
+
+    if (esEvento) {
+        // En modo EVENTO:
+        // La autorización puede ser "2 paq.pdf" general O individual "2 [servicio].pdf"
+        for (const servicio of serviciosReales) {
+            const servicioLower = servicio.toLowerCase();
+            const num2Individual = `2 ${servicioLower}.pdf`;
+            const tiene2Individual = nombres.some(n => n.toLowerCase() === num2Individual);
+
+            if (!tienePaq && !tiene2Individual) {
+                resultados[carpeta].errores.push(
+                    `Falta autorización para ${servicio}: debe incluir '${num2Individual}' o '2 PAQ.pdf'`
+                );
+            }
+        }
+    } else {
+        // Archivos requeridos por servicio para PAQUETE
+        // Validar que NO haya "2 [servicio].pdf"
+        for (const servicio of serviciosReales) {
+            const servicioLower = servicio.toLowerCase();
+            const num2Individual = `2 ${servicioLower}.pdf`;
+            if (nombres.some(n => n.toLowerCase() === num2Individual)) {
+                resultados[carpeta].errores.push(`Archivo no permitido: ${num2Individual} (Todo se valida desde el 2 PAQ)`);
+            }
+        }
+
+        // Exigir que exista "2 PAQ.pdf"
+        if (!tienePaq) {
+            resultados[carpeta].errores.push(`Paquete ${tipoPaquete} debe incluir archivo '2 PAQ.pdf'`);
+        }
     }
 
     // En Nueva EPS es obligatorio el archivo "3.pdf" (ADRES)
@@ -670,6 +751,14 @@ function validarNuevoPaquete(
         resultados[carpeta].pdfsPorServicio[servicio] = {};
         resultados[carpeta].erroresPorServicio[servicio] ||= [];
         resultados[carpeta].exitosPorServicio[servicio] ||= [];
+
+        // Si es evento y tiene 2 [servicio].pdf, registrar el badge del 2
+        if (esEvento) {
+            const existe2 = nombres.some(n => n.toLowerCase() === `2 ${servicio.toLowerCase()}.pdf`);
+            if (existe2) {
+                resultados[carpeta].pdfsPorServicio[servicio]["2"] = "✔";
+            }
+        }
 
         for (const num of ["4", "5"]) {
             let existe = nombres.some(n => n.toLowerCase() === `${num} ${servicio.toLowerCase()}.pdf`);
@@ -879,10 +968,7 @@ async function validarPDFPaquete(
                 const REGLAS_PAQUETE = obtenerReglasPaquete(convenio);
                 const textoBuscar =
                     REGLAS_PAQUETE[servicio]?.["2.pdf"]?.debeContener || "";
-                const numeroExtraido = extraerNumeroDelTexto(
-                    texto,
-                    textoBuscar
-                );
+                const numeroExtraido = extraerCantidadAutorizacion(texto, textoBuscar, servicio, convenio);
 
                 // Log limpio con información relevante del 2.pdf - SIEMPRE mostrar
                 // console.log(
@@ -1091,12 +1177,13 @@ async function validarPDFPaquete(
                 }
             }
         }
-    } catch {
+    } catch (err) {
+        console.error(`[Error procesando PDF] ${file?.name} en ${carpeta}:`, err);
         if (servicio && servicio !== "PAQ") {
             resultados[carpeta].erroresPorServicio[servicio] =
                 resultados[carpeta].erroresPorServicio[servicio] || [];
             resultados[carpeta].erroresPorServicio[servicio].push(
-                `${file.name}: error leyendo PDF`
+                `${file.name}: error leyendo PDF (${err?.message || err})`
             );
             // Marcar el archivo con error
             const numArchivo = file.name.match(/^(\d+) /)?.[1];
@@ -1265,7 +1352,7 @@ async function validarArchivo3(
             resultados[carpeta].exitosPorServicio["General"].push(`3.pdf: contiene número ${nroDocumento}`);
         }
 
-        // 2. Si es Nueva EPS, validar texto "Nueva EPS" y "cotizante" o "beneficiario" (insensible a mayúsculas, minúsculas y acentos)
+        // 2. Si es Nueva EPS, validar texto "Nueva EPS" y estado "ACTIVO" (alerta si está "INACTIVO")
         if (convenio === "nueva-eps") {
             const contieneNuevaEps = textoNorm.includes("NUEVA EPS") || textoNorm.includes("NUEVAEPS");
             if (!contieneNuevaEps) {
@@ -1275,14 +1362,14 @@ async function validarArchivo3(
                 resultados[carpeta].exitosPorServicio["General"].push('3.pdf: contiene "Nueva EPS"');
             }
 
-            const contieneCotizante = textoNorm.includes("COTIZANTE");
-            const contieneBeneficiario = textoNorm.includes("BENEFICIARIO");
-            if (!contieneCotizante && !contieneBeneficiario) {
-                resultados[carpeta].erroresPorServicio["General"].push('3.pdf: no especifica "cotizante" o "beneficiario"');
-                tieneErrores3 = true;
-            } else {
-                const tipoEncontrado = contieneCotizante ? "Cotizante" : "Beneficiario";
-                resultados[carpeta].exitosPorServicio["General"].push(`3.pdf: tipo de afiliado "${tipoEncontrado}"`);
+            const tieneInactivo = textoNorm.includes("INACTIVO") || textoNorm.includes("INACTIVA");
+            const tieneActivo = textoNorm.includes("ACTIVO") || textoNorm.includes("ACTIVA");
+
+            if (tieneInactivo) {
+                resultados[carpeta].alertasPorServicio["General"] = resultados[carpeta].alertasPorServicio["General"] || [];
+                resultados[carpeta].alertasPorServicio["General"].push('3.pdf: afiliado se encuentra en estado "INACTIVO"');
+            } else if (tieneActivo) {
+                resultados[carpeta].exitosPorServicio["General"].push('3.pdf: estado de afiliado "Activo"');
             }
         }
 

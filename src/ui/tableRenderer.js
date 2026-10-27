@@ -493,8 +493,32 @@ function renderPaqueteFilas(
         .replace(/\s*\(CPF\w*\)/gi, "")
         .trim();
 
-    const descTexto = estaParametrizado ? (paqueteInfo.descripcion || paqueteInfo.nombre) : "No parametrizado";
-    const descStyle = estaParametrizado ? "" : "color: #ef4444; font-weight: 700;";
+    const esFilaEventoEnTabla = paqueteCodigo === "EVENTO" || (r.datosMatriz && !r.datosMatriz.paqueteRaw && r.datosMatriz.esFacturarEvento) || (r.datosMatriz?.esFacturarEvento && !r.datosMatriz?.paquete);
+    let descTexto = estaParametrizado ? (paqueteInfo.descripcion || paqueteInfo.nombre) : "No parametrizado";
+    let descStyle = estaParametrizado ? "" : "color: #ef4444; font-weight: 700;";
+
+    if (esFilaEventoEnTabla) {
+        const evs = r.datosMatriz?.serviciosEvento || {};
+        const nombresEvCompleto = {
+            VM: "Valoración medicina general",
+            ENF6: "Turno enfermería 6 horas",
+            ENF8: "Turno enfermería 8 horas",
+            ENF12: "Turno enfermería 12 horas",
+            ENF12N: "Turno enfermería 12 horas nocturno",
+            ENF24: "Turno enfermería 24 horas",
+            CUID6: "Turno cuidador 6 horas",
+            CUID8: "Turno cuidador 8 horas",
+            CUID12: "Turno cuidador 12 horas",
+            CUID12N: "Turno cuidador 12 horas nocturno",
+            CUID24: "Turno cuidador 24 horas",
+            TS: "Trabajo social",
+        };
+        const listaNombres = Object.entries(evs)
+            .filter(([_, cant]) => cant > 0)
+            .map(([cod]) => nombresEvCompleto[cod] || cod);
+        descTexto = listaNombres.length > 0 ? listaNombres.join("<br>") : "Validación por Evento";
+        descStyle = "white-space: normal; line-height: 1.25; color: var(--text-secondary);";
+    }
 
     trHeader.innerHTML = `
         <td rowspan="${totalFilasLote}" class="carpeta-cell doc-header-grouped">
@@ -528,7 +552,7 @@ function renderPaqueteFilas(
                 </div>
             </div>
         </td>
-        <td class="servicio-nombre">📦 Paquete</td>
+        <td class="servicio-nombre">${esFilaEventoEnTabla ? "📁 General" : "📦 Paquete"}</td>
         <td class="archivos-cell center-cell">${badgesPaqueteHTML}</td>
         <td class="count-evol-cell">—</td>
         <td class="fechas">—</td>
@@ -575,8 +599,9 @@ function renderPaqueteFilas(
         }
         tr.setAttribute("data-estado", estado);
 
-        // Mostrar siempre los archivos 4, 5 sin tooltip hover invasivo
-        const archivosEsperados = ["4", "5"];
+        // Mostrar archivos según servicio (si es evento y tiene o requiere autorización 2, incluir '2')
+        const tiene2Servicio = Boolean(r.pdfsPorServicio[s]?.["2"]) || esFilaEventoEnTabla;
+        const archivosEsperados = tiene2Servicio ? ["2", "4", "5"] : ["4", "5"];
         const archivosHTML = archivosEsperados
             .map((num) => {
                 const nombreArchivo = `${num} ${servicioLower}.pdf`;
@@ -876,7 +901,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const erroresHTML = renderErrorItems(erroresGeneralesNoServicio, carpeta, "General");
 
         tr.innerHTML = `
-            <td>${tipoDisplay}</td>
+            <td>—</td>
             <td class="carpeta-cell"><span class="carpeta-nombre">${carpeta}</span></td>
             <td class="servicio-nombre">⚠️ General</td>
             <td>—</td>
