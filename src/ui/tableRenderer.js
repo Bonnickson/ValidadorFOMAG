@@ -330,6 +330,7 @@ export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
         // Para eventos normales (Capital Salud), mostrar vista clásica
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
+        tr.setAttribute("data-paquete", r.tipo || "EVENTO");
         tr.classList.remove("processing");
 
         // Combinar errores generales con errores del servicio "General" si existe
@@ -501,6 +502,7 @@ function renderPaqueteFilas(
         const evs = r.datosMatriz?.serviciosEvento || {};
         const nombresEvCompleto = {
             VM: "Valoración medicina general",
+            VMRJ: "Visita médica riesgo jurídico",
             ENF6: "Turno enfermería 6 horas",
             ENF8: "Turno enfermería 8 horas",
             ENF12: "Turno enfermería 12 horas",
@@ -729,6 +731,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
     if (serviciosDetectados.size === 0) {
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
+        tr.setAttribute("data-paquete", r.tipoPaquete || "EVENTO");
         tr.classList.add(
             "paquete-row",
             grupoClase,
@@ -772,6 +775,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
     serviciosArray.forEach((servicio, index) => {
         const tr = document.createElement("tr");
         tr.setAttribute("data-carpeta", carpeta);
+        tr.setAttribute("data-paquete", r.tipoPaquete || "EVENTO");
         tr.setAttribute("data-servicio", servicio);
         tr.classList.add("paquete-row", grupoClase);
 

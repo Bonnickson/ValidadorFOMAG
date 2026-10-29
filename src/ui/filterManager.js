@@ -125,6 +125,7 @@ export function actualizarProgreso(actual, total, carpeta = "", archivo = "", el
 export function aplicarFiltros(elements = {}, state = {}) {
     const {
         buscarDocumentoInput,
+        filtroPaqueteSelect,
         filtroServicioSelect,
         mostrarExitosCheckbox,
         tablaBody,
@@ -133,6 +134,7 @@ export function aplicarFiltros(elements = {}, state = {}) {
     if (!tablaBody) return;
 
     const buscarDoc = buscarDocumentoInput ? buscarDocumentoInput.value.trim().toLowerCase() : "";
+    const filtroPaq = filtroPaqueteSelect ? filtroPaqueteSelect.value.trim().toUpperCase() : "";
     const filtroServ = filtroServicioSelect ? filtroServicioSelect.value : "";
     const filtroEst = state.estadoFiltroActivo || "";
     const mostrarExitos = mostrarExitosCheckbox ? mostrarExitosCheckbox.checked : false;
@@ -156,6 +158,17 @@ export function aplicarFiltros(elements = {}, state = {}) {
         let mostrarCarpeta = true;
         if (buscarDoc && !carpeta.toLowerCase().includes(buscarDoc)) {
             mostrarCarpeta = false;
+        }
+
+        // Filtro por tipo de paquete / tipo de evento
+        if (filtroPaq && mostrarCarpeta) {
+            const paqCarpeta = filasCarpeta.some((f) => {
+                const p = (f.getAttribute("data-paquete") || "").toUpperCase();
+                return p === filtroPaq;
+            });
+            if (!paqCarpeta) {
+                mostrarCarpeta = false;
+            }
         }
 
         const tieneNovedadesCarpeta = filasCarpeta.some(
@@ -419,6 +432,7 @@ export async function copiarTodosErroresVisibles(resultadosGlobales) {
 export function reiniciarFiltros(elements = {}, state = {}, ejecutarAplicar = true) {
     const {
         buscarDocumentoInput,
+        filtroPaqueteSelect,
         filtroServicioSelect,
         grupoFiltroEstado,
         mostrarExitosCheckbox,
@@ -426,6 +440,7 @@ export function reiniciarFiltros(elements = {}, state = {}, ejecutarAplicar = tr
     } = elements;
 
     if (buscarDocumentoInput) buscarDocumentoInput.value = "";
+    if (filtroPaqueteSelect) filtroPaqueteSelect.value = "";
     if (filtroServicioSelect) filtroServicioSelect.value = "";
     state.estadoFiltroActivo = "";
 
@@ -467,10 +482,35 @@ export function actualizarResumen(
         filtrosDiv,
         resumenErroresDiv,
         listaErroresDiv,
+        filtroPaqueteSelect,
     } = elements;
 
     const carpetas = Object.keys(resultados);
     const total = carpetas.length;
+
+    // Actualizar opciones del select de filtro de paquete/evento si está disponible
+    if (filtroPaqueteSelect) {
+        const valorActual = filtroPaqueteSelect.value;
+        const paquetesDetectados = new Set();
+        carpetas.forEach((carp) => {
+            const r = resultados[carp];
+            const paq = (r?.tipoPaquete || r?.tipo || "").trim();
+            if (paq) paquetesDetectados.add(paq);
+        });
+
+        const opciones = ['<option value="">Tipo: Todos</option>'];
+        Array.from(paquetesDetectados).sort().forEach((p) => {
+            const label = p === "EVENTO" ? "📁 Por Evento" : `📦 ${p}`;
+            opciones.push(`<option value="${p}">${label}</option>`);
+        });
+
+        filtroPaqueteSelect.innerHTML = opciones.join("");
+        if (paquetesDetectados.has(valorActual)) {
+            filtroPaqueteSelect.value = valorActual;
+        } else {
+            filtroPaqueteSelect.value = "";
+        }
+    }
 
     let sinErrores = 0;
     let conAlertas = 0;

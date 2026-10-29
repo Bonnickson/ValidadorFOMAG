@@ -1,4 +1,5 @@
 import {
+    FEATURE_RIESGO_JURIDICO_ACTIVO,
     REGLAS_TERAPIAS_PAQUETES,
     PAQUETES_SOPORTADOS,
     normalizarCodigoPaquete,
@@ -60,6 +61,7 @@ function detectarColumnasMatriz(rawRows) {
     let colApl4 = -1;
     const colEvento = {
         VM: -1,
+        VMRJ: -1,
         VENF: -1,
         NUT: -1,
         FON: -1,
@@ -96,7 +98,9 @@ function detectarColumnasMatriz(rawRows) {
 
             // Detección de columnas de Evento (Eve. Médica General, Eve. Turno Enfermería..., etc.)
             if (h.includes("eve") || h.includes("evento")) {
-                if (h.includes("medica general") || h.includes("medicina general") || h.includes("general 2") || (h.includes("medica") && !h.includes("especial"))) {
+                if (FEATURE_RIESGO_JURIDICO_ACTIVO && (h.includes("riesgo juridico") || h.includes("juridico"))) {
+                    if (colEvento.VMRJ === -1) colEvento.VMRJ = idx;
+                } else if (h.includes("medica general") || h.includes("medicina general") || h.includes("general 2") || (h.includes("medica") && !h.includes("especial"))) {
                     if (colEvento.VM === -1) colEvento.VM = idx;
                 } else if (h.includes("enfermeria profesional") || h.includes("profesional 3")) {
                     if (colEvento.VENF === -1) colEvento.VENF = idx;
@@ -272,6 +276,112 @@ function parseCantidad(val) {
     if (!clean) return 0;
     const num = parseInt(clean, 10);
     return isNaN(num) ? 0 : num;
+}
+
+/**
+ * Construye una matriz virtual de una sola fila a partir de texto copiado/pegado
+ * (TSV separado por tabulaciones o CSV delimitado por comas/punto y coma).
+ * @param {string} textoFila
+ * @returns {Array<Array<any>>} rawRows listo para ser parseado por parsearMatriz
+ */
+export function construirMatrizDesdeFilaPegada(textoFila) {
+    if (!textoFila || typeof textoFila !== "string") {
+        throw new Error("El texto de la fila no puede estar vacío.");
+    }
+
+    const lineas = textoFila.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+    if (lineas.length === 0) {
+        throw new Error("No se detectó ninguna línea de datos en el texto pegado.");
+    }
+
+    // Tomar la primera línea (o si pegaron encabezado + fila, la fila con datos)
+    let lineaDatos = lineas[0];
+    if (lineas.length > 1) {
+        // Si la primera línea parece encabezado (ej. incluye 'Documento' o 'Tipo'), tomamos la segunda
+        const l0Norm = normalizarEncabezado(lineas[0]);
+        if (l0Norm.includes("documento") || l0Norm.includes("tipo doc") || l0Norm.includes("paciente")) {
+            lineaDatos = lineas[1];
+        }
+    }
+
+    // Detectar delimitador (tabulación o punto y coma o coma)
+    let celdas = [];
+    if (lineaDatos.includes("\t")) {
+        celdas = lineaDatos.split("\t");
+    } else if (lineaDatos.includes(";")) {
+        celdas = lineaDatos.split(";");
+    } else if (lineaDatos.includes(",")) {
+        celdas = lineaDatos.split(",");
+    } else {
+        // Intento con múltiples espacios
+        celdas = lineaDatos.split(/\s{2,}/);
+    }
+
+    // Limpiar espacios en cada celda
+    celdas = celdas.map(c => String(c ?? "").trim());
+
+    if (celdas.length < 2) {
+        throw new Error("La fila pegada debe contener al menos las columnas de Tipo Doc y Documento.");
+    }
+
+    // Encabezados oficiales de la matriz
+    const headerRow0 = [
+        "Tipo doc",
+        "Documento Paciente",
+        "Nombre Completo Del Paciente",
+        "Paquete",
+        "Facturar por evento",
+        "Cant Paquete Diario",
+        "Paq. Médica General",
+        "Paq. Enfermería Profesional",
+        "Paq. Aux Enfermeria",
+        "Paq. Terapia Física",
+        "Paq. Terapia Respiratoria",
+        "Paq. Terapia Respiratoria Con Succión",
+        "Paq. Fonoaudiología",
+        "Paq. Terapia Ocupacional",
+        "Paq. Nutrición",
+        "Paq. Trabajo Social",
+        "Paq. Psicología",
+        "Paq. Aplicación Medicamento 1 Dosis",
+        "Paq. Aplicación Medicamento 2 Dosis",
+        "Paq. Aplicación Medicamento 3 Dosis",
+        "Paq. Aplicación Medicamento 4 Dosis",
+        "Paq. Cambio de Sonda",
+        "Paq. Curacion De Herida Grado III - Complejidad Alta",
+        "Paq. Curacion De Herida Grado II - Complejidad Media",
+        "Paq. Curacion De Herida Grado I - Complejidad Baja",
+        "Eve. Médica General",
+        "Eve. Médica General Riesgo Juridico",
+        "Eve. Turno Enfermería 6 Horas",
+        "Eve. Turno Enfermería 8 Horas",
+        "Eve. Turno Enfermería 12 Horas",
+        "Eve. Turno Enfermería 12 Horas Nocturno",
+        "Eve. Turno Enfermería 24 Horas",
+        "Eve. Turno Cuidador 6 Horas",
+        "Eve. Turno Cuidador 8 Horas",
+        "Eve. Turno Cuidador 12 Horas",
+        "Eve. Turno Cuidador 12 Horas Nocturno",
+        "Eve. Turno Cuidador 24 Horas",
+        "Eve. Trabajo Social",
+        "Observaciones PAD",
+        "Observaciones Facturación",
+        "Factura Paquete",
+        "Factura Eventos",
+        "Estado Paquete",
+        "Estado Evento",
+        "Observación Soft"
+    ];
+
+    const headerRow1 = [...headerRow0];
+
+    // Si la fila pegada tiene menos columnas que el header, rellenamos con vacíos
+    const filaCompleta = [...celdas];
+    while (filaCompleta.length < headerRow0.length) {
+        filaCompleta.push("");
+    }
+
+    return [headerRow0, headerRow1, filaCompleta];
 }
 
 /**
@@ -473,6 +583,7 @@ export function parsearMatriz(rawRows, columnasOmitidasSet = null) {
         const evCols = columnasDetectadas.EVENTO_COLS || {};
         const serviciosEvento = {
             VM: evCols.VM !== -1 ? parseCantidad(fila[evCols.VM]) : 0,
+            VMRJ: evCols.VMRJ !== -1 ? parseCantidad(fila[evCols.VMRJ]) : 0,
             VENF: evCols.VENF !== -1 ? parseCantidad(fila[evCols.VENF]) : 0,
             NUT: evCols.NUT !== -1 ? parseCantidad(fila[evCols.NUT]) : 0,
             FON: evCols.FON !== -1 ? parseCantidad(fila[evCols.FON]) : 0,
@@ -858,9 +969,9 @@ export function buscarPacienteEnMatriz(datosMatriz, documento, paquete) {
     const docNorm = normalizarDocumentoMatriz(documento);
     if (!docNorm) return null;
 
-    const tienePaqueteEspecifico = paquete && paquete !== "auto" && paquete !== "SIN_PAQUETE";
+    const tienePaqueteEspecifico = paquete && paquete !== "auto" && paquete !== "SIN_PAQUETE" && paquete !== "EVENTO";
 
-    // 1. Si se especificó un paquete concreto, buscar coincidencia exacta doc + paquete
+    // 1. Si se especificó un paquete concreto (y no EVENTO), buscar coincidencia exacta doc + paquete
     if (tienePaqueteEspecifico && datosMatriz.pacientesPorDocYPaquete) {
         const paqNorm = String(paquete).trim().toUpperCase();
         const paqCanonico = normalizarCodigoPaquete(paqNorm);
@@ -885,6 +996,19 @@ export function buscarPacienteEnMatriz(datosMatriz, documento, paquete) {
 
         // Si se especificó un paquete y no coincide con ninguno en la matriz para ese paquete, retornar null (no mezclar con otro paquete)
         return null;
+    }
+
+    // 2. Si es EVENTO o no se especificó paquete (o es "auto"), buscar por documento
+    if (paquete === "EVENTO" && datosMatriz.pacientesList) {
+        const docSoloDigitos = docNorm.replace(/\D/g, "");
+        // Priorizar la fila que tenga servicios de evento o Facturar por evento = SI
+        const matchEvento = datosMatriz.pacientesList.find(
+            (p) =>
+                p.documento &&
+                (p.documento === docNorm || (docSoloDigitos && p.documento.replace(/\D/g, "") === docSoloDigitos)) &&
+                (p.esFacturarEvento || Object.values(p.serviciosEvento || {}).some((v) => v > 0))
+        );
+        if (matchEvento) return matchEvento;
     }
 
     // 2. Si no se especificó paquete (o es "auto"), buscar por documento

@@ -2,6 +2,7 @@ import * as pdfjsLib from "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379
 import { obtenerReglasPaquete } from "../reglas.js";
 import {
     DEBUG,
+    FEATURE_RIESGO_JURIDICO_ACTIVO,
     SERVICIOS_TERAPIA,
     TERAPIAS_CONTABLES,
     PAQUETES_SOPORTADOS,
@@ -156,7 +157,7 @@ export async function validarPorPaquete(
 
     // Solo validar paquetes con sus reglas si es paquete parametrizado o evento
     const esEventoValidacion = tipoPaquete === "EVENTO" || Boolean(
-        resultados[carpeta]?.datosMatriz?.esFacturarEvento && !resultados[carpeta]?.datosMatriz?.paquete
+        resultados[carpeta]?.datosMatriz?.esFacturarEvento
     );
     const esPaqueteValido = esEventoValidacion || PAQUETES_SOPORTADOS.includes(tipoPaquete) || tipoPaquete.startsWith("CPF") || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
     if (esPaqueteValido) {
@@ -280,12 +281,12 @@ export async function validarPorPaquete(
         const mat = resultados[carpeta].datosMatriz;
         const servMatriz = mat.servicios || {};
         const servEventoMatriz = mat.serviciosEvento || {};
-        const esPacienteSoloEvento = tipoPaquete === "EVENTO" || Boolean(mat.esFacturarEvento && !mat.paquete);
+        const esPacienteSoloEvento = tipoPaquete === "EVENTO" || Boolean(mat.esFacturarEvento);
 
-        // Validar si el paquete de la carpeta coincide con el de la matriz
+        // Validar si el paquete de la carpeta coincide con el de la matriz (no aplica si la carpeta es EVENTO)
         const matPaqCanonico = normalizarCodigoPaquete(mat.paquete);
         const tipoPaqCanonico = normalizarCodigoPaquete(tipoPaquete);
-        if (mat.paquete && tipoPaquete && tipoPaquete !== "auto" && mat.paquete !== tipoPaquete && matPaqCanonico !== tipoPaqCanonico) {
+        if (tipoPaquete !== "EVENTO" && mat.paquete && tipoPaquete && tipoPaquete !== "auto" && mat.paquete !== tipoPaquete && matPaqCanonico !== tipoPaqCanonico) {
             resultados[carpeta].erroresPorServicio["General"].push(
                 `Discrepancia de Paquete: La carpeta física es ${tipoPaquete}, pero en la matriz está programado como ${mat.paquete}.`
             );
@@ -295,7 +296,21 @@ export async function validarPorPaquete(
         const colsOmitidas = new Set(
             (mat.columnasOmitidas || resultados[carpeta].columnasOmitidasMatriz || []).map(c => String(c).toUpperCase())
         );
-        const todosServicios = ["VM", "VENF", "ENF", "TF", "TR", "TRS", "FON", "TO", "NUT", "TS", "PSI", "APL"];
+        const todosServicios = [
+            "VM",
+            ...(FEATURE_RIESGO_JURIDICO_ACTIVO ? ["VMRJ"] : []),
+            "VENF",
+            "ENF",
+            "TF",
+            "TR",
+            "TRS",
+            "FON",
+            "TO",
+            "NUT",
+            "TS",
+            "PSI",
+            "APL",
+        ];
 
         for (const s of todosServicios) {
             if (colsOmitidas.has(s) || (s === "TRS" && colsOmitidas.has("SUCCION"))) {
@@ -307,6 +322,8 @@ export async function validarPorPaquete(
             if (esPacienteSoloEvento) {
                 if (s === "VM") {
                     cantEsperada = servEventoMatriz.VM || 0;
+                } else if (s === "VMRJ") {
+                    cantEsperada = servEventoMatriz.VMRJ || 0;
                 } else if (s === "VENF") {
                     cantEsperada = servEventoMatriz.VENF || 0;
                 } else if (s === "ENF" || s === "ENF12") {
@@ -386,7 +403,7 @@ export async function validarPorPaquete(
                 }
             }
         }
-    } else if (tipoPaquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete])) {
+    } else if (tipoPaquete !== "EVENTO" && (tipoPaquete.startsWith("CPF") || PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]))) {
         const esPaqueteParametrizado = PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);
         if (!esPaqueteParametrizado) {
             // Si el paquete no está parametrizado, no exigir reglas por defecto
@@ -575,7 +592,9 @@ function detectarServicios(nombres) {
     for (const nombre of nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
-            /\d+\s+(VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
+            FEATURE_RIESGO_JURIDICO_ACTIVO
+                ? /\d+\s+(VMRJ|VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
+                : /\d+\s+(VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
         );
         if (match) {
             let servicio = match[1];
@@ -603,7 +622,7 @@ function validarNuevoPaquete(
     );
 
     const esEvento = tipoPaquete === "EVENTO" || Boolean(
-        resultados[carpeta]?.datosMatriz?.esFacturarEvento && !resultados[carpeta]?.datosMatriz?.paquete
+        resultados[carpeta]?.datosMatriz?.esFacturarEvento
     );
 
     const esPaqueteParametrizado = esEvento || PAQUETES_SOPORTADOS.includes(tipoPaquete) || Boolean(REGLAS_TERAPIAS_PAQUETES[tipoPaquete]);

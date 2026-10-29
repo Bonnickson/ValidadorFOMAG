@@ -38,11 +38,21 @@ const REGLAS_ARCHIVO_5 = {
         ],
         igualarConFechas: true,
     },
+    VMRJ: {
+        debeContener: [
+            "Registro De Historia Clínica",
+            "Registro De Evolución Médica",
+            "Historia Clínica",
+            "Evolución Médica",
+        ],
+        igualarConFechas: true,
+    },
     ENF: {
         debeContener: [
             "Registro De Enfermería - Actividades",
             "REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA",
             "REGISTRO DE ATENCION DOMICILIARIA - ENFERMERIA",
+            "REGISTROS ASISTENCIALES",
         ],
         igualarConFechas: true,
     },
@@ -116,6 +126,7 @@ const REGLAS_ARCHIVO_2_CAPITAL = {
         igualarConFechas: false,
     },
     VM: { debeContener: "VALORACION MEDICA", igualarConFechas: false },
+    VMRJ: { debeContener: "VALORACION MEDICA", igualarConFechas: false },
     ENF: { debeContener: "ENFERMERIA", igualarConFechas: false },
     CH: { debeContener: "CURACION", igualarConFechas: false },
     PSI: { debeContener: "PSICOLOGIA", igualarConFechas: false },
@@ -163,6 +174,16 @@ const REGLAS_ARCHIVO_2_FOMAG = {
     },
     VM: {
         debeContener: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    VMRJ: {
+        debeContener: [
+            "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION (RIESGO JURIDICO)",
+            "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION",
+            "RIESGO JURIDICO",
+            "AD0164",
+        ],
         igualarConFechas: true,
         extraerNumero: true,
     },
@@ -250,6 +271,17 @@ const REGLAS_ARCHIVO_2_NUEVA_EPS = {
         debeContener: [
             "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
             "MEDICINA GENERAL",
+            "VALORACION MEDICA",
+        ],
+        igualarConFechas: true,
+        extraerNumero: true,
+    },
+    VMRJ: {
+        debeContener: [
+            "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION (RIESGO JURIDICO)",
+            "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION",
+            "RIESGO JURIDICO",
+            "AD0164",
             "VALORACION MEDICA",
         ],
         igualarConFechas: true,
@@ -365,6 +397,7 @@ export function obtenerReglasEvento(convenio) {
         },
         FON: { "2.pdf": reglas2.FON, "5.pdf": REGLAS_ARCHIVO_5.FON },
         VM: { "2.pdf": reglas2.VM, "5.pdf": REGLAS_ARCHIVO_5.VM },
+        VMRJ: { "2.pdf": reglas2.VMRJ || reglas2.VM, "5.pdf": REGLAS_ARCHIVO_5.VMRJ || REGLAS_ARCHIVO_5.VM },
         ENF: { "2.pdf": reglas2.ENF, "5.pdf": REGLAS_ARCHIVO_5.ENF },
         CH: { "2.pdf": reglas2.CH || reglas2.ENF, "5.pdf": REGLAS_ARCHIVO_5.CH },
         PSI: { "2.pdf": reglas2.PSI, "5.pdf": REGLAS_ARCHIVO_5.PSI },
@@ -423,6 +456,7 @@ export function obtenerReglasPaquete(convenio) {
         },
         FON: { "2.pdf": reglas2Paquete.FON, "5.pdf": reglas5Paquete.FON },
         VM: { "2.pdf": reglas2Paquete.VM, "5.pdf": reglas5Paquete.VM },
+        VMRJ: { "2.pdf": reglas2Paquete.VMRJ || reglas2Paquete.VM, "5.pdf": reglas5Paquete.VMRJ || reglas5Paquete.VM },
         ENF: { "2.pdf": reglas2Paquete.ENF, "5.pdf": reglas5Paquete.ENF },
         CH: { "2.pdf": reglas2Paquete.CH || reglas2Paquete.ENF, "5.pdf": reglas5Paquete.CH },
         PSI: { "2.pdf": reglas2Paquete.PSI, "5.pdf": reglas5Paquete.PSI },

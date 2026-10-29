@@ -50,52 +50,66 @@ export function agruparArchivosInteligente(
             "/"
         );
         const p = pathNormalizado.split("/").filter(Boolean);
+        
+        let dirPath = "";
+        let carpetaPaciente = "";
+
         if (p.length < 2) {
-            continue; // Archivo suelto en raíz sin carpeta de paciente
+            // Archivo PDF seleccionado directamente (suelto o desde selector de archivo único)
+            // Se asume como directorio/carpeta la raíz virtual o el nombre del archivo si no tiene directorio
+            dirPath = "SOPORTES_PACIENTE";
+            carpetaPaciente = "SOPORTES_PACIENTE";
+        } else {
+            dirPath = p.slice(0, -1).join("/");
+            carpetaPaciente = p[p.length - 2];
         }
 
-        const dirPath = p.slice(0, -1).join("/");
-        const carpetaPaciente = p[p.length - 2];
         let paqueteDetectado = fallbackSeguro;
         let auditorDetectado = "";
         let errorPaquete = null;
 
         if (tipoValidacion === "paquete") {
-            const segmentosSuperiores = p.slice(0, p.length - 2);
+            const segmentosSuperiores = p.length >= 2 ? p.slice(0, p.length - 2) : [];
             let indicePaquete = -1;
 
-            // Buscar el código de paquete en cualquiera de los niveles superiores a la carpeta del paciente
-            for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
-                const seg = segmentosSuperiores[i];
-                const codigo = extraerCodigoPaquete(seg);
-                if (codigo) {
-                    paqueteDetectado = codigo;
-                    indicePaquete = i;
-                    break;
-                }
-            }
-
-            // Si se detectó paquete en alguna carpeta superior, el otro nivel superior (si existe) es el auditor
-            if (indicePaquete !== -1) {
-                for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
-                    if (i !== indicePaquete) {
-                        auditorDetectado = segmentosSuperiores[i];
-                        break;
-                    }
-                }
+            // 0. Si alguna carpeta superior es EVENTO, clasificar como EVENTO directamente
+            const esCarpetaEvento = segmentosSuperiores.some(seg => seg.trim().toUpperCase() === "EVENTO" || seg.trim().toUpperCase().startsWith("EVENTO "));
+            if (esCarpetaEvento) {
+                paqueteDetectado = "EVENTO";
             } else {
-                // Verificar si alguna carpeta intentó ser paquete pero con código inválido
-                for (const seg of segmentosSuperiores) {
-                    const matchIntento = seg.trim().match(/^([A-Za-z0-9]+)/);
-                    const codigoIntento = matchIntento ? matchIntento[1].toUpperCase() : "";
-                    if (codigoIntento.startsWith("CPF") || codigoIntento.startsWith("E8") || codigoIntento.startsWith("E9") || codigoIntento.startsWith("EC")) {
-                        errorPaquete = `Código de paquete no válido: "${seg}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
+                // Buscar el código de paquete en cualquiera de los niveles superiores a la carpeta del paciente
+                for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
+                    const seg = segmentosSuperiores[i];
+                    const codigo = extraerCodigoPaquete(seg);
+                    if (codigo) {
+                        paqueteDetectado = codigo;
+                        indicePaquete = i;
                         break;
                     }
                 }
-                paqueteDetectado = fallbackSeguro;
-                if (segmentosSuperiores.length > 0) {
-                    auditorDetectado = segmentosSuperiores[0];
+
+                // Si se detectó paquete en alguna carpeta superior, el otro nivel superior (si existe) es el auditor
+                if (indicePaquete !== -1) {
+                    for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
+                        if (i !== indicePaquete) {
+                            auditorDetectado = segmentosSuperiores[i];
+                            break;
+                        }
+                    }
+                } else {
+                    // Verificar si alguna carpeta intentó ser paquete pero con código inválido
+                    for (const seg of segmentosSuperiores) {
+                        const matchIntento = seg.trim().match(/^([A-Za-z0-9]+)/);
+                        const codigoIntento = matchIntento ? matchIntento[1].toUpperCase() : "";
+                        if (codigoIntento.startsWith("CPF") || codigoIntento.startsWith("E8") || codigoIntento.startsWith("E9") || codigoIntento.startsWith("EC")) {
+                            errorPaquete = `Código de paquete no válido: "${seg}" (se esperaba: ${PAQUETES_SOPORTADOS.join(", ")})`;
+                            break;
+                        }
+                    }
+                    paqueteDetectado = fallbackSeguro;
+                    if (segmentosSuperiores.length > 0) {
+                        auditorDetectado = segmentosSuperiores[0];
+                    }
                 }
             }
         } else {

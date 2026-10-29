@@ -2,7 +2,10 @@
 
 export const DEBUG = true;
 
+export const FEATURE_RIESGO_JURIDICO_ACTIVO = false;
+
 export const ALLOWED_TYPES = [
+    ...(FEATURE_RIESGO_JURIDICO_ACTIVO ? ["VMRJ"] : []),
     "VM",
     "ENF",
     "ENF12",
@@ -294,6 +297,7 @@ export const TEXTOS_SERVICIOS_FOMAG = {
     TRS: "Terapia respiratoria Succion",
     FON: "ATENCION (VISITA) DOMICILIARIA, POR FONIATRIA Y FONOAUDIOLOGIA",
     VM: "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
+    VMRJ: "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION (RIESGO JURIDICO)",
     ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
     ENF12: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
     CH: "CURACION DE HERIDAS",
@@ -329,6 +333,12 @@ export const TEXTOS_SERVICIOS_NUEVA_EPS = {
         "ATENCION (VISITA) DOMICILIARIA, POR MEDICINA GENERAL",
         "MEDICINA GENERAL",
         "VALORACION MEDICA",
+    ],
+    VMRJ: [
+        "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION (RIESGO JURIDICO)",
+        "VISITA MEDICA DOMICILIARIA UNICA DE VALORACION",
+        "RIESGO JURIDICO",
+        "AD0164",
     ],
     ENF: [
         "6 HORAS POR AUXILIAR DE ENFERMERIA",
@@ -392,6 +402,7 @@ export const SERVICIOS_CODIGOS_NUEVA_EPS = {
     CUIDADOR_12H_D: { codigo: "AD0199", nombre: "Atención Por Cuidador (Cuidador 12 Horas Diurnas)" },
     CUIDADOR_12H_N: { codigo: "AD0199", nombre: "Atención Por Cuidador (Cuidador 12 Horas Nocturnas)" },
     CUIDADOR_24H: { codigo: "AD0200", nombre: "Servicio De Cuidador Por 24 Horas" },
+    VM_RIESGO_JURIDICO: { codigo: "AD0164", nombre: "Visita Medica Domiciliaria Unica De Valoracion (Riesgo Juridico)" },
     DEFUNCION: { codigo: "E8902001", nombre: "Paquete Autopsia Verbal En Domicilio" },
 };
 
@@ -413,8 +424,9 @@ export function obtenerTextoServicioNuevaEps(servicio) {
 
 export const IGNORAR_ARCHIVOS = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 
-export const REGEX_SERVICIO_ARCHIVO =
-    /^[2-5]\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
+export const REGEX_SERVICIO_ARCHIVO = FEATURE_RIESGO_JURIDICO_ACTIVO
+    ? /^[2-5]\s+(vmrj|vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i
+    : /^[2-5]\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
 
 /**
  * Obtiene el icono, tipo y estado de reconocimiento de un archivo de soporte
@@ -435,7 +447,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
     if (/^5\.pdf$/i.test(nombre)) return { icono: "📑", tipo: "Evolución Clínica (5.pdf)", reconocido: true };
 
     // Archivos con servicio: [2-5] [servicio].pdf
-    const match = nombre.match(/^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i);
+    const match = nombre.match(REGEX_SERVICIO_ARCHIVO);
     if (match) {
         const num = match[1];
         let s = match[2].toUpperCase();
@@ -448,6 +460,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
         // num === "5"
         const iconosServicios = {
             VM: "🩺",
+            VMRJ: "⚖️",
             VENF: "🩺",
             ENF: "💉",
             ENF12: "💉",
@@ -466,8 +479,8 @@ export function obtenerInfoSoporte(nombreArchivo) {
         const icono = iconosServicios[s] || "📑";
         let tipoDesc = s;
         if (s === "CH") tipoDesc = "Curación de Heridas (CH)";
-        else if (s === "APL") tipoDesc = "Aplicación de Medicamentos (APL)";
-        return { icono, tipo: `Evolución ${tipoDesc}`, reconocido: true };
+        else if (s === "APL") tipoDesc = "Aplicación Medicamentos (APL)";
+        return { icono, tipo: s === "APL" ? tipoDesc : `Evolución ${tipoDesc}`, reconocido: true };
     }
 
     return { icono: "❌", tipo: "Soporte no reconocido", reconocido: false };
@@ -476,6 +489,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
 export const SERVICIOS_NOMBRES = {
     General: "📦 Paquete",
     VM: "🩺 Valoración Médica",
+    VMRJ: "⚖️ Visita Médica Riesgo Jurídico",
     VENF: "🩺 Enfermería Profesional",
     ENF: "💉 Auxiliar de Enfermería",
     APL: "💊 Aplicación Medicamentos (APL)",

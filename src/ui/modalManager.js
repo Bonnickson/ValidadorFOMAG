@@ -1,4 +1,5 @@
 import {
+    FEATURE_RIESGO_JURIDICO_ACTIVO,
     PAQUETES_INFO,
     PAQUETES_SOPORTADOS,
     REGLAS_TERAPIAS_PAQUETES,
@@ -642,6 +643,7 @@ export function verProgramadoCarpeta(
         // 3. Comparación estricta de nombres completos exactos (sin includes parcial)
         const exactKeysMap = {
             "VM": ["VM", "MEDICA", "VISITA MEDICA", "VALORACION MEDICA", "VALORACIÓN MÉDICA"],
+            "VMRJ": ["VMRJ", "VISITA MEDICA RIESGO JURIDICO", "RIESGO JURIDICO", "VALORACION MEDICA RIESGO JURIDICO"],
             "VENF": ["VENF", "ENFERMERIA PROFESIONAL", "ENF PROF", "ENFERMERA PROFESIONAL", "ENFERMERÍA PROFESIONAL"],
             "ENF": ["ENF", "AUXILIAR ENFERMERIA", "AUXILIAR DE ENFERMERIA", "AUXILIAR DE ENFERMERÍA", "ENFERMERIA", "AUX ENF"],
             "TF": ["TF", "TERAPIA FISICA", "FISICA", "TERAPIA FÍSICA", "FÍSICA"],
@@ -723,8 +725,8 @@ export function verProgramadoCarpeta(
         const s = mat.servicios || {};
         const pkgCarpeta = r?.tipoPaquete || "—";
         const pkgMatriz = mat.paquete || mat.paqueteRaw || "—";
-        const paqueteMismatch = pkgCarpeta !== "—" && pkgMatriz !== "—" && pkgCarpeta !== "auto" && pkgCarpeta.toUpperCase() !== pkgMatriz.toUpperCase();
-        const pkgCode = mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—";
+        const paqueteMismatch = pkgCarpeta !== "—" && pkgMatriz !== "—" && pkgCarpeta !== "auto" && pkgCarpeta !== "EVENTO" && pkgCarpeta.toUpperCase() !== pkgMatriz.toUpperCase();
+        const pkgCode = (pkgCarpeta === "EVENTO" ? "EVENTO" : (mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—"));
         const pkgCls = pkgCode !== "—" ? `pkg-${pkgCode.toLowerCase()}` : "";
 
         const renderFilaServicio = (item) => {
@@ -759,7 +761,7 @@ export function verProgramadoCarpeta(
             `;
         };
 
-        const esPacienteSoloEvento = pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean(mat.esFacturarEvento)) || (Boolean(mat.esFacturarEvento) && !mat.paquete);
+        const esPacienteSoloEvento = pkgCarpeta === "EVENTO" || pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean(mat.esFacturarEvento)) || (Boolean(mat.esFacturarEvento) && !mat.paquete);
         const evs = mat.serviciosEvento || {};
 
         let grupoFijos = [];
@@ -771,6 +773,7 @@ export function verProgramadoCarpeta(
             // Servicios que empiezan por Eve. en la Matriz
             grupoFijos = [
                 { id: "VM", label: "Eve. Médica General (VM)", progCount: evs.VM || 0 },
+                ...(FEATURE_RIESGO_JURIDICO_ACTIVO ? [{ id: "VMRJ", label: "Eve. Médica General Riesgo Jurídico (VMRJ)", progCount: evs.VMRJ || 0 }] : []),
                 { id: "VENF", label: "Eve. Enf. Profesional (VENF)", progCount: evs.VENF || 0 },
                 { id: "ENF6", label: "Eve. Turno Enf. 6 Horas", progCount: evs.ENF6 || 0 },
                 { id: "ENF8", label: "Eve. Turno Enf. 8 Horas", progCount: evs.ENF8 || 0 },
@@ -1061,6 +1064,7 @@ export function mostrarModalProgramadoDetallado(
         // 3. Comparación estricta de nombres completos exactos (sin includes parcial)
         const exactKeysMap = {
             "VM": ["VM", "MEDICA", "VISITA MEDICA", "VALORACION MEDICA", "VALORACIÓN MÉDICA"],
+            "VMRJ": ["VMRJ", "VISITA MEDICA RIESGO JURIDICO", "RIESGO JURIDICO", "VALORACION MEDICA RIESGO JURIDICO"],
             "VENF": ["VENF", "ENFERMERIA PROFESIONAL", "ENF PROF", "ENFERMERA PROFESIONAL", "ENFERMERÍA PROFESIONAL"],
             "ENF": ["ENF", "AUXILIAR ENFERMERIA", "AUXILIAR DE ENFERMERIA", "AUXILIAR DE ENFERMERÍA", "ENFERMERIA", "AUX ENF"],
             "TF": ["TF", "TERAPIA FISICA", "FISICA", "TERAPIA FÍSICA", "FÍSICA"],
@@ -1151,8 +1155,8 @@ export function mostrarModalProgramadoDetallado(
     const s = mat.servicios || {};
     const pkgCarpeta = r?.tipoPaquete || "—";
     const pkgMatriz = mat.paquete || mat.paqueteRaw || "—";
-    const paqueteMismatch = pkgCarpeta !== "—" && pkgMatriz !== "—" && pkgCarpeta !== "auto" && pkgCarpeta.toUpperCase() !== pkgMatriz.toUpperCase();
-    const pkgCode = mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—";
+    const paqueteMismatch = pkgCarpeta !== "—" && pkgMatriz !== "—" && pkgCarpeta !== "auto" && pkgCarpeta !== "EVENTO" && pkgCarpeta.toUpperCase() !== pkgMatriz.toUpperCase();
+    const pkgCode = (pkgCarpeta === "EVENTO" ? "EVENTO" : (mat.paquete || mat.paqueteRaw || r?.tipoPaquete || "—"));
     const pkgCls = pkgCode !== "—" ? `pkg-${pkgCode.toLowerCase()}` : "";
 
     const renderFilaServicioModal = (item) => {
@@ -1181,7 +1185,7 @@ export function mostrarModalProgramadoDetallado(
         `;
     };
 
-const esPacienteSoloEvento = pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean(mat.esFacturarEvento)) || (Boolean(mat.esFacturarEvento) && !mat.paquete);
+    const esPacienteSoloEvento = pkgCarpeta === "EVENTO" || pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean(mat.esFacturarEvento)) || (Boolean(mat.esFacturarEvento) && !mat.paquete);
         const evs = mat.serviciosEvento || {};
 
         let grupoFijos = [];
@@ -1193,6 +1197,7 @@ const esPacienteSoloEvento = pkgCode === "EVENTO" || (!mat.paqueteRaw && Boolean
             // Servicios que empiezan por Eve. en la Matriz
             grupoFijos = [
                 { id: "VM", label: "Eve. Médica General (VM)", progCount: evs.VM || 0 },
+                ...(FEATURE_RIESGO_JURIDICO_ACTIVO ? [{ id: "VMRJ", label: "Eve. Médica General Riesgo Jurídico (VMRJ)", progCount: evs.VMRJ || 0 }] : []),
                 { id: "VENF", label: "Eve. Enf. Profesional (VENF)", progCount: evs.VENF || 0 },
                 { id: "ENF6", label: "Eve. Turno Enf. 6 Horas", progCount: evs.ENF6 || 0 },
                 { id: "ENF8", label: "Eve. Turno Enf. 8 Horas", progCount: evs.ENF8 || 0 },
@@ -1467,6 +1472,7 @@ export function mostrarModalFilaMatriz(p) {
         // En paciente por Evento se muestran los servicios que en la matriz empiezan por Eve.
         filasFijosHTML = [
             renderFilaCompacta("Eve. Médica General (VM)", evs.VM || 0),
+            ...(FEATURE_RIESGO_JURIDICO_ACTIVO ? [renderFilaCompacta("Eve. Médica General Riesgo Jurídico (VMRJ)", evs.VMRJ || 0)] : []),
             renderFilaCompacta("Eve. Enfermería Profesional (VENF)", evs.VENF || 0),
             renderFilaCompacta("Eve. Turno Enfermería 6 Horas", evs.ENF6 || 0),
             renderFilaCompacta("Eve. Turno Enfermería 8 Horas", evs.ENF8 || 0),
@@ -1819,6 +1825,7 @@ export function mostrarModalPrevalidacionMatriz(matrizData, registrosOmitidosSet
 
         const nombresEventoCompleto = {
             VM: "Valoración medicina general",
+            VMRJ: "Visita médica riesgo jurídico",
             ENF6: "Turno enfermería 6 horas",
             ENF8: "Turno enfermería 8 horas",
             ENF12: "Turno enfermería 12 horas",
@@ -3025,6 +3032,280 @@ export function solicitarColumnasAOmitirModal(columnasDisponibles, columnasOmiti
             const checks = overlay.querySelectorAll(".col-omit-checkbox:checked");
             const seleccionadas = new Set(Array.from(checks).map((chk) => chk.value.toUpperCase()));
             cerrarCon(seleccionadas);
+        });
+    });
+}
+
+/**
+ * Muestra el modal para pegar una fila copiada de la matriz Excel/CSV
+ * Organiza en tiempo real mostrando los títulos de cada columna.
+ * @param {string} [textoInicial=""]
+ * @returns {Promise<string|null>} Retorna el texto pegado o null si se cancela
+ */
+export function solicitarFilaMatrizPegadaModal(textoInicial = "") {
+    return new Promise((resolve) => {
+        const modalId = "modalPegarFilaMatriz";
+        const prev = document.getElementById(modalId);
+        if (prev) prev.remove();
+
+        const overlay = document.createElement("div");
+        overlay.id = modalId;
+        overlay.className = "modal-rules-backdrop";
+        overlay.style.zIndex = "2200";
+
+        const TITULOS_COLUMNAS_MATRIZ = [
+            "Tipo doc",
+            "Documento Paciente",
+            "Nombre Completo Del Paciente",
+            "Paquete",
+            "Facturar por evento",
+            "Cant Paquete Diario",
+            "Paq. Médica General",
+            "Paq. Enfermería Profesional",
+            "Paq. Aux Enfermeria",
+            "Paq. Terapia Física",
+            "Paq. Terapia Respiratoria",
+            "Paq. Terapia Respiratoria Con Succión",
+            "Paq. Fonoaudiología",
+            "Paq. Terapia Ocupacional",
+            "Paq. Nutrición",
+            "Paq. Trabajo Social",
+            "Paq. Psicología",
+            "Paq. Aplicación Medicamento 1 Dosis",
+            "Paq. Aplicación Medicamento 2 Dosis",
+            "Paq. Aplicación Medicamento 3 Dosis",
+            "Paq. Aplicación Medicamento 4 Dosis",
+            "Paq. Cambio de Sonda",
+            "Paq. Curacion De Herida Grado III - Complejidad Alta",
+            "Paq. Curacion De Herida Grado II - Complejidad Media",
+            "Paq. Curacion De Herida Grado I - Complejidad Baja",
+            "Eve. Médica General",
+            "Eve. Médica General Riesgo Juridico",
+            "Eve. Turno Enfermería 6 Horas",
+            "Eve. Turno Enfermería 8 Horas",
+            "Eve. Turno Enfermería 12 Horas",
+            "Eve. Turno Enfermería 12 Horas Nocturno",
+            "Eve. Turno Enfermería 24 Horas",
+            "Eve. Turno Cuidador 6 Horas",
+            "Eve. Turno Cuidador 8 Horas",
+            "Eve. Turno Cuidador 12 Horas",
+            "Eve. Turno Cuidador 12 Horas Nocturno",
+            "Eve. Turno Cuidador 24 Horas",
+            "Eve. Trabajo Social",
+            "Observaciones PAD",
+            "Observaciones Facturación",
+            "Factura Paquete",
+            "Factura Eventos",
+            "Estado Paquete",
+            "Estado Evento",
+            "Observación Soft"
+        ];
+
+        overlay.innerHTML = `
+            <div class="modal-rules-card" style="max-width: 1100px; width: 96%; max-height: 94vh; display:flex; flex-direction:column; box-shadow: var(--shadow-modal);" onclick="event.stopPropagation()">
+                <div class="modal-rules-header" style="padding: 12px 18px;">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="preval-header-icon" style="background:rgba(37, 99, 235, 0.12); color:#2563eb;">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px;"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>
+                        </div>
+                        <div>
+                            <h3 class="modal-rules-title" style="margin:0; font-size:15px;">Validar con Fila Individual de Matriz</h3>
+                            <p class="modal-rules-subtitle" style="margin:2px 0 0; font-size:11.5px;">Pega los datos de la fila de Excel para organizarlos automáticamente en la estructura de 45 columnas</p>
+                        </div>
+                    </div>
+                    <button type="button" class="modal-rules-close" id="btnCerrarModalPegarFila">&times;</button>
+                </div>
+
+                <div class="modal-rules-body" style="padding:12px 18px; overflow-y:auto; display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <label for="txtFilaMatrizPegada" style="font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.4px; color:var(--text-muted);">
+                                Fila copiada de Excel:
+                            </label>
+                            <span id="filaColsCounter" style="font-size:11px; font-weight:600; color:var(--text-muted);">0 columnas detectadas</span>
+                        </div>
+                        <textarea id="txtFilaMatrizPegada" class="form-control" rows="2" placeholder="Pega aquí (Ctrl+V) la fila copiada de Excel..." style="width:100%; font-family:monospace; font-size:11px; padding:6px 10px; border-radius:6px; border:1px solid var(--border-subtle, #cbd5e1); background:var(--bg-card, #fff); color:var(--text-primary); resize:vertical;">${textoInicial}</textarea>
+                    </div>
+
+                    <!-- Vista previa en vivo organizada horizontalmente con los títulos -->
+                    <div id="contenedorOrganizadoMatriz" style="display:none; flex-direction:column; gap:6px;">
+                        <div style="font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.4px; color:var(--accent, #2563eb); display:flex; align-items:center; justify-content:space-between;">
+                            <span>✨ Matriz Organizada Horizontalmente (45 Columnas):</span>
+                            <span style="font-size:10.5px; font-weight:600; color:var(--text-muted);">Desplaza la barra inferior para revisar todas las columnas &rarr;</span>
+                        </div>
+                        <div id="tablaOrganizadaPreview" style="max-height: 280px; overflow-x: scroll; overflow-y: auto; border: 1px solid var(--border-subtle, #94a3b8); border-radius: 6px; background: var(--bg-card, #fff); box-shadow: inset 0 1px 3px rgba(0,0,0,0.08); padding-bottom: 2px;">
+                            <!-- Se rellena dinámicamente -->
+                        </div>
+                    </div>
+
+                    <div id="pegarFilaFeedback" style="font-size:11.5px; color:#ef4444; min-height:14px;"></div>
+                </div>
+
+                <div class="modal-rules-footer" style="display:flex; justify-content:space-between; align-items:center; padding:10px 18px; border-top:1px solid var(--border-subtle, #e2e8f0); background:var(--bg-subtle, #f8fafc); border-radius:0 0 10px 10px;">
+                    <button type="button" class="btn-studio btn-studio-ghost" id="btnCancelarPegarFila" style="font-size:11.5px;">Cancelar</button>
+                    <button type="button" class="btn-studio btn-studio-primary" id="btnProcesarFilaMatriz" style="font-size:11.5px;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:13px;height:13px;"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        <span>Confirmar y Validar Paciente</span>
+                    </button>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(overlay);
+
+        const textarea = overlay.querySelector("#txtFilaMatrizPegada");
+        const feedback = overlay.querySelector("#pegarFilaFeedback");
+        const colsCounter = overlay.querySelector("#filaColsCounter");
+        const contenedorOrganizado = overlay.querySelector("#contenedorOrganizadoMatriz");
+        const tablaPreview = overlay.querySelector("#tablaOrganizadaPreview");
+
+        const actualizarOrganizacionEnVivo = () => {
+            const raw = textarea ? textarea.value.trim() : "";
+            if (!raw) {
+                if (contenedorOrganizado) contenedorOrganizado.style.display = "none";
+                if (colsCounter) colsCounter.textContent = "0 columnas detectadas";
+                if (feedback) feedback.textContent = "";
+                return;
+            }
+
+            const lineas = raw.split(/\r?\n/).filter(l => l.trim().length > 0);
+            let linea = lineas[0] || "";
+            if (lineas.length > 1) {
+                const l0 = lineas[0].toLowerCase();
+                if (l0.includes("documento") || l0.includes("tipo doc") || l0.includes("paciente")) {
+                    linea = lineas[1];
+                }
+            }
+
+            let celdas = [];
+            if (linea.includes("\t")) {
+                celdas = linea.split("\t");
+            } else if (linea.includes(";")) {
+                celdas = linea.split(";");
+            } else if (linea.includes(",")) {
+                celdas = linea.split(",");
+            } else {
+                celdas = linea.split(/\s{2,}/);
+            }
+
+            celdas = celdas.map(c => String(c ?? "").trim());
+
+            if (colsCounter) {
+                colsCounter.textContent = `${celdas.length} columnas detectadas (de ${TITULOS_COLUMNAS_MATRIZ.length} oficiales)`;
+            }
+
+            if (celdas.length >= 2) {
+                if (contenedorOrganizado) contenedorOrganizado.style.display = "flex";
+                if (feedback) feedback.textContent = "";
+
+                // Generar tabla horizontal tipo Excel con encabezados coloreados según el formato oficial
+                let thsHTML = "";
+                let tdsHTML = "";
+
+                // Paleta de colores idéntica a la imagen del Excel FOMAG
+                const obtenerEstiloColumna = (idx) => {
+                    if (idx === 0) return { bg: "#fed7aa", color: "#7c2d12", vertical: true, minWidth: "38px" }; // Tipo doc (vertical)
+                    if (idx >= 1 && idx <= 2) return { bg: "#fed7aa", color: "#7c2d12", vertical: false, minWidth: "140px" }; // Doc, Nombre (horizontal)
+                    if (idx === 3) return { bg: "#86efac", color: "#14532d", vertical: false, minWidth: "220px", maxWidth: "260px" }; // Paquete (ancho contenido)
+                    if (idx === 4) return { bg: "#60a5fa", color: "#1e3a8a", vertical: true, minWidth: "34px" }; // Facturar por evento
+                    if (idx === 5) return { bg: "#c4b5fd", color: "#4c1d95", vertical: true, minWidth: "34px" }; // Cant Paquete Diario
+                    if (idx >= 6 && idx <= 8) return { bg: "#bae6fd", color: "#0369a1", vertical: true, minWidth: "34px" }; // Med, Enf prof, Aux enf
+                    if (idx >= 9 && idx <= 13) return { bg: "#fef08a", color: "#854d0e", vertical: true, minWidth: "34px" }; // Terapias
+                    if (idx >= 14 && idx <= 16) return { bg: "#bbf7d0", color: "#166534", vertical: true, minWidth: "34px" }; // Nut, TS, Psi
+                    if (idx >= 17 && idx <= 20) return { bg: "#a7f3d0", color: "#065f46", vertical: true, minWidth: "34px" }; // APL 1-4 dosis
+                    if (idx >= 21 && idx <= 24) return { bg: "#99f6e4", color: "#115e59", vertical: true, minWidth: "34px" }; // Sonda, Curaciones
+                    if (idx >= 25 && idx <= 26) return { bg: "#93c5fd", color: "#1e40af", vertical: true, minWidth: "34px" }; // Eve Med
+                    if (idx >= 27 && idx <= 31) return { bg: "#bfdbfe", color: "#1d4ed8", vertical: true, minWidth: "34px" }; // Turnos enf
+                    if (idx >= 32 && idx <= 36) return { bg: "#fed7aa", color: "#c2410c", vertical: true, minWidth: "34px" }; // Cuidadores
+                    if (idx === 37) return { bg: "#fef08a", color: "#854d0e", vertical: true, minWidth: "34px" }; // Eve TS
+                    return { bg: "#e2e8f0", color: "#334155", vertical: false, minWidth: "120px" }; // Observaciones y facturas
+                };
+
+                TITULOS_COLUMNAS_MATRIZ.forEach((titulo, idx) => {
+                    const val = celdas[idx] !== undefined ? celdas[idx] : "";
+                    const tieneValor = val !== "";
+                    const estilo = obtenerEstiloColumna(idx);
+
+                    let thInner = "";
+                    if (estilo.vertical) {
+                        thInner = `
+                            <div style="writing-mode: vertical-rl; transform: rotate(180deg); height: 165px; white-space: nowrap; font-size: 10.5px; font-weight: 600; line-height: 1.1; margin: auto; display: flex; align-items: center; justify-content: flex-start; text-transform: none; letter-spacing: -0.2px;">
+                                ${titulo}
+                            </div>
+                        `;
+                    } else {
+                        thInner = `
+                            <div style="font-size: 11px; font-weight: 700; line-height: 1.25; text-transform: none; text-align: left; padding: 4px;">
+                                ${titulo}
+                            </div>
+                        `;
+                    }
+
+                    const minW = estilo.minWidth || "34px";
+                    const maxW = estilo.maxWidth ? `max-width: ${estilo.maxWidth};` : "";
+
+                    thsHTML += `
+                        <th style="padding: 6px 4px; background: ${estilo.bg}; color: ${estilo.color}; border: 1px solid #cbd5e1; vertical-align: bottom; min-width: ${minW}; ${maxW}">
+                            ${thInner}
+                        </th>
+                    `;
+
+                    const valTexto = tieneValor ? val : "";
+                    const tdColor = tieneValor ? "font-weight: 700; color: #0f172a; background: #ffffff;" : "background: #f8fafc; color: #94a3b8;";
+                    const tdAlign = estilo.vertical ? "text-align: center;" : "text-align: left;";
+                    const tdOverflow = estilo.maxWidth ? "overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" : "white-space: nowrap;";
+
+                    tdsHTML += `
+                        <td title="${valTexto}" style="padding: 6px 6px; font-size: 11px; font-family: monospace; border: 1px solid #cbd5e1; min-width: ${minW}; ${maxW} ${tdAlign} ${tdColor} ${tdOverflow}">
+                            ${valTexto}
+                        </td>
+                    `;
+                });
+
+                if (tablaPreview) {
+                    tablaPreview.innerHTML = `
+                        <table style="border-collapse: collapse; min-width: 100%; border: 1px solid #94a3b8;">
+                            <thead>
+                                <tr>${thsHTML}</tr>
+                            </thead>
+                            <tbody>
+                                <tr>${tdsHTML}</tr>
+                            </tbody>
+                        </table>
+                    `;
+                }
+            } else {
+                if (contenedorOrganizado) contenedorOrganizado.style.display = "none";
+            }
+        };
+
+        if (textarea) {
+            textarea.addEventListener("input", actualizarOrganizacionEnVivo);
+            textarea.addEventListener("paste", () => setTimeout(actualizarOrganizacionEnVivo, 50));
+            setTimeout(() => {
+                textarea.focus();
+                if (textoInicial) actualizarOrganizacionEnVivo();
+            }, 80);
+        }
+
+        const cerrarCon = (val) => {
+            overlay.remove();
+            resolve(val);
+        };
+
+        overlay.querySelector("#btnCerrarModalPegarFila")?.addEventListener("click", () => cerrarCon(null));
+        overlay.querySelector("#btnCancelarPegarFila")?.addEventListener("click", () => cerrarCon(null));
+        overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) cerrarCon(null);
+        });
+
+        overlay.querySelector("#btnProcesarFilaMatriz")?.addEventListener("click", () => {
+            const val = textarea ? textarea.value.trim() : "";
+            if (!val) {
+                if (feedback) feedback.textContent = "Por favor pega la fila de datos antes de continuar.";
+                return;
+            }
+            cerrarCon(val);
         });
     });
 }

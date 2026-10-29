@@ -33,6 +33,7 @@ import {
     solicitarPeriodoPermitidoModal,
     solicitarColumnasAOmitirModal,
     solicitarRegistrosAOmitirModal,
+    solicitarFilaMatrizPegadaModal,
 } from "./ui/modalManager.js";
 import { formatearPeriodoLegible } from "./utils/textUtils.js";
 import {
@@ -66,6 +67,7 @@ import { exportarCertificadoPDF } from "./services/pdfExportService.js";
 import {
     leerArchivoMatriz,
     parsearMatriz,
+    construirMatrizDesdeFilaPegada,
     listarColumnasConfigurablesMatriz,
     normalizarDocumentoMatriz,
     buscarPacienteEnMatriz,
@@ -103,6 +105,7 @@ const resumenDiv = document.getElementById("resumen");
 const filtrosDiv = document.getElementById("filtros");
 const buscarDocumentoInput = document.getElementById("buscarDocumento");
 const mostrarExitosCheckbox = document.getElementById("mostrarExitos");
+const filtroPaqueteSelect = document.getElementById("filtroPaquete");
 const filtroServicioSelect = document.getElementById("filtroServicio");
 const grupoFiltroEstado = document.getElementById("grupoFiltroEstado");
 const limpiarFiltrosBtn = document.getElementById("limpiarFiltros");
@@ -127,6 +130,7 @@ const domElements = {
     filtrosDiv,
     buscarDocumentoInput,
     mostrarExitosCheckbox,
+    filtroPaqueteSelect,
     filtroServicioSelect,
     grupoFiltroEstado,
     resumenErroresDiv,
@@ -608,13 +612,26 @@ async function procesarLoteArchivos(archivosLista) {
                     claveBusquedaMatriz || nroDocumento,
                     paqueteParaCarpeta
                 );
+
+                // Si no hizo match y la matriz tiene exactamente 1 paciente cargado (modo fila individual)
+                if (!datosMatrizPaciente && datosMatrizGlobal.pacientesList?.length === 1) {
+                    const unicoPaciente = datosMatrizGlobal.pacientesList[0];
+                    const unicoDocSoloNum = String(unicoPaciente.documento || "").replace(/\D/g, "");
+                    const nroDocSoloNum = String(nroDocumento || "").replace(/\D/g, "");
+                    if (unicoDocSoloNum && nroDocSoloNum && unicoDocSoloNum === nroDocSoloNum) {
+                        datosMatrizPaciente = unicoPaciente;
+                    }
+                }
                 if (datosMatrizPaciente) {
                     const paqAsoc = datosMatrizPaciente.paquete || paqueteParaCarpeta || "SIN_PAQUETE";
                     documentosProcesadosSet.add(`${claveBusquedaMatriz}_${paqAsoc}`);
                     documentosProcesadosSet.add(`${nroDocumento}_${paqAsoc}`);
 
                     // Si la carpeta no tenía paquete explícito en disco o venía en auto/fallback, tomar el de la matriz
-                    if (!infoCarpeta.tipoPaquete || infoCarpeta.tipoPaquete === "auto" || infoCarpeta.tipoPaquete === "CPF1108" || infoCarpeta.tipoPaquete === "E890190") {
+                    // PERO si fue detectada como EVENTO explícitamente en su ruta física, NO sobreescribir con paquete
+                    if (infoCarpeta.tipoPaquete === "EVENTO") {
+                        paqueteParaCarpeta = "EVENTO";
+                    } else if (!infoCarpeta.tipoPaquete || infoCarpeta.tipoPaquete === "auto" || infoCarpeta.tipoPaquete === "CPF1108" || infoCarpeta.tipoPaquete === "E890190") {
                         if (datosMatrizPaciente.paquete) {
                             paqueteParaCarpeta = datosMatrizPaciente.paquete;
                         } else if (datosMatrizPaciente.esFacturarEvento) {
@@ -903,6 +920,75 @@ if (inputMatriz) {
             estado.classList.remove("oculto");
             estado.textContent = `❌ Error leyendo matriz: ${err.message}`;
             alert(`Error al procesar la matriz: ${err.message}`);
+        }
+    });
+}
+
+// Botón para pegar una fila individual de matriz
+const btnPegarFilaMatriz = document.getElementById("btnPegarFilaMatriz");
+if (btnPegarFilaMatriz) {
+    btnPegarFilaMatriz.addEventListener("click", async () => {
+        const textoPegado = await solicitarFilaMatrizPegadaModal();
+        if (!textoPegado) return;
+
+        try {
+            limpiarResultados(false);
+            estado.classList.remove("oculto");
+            estado.textContent = "📊 Procesando y ordenando fila de matriz individual...";
+
+            const rawRows = construirMatrizDesdeFilaPegada(textoPegado);
+            rawRowsMatrizActual = rawRows;
+            columnasOmitidasMatriz = new Set(["GERIATRIA"]);
+
+            const resultadoMatriz = parsearMatriz(rawRows, columnasOmitidasMatriz);
+            resultadoMatriz.nombreArchivo = "Fila_Individual_Pegada.xlsx";
+            datosMatrizGlobal = resultadoMatriz;
+
+            const pac = resultadoMatriz.pacientesList?.[0];
+            const docPac = pac ? pac.documento : "Paciente";
+            const nomPac = pac ? pac.nombre : "";
+
+            // Actualizar Badge en la UI
+            if (matrizInfoBadge) {
+                matrizInfoBadge.classList.remove("oculto");
+                matrizNombreArchivo.textContent = `Fila individual (${docPac})`;
+                const totalP = resultadoMatriz.diagnosticoGlobal.totalPacientes;
+                const errP = resultadoMatriz.diagnosticoGlobal.pacientesConErrores;
+                const warnP = resultadoMatriz.diagnosticoGlobal.pacientesConAlertas || 0;
+                const okP = Math.max(0, totalP - errP - warnP);
+                matrizStatsTexto.textContent = warnP > 0
+                    ? `1 paciente (${nomPac || docPac} - con alertas)`
+                    : (errP > 0 ? `1 paciente (${nomPac || docPac} - con novedades)` : `1 paciente (${nomPac || docPac} - conforme)`);
+            }
+            if (matrixDropzoneTitle) {
+                matrixDropzoneTitle.textContent = "Fila Individual Cargada ✓";
+            }
+            if (matrixDropzoneSubtitle) {
+                matrixDropzoneSubtitle.textContent = `${docPac} ${nomPac ? '- ' + nomPac : ''}`;
+            }
+
+            // Mostrar sección de carga de soportes
+            if (seccionSoportes) {
+                seccionSoportes.classList.remove("oculto");
+            }
+
+            estado.classList.add("oculto");
+
+            // Mostrar modal de prevalidación con la fila organizada
+            mostrarModalPrevalidacionMatriz(datosMatrizGlobal, registrosOmitidosMatriz, (doc, omitir) => {
+                const docNorm = String(doc || "").trim().toUpperCase();
+                if (omitir) {
+                    registrosOmitidosMatriz.add(docNorm);
+                } else {
+                    registrosOmitidosMatriz.delete(docNorm);
+                }
+                actualizarBadgeMatrizStats();
+            });
+        } catch (err) {
+            console.error("Error al procesar fila de matriz pegada:", err);
+            estado.classList.remove("oculto");
+            estado.textContent = `❌ Error: ${err.message}`;
+            alert(`Error al procesar la fila de la matriz: ${err.message}`);
         }
     });
 }
@@ -1204,6 +1290,7 @@ convenioSelect.addEventListener("change", manejarCambioConfiguracion);
 // Event listeners de filtros y búsqueda
 if (buscarDocumentoInput) buscarDocumentoInput.addEventListener("input", () => aplicarFiltros(domElements, appState));
 if (mostrarExitosCheckbox) mostrarExitosCheckbox.addEventListener("change", () => aplicarFiltros(domElements, appState));
+if (filtroPaqueteSelect) filtroPaqueteSelect.addEventListener("change", () => aplicarFiltros(domElements, appState));
 if (filtroServicioSelect) filtroServicioSelect.addEventListener("change", () => aplicarFiltros(domElements, appState));
 
 const ordenarTablaSelect = document.getElementById("ordenarTabla");
