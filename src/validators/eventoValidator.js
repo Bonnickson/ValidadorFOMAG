@@ -566,7 +566,8 @@ export async function procesarArchivo2PaqEvento(
     file,
     carpeta,
     resultados,
-    serviciosDetectados
+    serviciosDetectados,
+    convenio = null
 ) {
     let pdf = null;
     try {
@@ -577,7 +578,7 @@ export async function procesarArchivo2PaqEvento(
         const texto = await extraerTextoPDF(pdf);
         const textoPlanoNorm = normalizeForSearch(texto);
 
-        const convenioActual = resultados[carpeta]?.convenio || "fomag";
+        const convenioActual = convenio || resultados[carpeta]?.convenio || "nueva-eps";
         const reglasConvenio = obtenerReglasEvento(convenioActual);
 
         for (const servicio of serviciosDetectados) {
@@ -597,11 +598,24 @@ export async function procesarArchivo2PaqEvento(
             );
 
             if (encontrado) {
-                const numero = extraerCantidadAutorizacion(texto, textosABuscar, servicio, convenioActual);
+                // 1. Extraer directamente de la tabla posicional de Nueva EPS si aplica
+                let numero = null;
+                if (convenioActual === "nueva-eps" || textoPlanoNorm.includes("NUEVA EPS") || textoPlanoNorm.includes("890101")) {
+                    numero = await extraerCantidadTablaNuevaEps(pdf);
+                }
+
+                // 2. Si no se obtuvo posicionalmente, usar extracción textual
+                if (numero === null) {
+                    numero = extraerCantidadAutorizacion(texto, textosABuscar, servicio, convenioActual);
+                }
+
                 if (numero !== null) {
                     resultados[carpeta].numerosPorServicio =
                         resultados[carpeta].numerosPorServicio || {};
                     resultados[carpeta].numerosPorServicio[servicio] = numero;
+                    if (!resultados[carpeta].numeroAutorizaciones) {
+                        resultados[carpeta].numeroAutorizaciones = numero;
+                    }
                 }
             }
         }

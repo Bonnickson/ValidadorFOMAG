@@ -88,13 +88,37 @@ export function agruparArchivosInteligente(
                     }
                 }
 
-                // Si se detectó paquete en alguna carpeta superior, el otro nivel superior (si existe) es el auditor
+                // Si se detectó paquete en alguna carpeta superior, el auditor/responsable es el nivel superior más representativo
+                // (excluyendo la raíz cargada p[0] y términos genéricos de organización)
                 if (indicePaquete !== -1) {
-                    for (let i = segmentosSuperiores.length - 1; i >= 0; i--) {
-                        if (i !== indicePaquete) {
-                            auditorDetectado = segmentosSuperiores[i];
+                    const palabrasGenericas = new Set(["PAQUETE", "PAQUETES", "EVENTO", "EVENTOS", "SOPORTE", "SOPORTES"]);
+                    
+                    // Prioridad 1: buscar inmediatamente arriba del paquete (o de la carpeta intermedia) hacia arriba, pero sin llegar a la raíz cargada (p[0])
+                    for (let i = indicePaquete - 1; i >= 1; i--) {
+                        const segTrim = segmentosSuperiores[i].trim();
+                        if (!palabrasGenericas.has(segTrim.toUpperCase())) {
+                            auditorDetectado = segTrim;
                             break;
                         }
+                    }
+
+                    // Prioridad 2: si no se encontró entre 1 e indicePaquete - 1, buscar entre los segmentos superiores excluyendo p[0] y genéricos
+                    if (!auditorDetectado) {
+                        for (let i = 1; i < segmentosSuperiores.length; i++) {
+                            if (i !== indicePaquete) {
+                                const segTrim = segmentosSuperiores[i].trim();
+                                if (!palabrasGenericas.has(segTrim.toUpperCase())) {
+                                    auditorDetectado = segTrim;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Prioridad 3: si solo existía p[0] por encima del paquete, usar p[0]
+                    if (!auditorDetectado && segmentosSuperiores.length > 0) {
+                        const segCandidato = segmentosSuperiores.find((seg, idx) => idx !== indicePaquete && !palabrasGenericas.has(seg.trim().toUpperCase()));
+                        auditorDetectado = segCandidato ? segCandidato.trim() : (segmentosSuperiores[0] !== segmentosSuperiores[indicePaquete] ? segmentosSuperiores[0] : "");
                     }
                 } else {
                     // Verificar si alguna carpeta intentó ser paquete pero con código inválido
@@ -107,14 +131,32 @@ export function agruparArchivosInteligente(
                         }
                     }
                     paqueteDetectado = fallbackSeguro;
-                    if (segmentosSuperiores.length > 0) {
+                    const palabrasGenericas = new Set(["PAQUETE", "PAQUETES", "EVENTO", "EVENTOS", "SOPORTE", "SOPORTES"]);
+                    
+                    // Buscar excluyendo la raíz p[0]
+                    for (let i = 1; i < segmentosSuperiores.length; i++) {
+                        const segTrim = segmentosSuperiores[i].trim();
+                        if (!palabrasGenericas.has(segTrim.toUpperCase())) {
+                            auditorDetectado = segTrim;
+                            break;
+                        }
+                    }
+                    if (!auditorDetectado && segmentosSuperiores.length > 0) {
                         auditorDetectado = segmentosSuperiores[0];
                     }
                 }
             }
         } else {
             const segmentosSuperiores = p.slice(0, p.length - 2);
-            if (segmentosSuperiores.length > 0) {
+            const palabrasGenericas = new Set(["PAQUETE", "PAQUETES", "EVENTO", "EVENTOS", "SOPORTE", "SOPORTES"]);
+            for (let i = 1; i < segmentosSuperiores.length; i++) {
+                const segTrim = segmentosSuperiores[i].trim();
+                if (!palabrasGenericas.has(segTrim.toUpperCase())) {
+                    auditorDetectado = segTrim;
+                    break;
+                }
+            }
+            if (!auditorDetectado && segmentosSuperiores.length > 0) {
                 auditorDetectado = segmentosSuperiores[0];
             }
         }

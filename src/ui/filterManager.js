@@ -334,7 +334,7 @@ export function aplicarFiltros(elements = {}, state = {}) {
 
 /**
  * Copia todos los errores visibles en la tabla con el formato:
- * Paquete - Documento - Servicio - Archivo - Error
+ * Responsable - Documento - Paquete - Servicio - Archivo - Error
  */
 export async function copiarTodosErroresVisibles(resultadosGlobales) {
     const tablaBody = document.querySelector("#tabla tbody");
@@ -370,11 +370,14 @@ export async function copiarTodosErroresVisibles(resultadosGlobales) {
 
         const pkg = r?.tipoPaquete || r?.tipo || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "CPF1108");
         const doc = r?.nroDocumento || carpeta;
-        const prefijo = `${pkg} - ${doc}`;
+        const resp = r?.auditor || r?.datosMatriz?.nombre || "";
+        const prefijo = resp ? `${resp} - ${doc} - ${pkg}` : `${pkg} - ${doc}`;
 
         // 1. Errores generales / de paquete
-        const errsGen = [...(r.errores || []), ...(r.erroresPorServicio?.["General"] || [])];
-        const alertsGen = [...(r.alertas || []), ...(r.alertasPorServicio?.["General"] || [])];
+        const errsGen = [...(r.errores || []), ...(r.erroresPorServicio?.["General"] || [])]
+            .filter((err) => !(r.erroresOmitidos && (r.erroresOmitidos.has(err) || r.erroresOmitidos.has(err.trim()))));
+        const alertsGen = [...(r.alertas || []), ...(r.alertasPorServicio?.["General"] || [])]
+            .filter((alt) => !(r.erroresOmitidos && (r.erroresOmitidos.has(alt) || r.erroresOmitidos.has(alt.trim()))));
         const todosGen = [...new Set([...errsGen, ...alertsGen])];
 
         todosGen.forEach((err) => {
@@ -388,8 +391,10 @@ export async function copiarTodosErroresVisibles(resultadosGlobales) {
         servicios.forEach((s) => {
             if (s === "General") return;
             const sNombre = SERVICIOS_NOMBRES[s] || s;
-            const errs = r.erroresPorServicio?.[s] || [];
-            const alerts = r.alertasPorServicio?.[s] || [];
+            const errs = (r.erroresPorServicio?.[s] || [])
+                .filter((err) => !(r.erroresOmitidos && (r.erroresOmitidos.has(err) || r.erroresOmitidos.has(err.trim()))));
+            const alerts = (r.alertasPorServicio?.[s] || [])
+                .filter((alt) => !(r.erroresOmitidos && (r.erroresOmitidos.has(alt) || r.erroresOmitidos.has(alt.trim()))));
             const all = [...new Set([...errs, ...alerts])];
 
             all.forEach((err) => {
@@ -526,9 +531,13 @@ export function actualizarResumen(
             todosLosErrores.push(...arr);
         });
 
+        const erroresActivos = todosLosErrores.filter(
+            (err) => !(r.erroresOmitidos && (r.erroresOmitidos.has(err) || r.erroresOmitidos.has(err.trim())))
+        );
+
         if (!incremental) {
             const tiposProcesadosEnEstaCarpeta = new Set();
-            todosLosErrores.forEach((error) => {
+            erroresActivos.forEach((error) => {
                 const { tipo, detalle } = clasificarErrorResumen(error);
                 const tipoNorm = normalizarTipoError(tipo);
 
@@ -545,10 +554,15 @@ export function actualizarResumen(
             });
         }
 
-        const tieneErrores = todosLosErrores.length > 0;
-        const tieneAlertas = Object.values(r.alertasPorServicio || {}).some(
-            (arr) => arr.length > 0
+        const tieneErrores = erroresActivos.length > 0;
+        const todasLasAlertas = [...(r.alertas || [])];
+        Object.values(r.alertasPorServicio || {}).forEach((arr) => {
+            todasLasAlertas.push(...arr);
+        });
+        const alertasActivas = todasLasAlertas.filter(
+            (alt) => !(r.erroresOmitidos && (r.erroresOmitidos.has(alt) || r.erroresOmitidos.has(alt.trim())))
         );
+        const tieneAlertas = alertasActivas.length > 0;
 
         if (tieneErrores) {
             conErrores++;
@@ -708,20 +722,25 @@ export function actualizarResumen(
                         const pkg = r?.tipoPaquete || r?.tipo || "PAQUETE";
                         const doc = r?.nroDocumento || carp.replace(/^(\d+).*/, "$1") || carp;
 
-                        // Extraer los errores específicos de este documento que corresponden a este tipo
+                        // Extraer los errores específicos de este documento que corresponden a este tipo (excluyendo omitidos)
                         const todosLosErroresCarp = [...(r?.errores || [])];
                         Object.values(r?.erroresPorServicio || {}).forEach((arr) => {
                             todosLosErroresCarp.push(...arr);
                         });
 
                         const erroresCoincidentes = todosLosErroresCarp.filter((err) => {
+                            if (r?.erroresOmitidos && (r.erroresOmitidos.has(err) || r.erroresOmitidos.has(err.trim()))) {
+                                return false;
+                            }
                             const { tipo } = clasificarErrorResumen(err);
                             return normalizarTipoError(tipo) === tipoNorm;
                         });
 
-                        const detalleErrorTexto = erroresCoincidentes.length > 0
-                            ? erroresCoincidentes.join(" | ")
-                            : (detallePorTipo[tipoOriginal] || tipoOriginal);
+                        if (erroresCoincidentes.length === 0) {
+                            return; // Si todos los errores de este tipo en el registro fueron omitidos, no incluir la línea
+                        }
+
+                        const detalleErrorTexto = erroresCoincidentes.join(" | ");
 
                         // Si existe auditor/subcarpeta superior, incluirlo al inicio
                         const auditorTexto = r?.auditor ? `${r.auditor} - ` : "";

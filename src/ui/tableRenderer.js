@@ -72,7 +72,32 @@ export function renderFechasPills(fechas = [], periodoPermitido = null) {
 const gruposPorCarpeta = new Map();
 let contadorGrupo = 0;
 
-const renderErrorItem = (errorText, carpeta = "", servicio = "") => {
+const renderAlertaItem = (alertaText, carpeta = "", servicio = "", omitido = false) => {
+    const errorFormateado = formatearErrorConIconosPDF(alertaText);
+    const safeErrorAttr = String(alertaText || "").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    const safeCarpeta = String(carpeta || "").replace(/'/g, "\\'");
+    const safeServicio = String(servicio || "").replace(/'/g, "\\'");
+
+    const copyBtn = carpeta
+        ? `<button type="button" class="btn-copy-error-single" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="Copiar esta alerta (Responsable - Documento - Paquete - Servicio - Archivo - Alerta)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
+        : "";
+
+    const omitirBtn = carpeta
+        ? `<button type="button" class="btn-toggle-error-omitir ${omitido ? 'is-omitido' : ''}" onclick="window.toggleOmitirError && window.toggleOmitirError(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="${omitido ? 'Restaurar alerta (incluir en copia)' : 'Omitir alerta (tachar y no incluir al copiar)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-omitir-error-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg></button>`
+        : "";
+
+    const omitidoClass = omitido ? " alerta-item-omitido" : "";
+
+    return `<div class="alerta-item${omitidoClass}"><span class="alerta-icon">${omitido ? '👁️‍🗨️' : '⚠️'}</span> <span class="alerta-text-content"><strong>${errorFormateado}</strong></span><div class="alerta-item-actions error-item-actions">${omitirBtn}${copyBtn}</div></div>`;
+};
+
+const renderAlertaItems = (alertas = [], carpeta = "", servicio = "", erroresOmitidos = new Set()) =>
+    alertas && alertas.length ? alertas.map(alt => {
+        const omitido = Boolean(erroresOmitidos && (erroresOmitidos.has(alt) || erroresOmitidos.has(alt.trim())));
+        return renderAlertaItem(alt, carpeta, servicio, omitido);
+    }).join("") : "";
+
+const renderErrorItem = (errorText, carpeta = "", servicio = "", omitido = false) => {
     const { tipo } = clasificarErrorResumen(errorText);
     const tipoNorm = normalizarTipoError(tipo);
     const errorFormateado = formatearErrorConIconosPDF(errorText);
@@ -84,11 +109,20 @@ const renderErrorItem = (errorText, carpeta = "", servicio = "") => {
         ? `<button type="button" class="btn-copy-error-single" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="Copiar este error (Responsable - Documento - Paquete - Servicio - Archivo - Error)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
         : "";
 
-    return `<div class="error-item" data-error-type="${tipo}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">✕</span> <span class="error-text-content">${errorFormateado}</span>${copyBtn}</div>`;
+    const omitirBtn = carpeta
+        ? `<button type="button" class="btn-toggle-error-omitir ${omitido ? 'is-omitido' : ''}" onclick="window.toggleOmitirError && window.toggleOmitirError(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="${omitido ? 'Restaurar error (incluir en copia)' : 'Omitir error (tachar y no incluir al copiar)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-omitir-error-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg></button>`
+        : "";
+
+    const omitidoClass = omitido ? " error-item-omitido" : "";
+
+    return `<div class="error-item${omitidoClass}" data-error-type="${tipo}" data-error-type-normalized="${tipoNorm}"><span class="error-icon">${omitido ? '👁️‍🗨️' : '✕'}</span> <span class="error-text-content">${errorFormateado}</span><div class="error-item-actions">${omitirBtn}${copyBtn}</div></div>`;
 };
 
-const renderErrorItems = (errors = [], carpeta = "", servicio = "") =>
-    errors && errors.length ? errors.map(err => renderErrorItem(err, carpeta, servicio)).join("") : "";
+const renderErrorItems = (errors = [], carpeta = "", servicio = "", erroresOmitidos = new Set()) =>
+    errors && errors.length ? errors.map(err => {
+        const omitido = Boolean(erroresOmitidos && (erroresOmitidos.has(err) || erroresOmitidos.has(err.trim())));
+        return renderErrorItem(err, carpeta, servicio, omitido);
+    }).join("") : "";
 
 /**
  * Obtiene la clase de grupo para una carpeta
@@ -288,7 +322,7 @@ export function updateRow(tablaBody, carpeta, r, mostrarExitos = false) {
         todosLosErrores.push(...r.erroresPorServicio["General"]);
     }
 
-    const erroresHTML = renderErrorItems(todosLosErrores, carpeta, "General") || "—";
+    const erroresHTML = renderErrorItems(todosLosErrores, carpeta, "General", r.erroresOmitidos) || "—";
     const isProcessing = existing.classList.contains("processing");
 
     existing.innerHTML = renderEvento(
@@ -311,7 +345,7 @@ export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
     const fechasPills = renderFechasPills(r.fechas || [], r.periodoPermitido);
 
     const tipoDisplay = r.tipo || "—";
-    const erroresHTML = renderErrorItems(r.errores, carpeta, "General") || "—";
+    const erroresHTML = renderErrorItems(r.errores, carpeta, "General", r.erroresOmitidos) || "—";
 
     if (r.tipoValidacion === "paquete") {
         // Para paquete, crear una fila por servicio
@@ -339,7 +373,7 @@ export function pintarFila(tablaBody, carpeta, r, mostrarExitos = false) {
             todosLosErrores.push(...r.erroresPorServicio["General"]);
         }
 
-        const erroresHTMLCompleto = renderErrorItems(todosLosErrores, carpeta, "General") || "—";
+        const erroresHTMLCompleto = renderErrorItems(todosLosErrores, carpeta, "General", r.erroresOmitidos) || "—";
 
         // Determinar estado
         const tieneErrores = todosLosErrores.length > 0;
@@ -465,8 +499,8 @@ function renderPaqueteFilas(
 
     const erroresGeneralesHeaderHTML = [
         ...exitosGenerales.map(e => `<div class="exito-item validacion-exitosa" style="display: ${mostrarExitos ? "" : "none"}">✓ ${formatearErrorConIconosPDF(e)}</div>`),
-        ...alertasGenerales.map(a => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${formatearErrorConIconosPDF(a)}</strong></div>`),
-        renderErrorItems(erroresGenerales, carpeta, "General")
+        renderAlertaItems(alertasGenerales, carpeta, "General", r.erroresOmitidos),
+        renderErrorItems(erroresGenerales, carpeta, "General", r.erroresOmitidos)
     ].filter(Boolean).join("") || "";
 
     const paqueteCodigo = r.tipoPaquete || (document.getElementById("tipoPaquete") ? document.getElementById("tipoPaquete").value : "");
@@ -543,11 +577,11 @@ function renderPaqueteFilas(
                     <span class="carpeta-nombre">${nombreLimpio}</span>
                 </div>
                 <div class="doc-badge-actions">
-                    <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="verArchivosCarpeta('${carpeta}', this)" title="Ver soportes cargados (${totalArchivos})">
+                    <button type="button" class="carpeta-files-badge btn-files-trigger" onclick="event.stopPropagation(); verArchivosCarpeta('${carpeta.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}', this)" title="Ver soportes cargados (${totalArchivos})">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:11px;height:11px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
                         <span>${totalArchivos} soportes</span>
                     </button>
-                    <button type="button" class="carpeta-files-badge btn-programado-trigger" onclick="verProgramadoCarpeta('${carpeta}', this)" title="Ver programación de este paciente según la matriz Excel">
+                    <button type="button" class="carpeta-files-badge btn-programado-trigger" onclick="event.stopPropagation(); verProgramadoCarpeta('${carpeta.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}', this)" title="Ver programación de este paciente según la matriz Excel">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:11px;height:11px;color:#107c41;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><path d="M8 13h8"></path><path d="M8 17h8"></path><path d="M10 9h4"></path></svg>
                         <span>Programado</span>
                     </button>
@@ -668,10 +702,8 @@ function renderPaqueteFilas(
                     }">✓ ${formatearErrorConIconosPDF(e)}</div>`
             )
             .join("");
-        const alertasHTML = alertasServicioRender
-            .map((e) => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${formatearErrorConIconosPDF(e)}</strong></div>`)
-            .join("");
-        const erroresHTML = renderErrorItems(erroresServicio, carpeta, s);
+        const alertasHTML = renderAlertaItems(alertasServicioRender, carpeta, s, r.erroresOmitidos);
+        const erroresHTML = renderErrorItems(erroresServicio, carpeta, s, r.erroresOmitidos);
 
         const soloExitos = exitosHTML && !alertasHTML && !erroresHTML;
         const badgeExito = soloExitos
@@ -714,7 +746,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const match = archivo
             .toLowerCase()
             .match(
-                /^([2-5])\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
+                /^([2-5])\s+(vm|enf12|enf|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut)\.pdf$/
             );
         if (match) {
             let serv = match[2];
@@ -739,7 +771,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
             "grupo-fin"
         );
 
-        const erroresHTML = renderErrorItems(r.errores, carpeta, "General") || "—";
+        const erroresHTML = renderErrorItems(r.errores, carpeta, "General", r.erroresOmitidos) || "—";
         const tieneErrores = r.errores.length > 0;
         tr.setAttribute(
             "data-estado",
@@ -823,10 +855,8 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         const erroresServicio = r.erroresPorServicio?.[servicio] || [];
         // Alertas del servicio
         const alertasServicio = r.alertasPorServicio?.[servicio] || [];
-        const erroresHTML = renderErrorItems(erroresServicio, carpeta, servicio);
-        const alertasHTML = alertasServicio
-            .map((a) => `<div class="alerta-item"><span class="alerta-icon">⚠️</span> <strong>${a}</strong></div>`)
-            .join("");
+        const erroresHTML = renderErrorItems(erroresServicio, carpeta, servicio, r.erroresOmitidos);
+        const alertasHTML = renderAlertaItems(alertasServicio, carpeta, servicio, r.erroresOmitidos);
 
         const exitosServicio = r.exitosPorServicio?.[servicio] || [];
         // Siempre generar HTML de éxitos pero ocultos por defecto si mostrarExitos es false
@@ -902,7 +932,7 @@ function renderEventoFomagFilas(tablaBody, carpeta, r, mostrarExitos = false) {
         tr.classList.add("paquete-row", grupoClase);
         tr.setAttribute("data-estado", "con-errores");
 
-        const erroresHTML = renderErrorItems(erroresGeneralesNoServicio, carpeta, "General");
+        const erroresHTML = renderErrorItems(erroresGeneralesNoServicio, carpeta, "General", r.erroresOmitidos);
 
         tr.innerHTML = `
             <td>—</td>

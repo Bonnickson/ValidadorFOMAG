@@ -32,6 +32,10 @@ export function normalizeForSearch(s) {
         .replace(/F[IÌÍÎ]SICA/g, "FISICA")
         .replace(/ATENCI[UÚÙÛ]N/g, "ATENCION")
         .replace(/CURACI[UÚÙÛ]N/g, "CURACION")
+        // Corregir cortes de palabra frecuentes en fuentes de PDF (ej. Nueva EPS "GENERA L" -> "GENERAL")
+        .replace(/\bGENERA\s+L\b/g, "GENERAL")
+        .replace(/\bDOMICILIARI\s+A\b/g, "DOMICILIARIA")
+        .replace(/\bATENCI\s*ON\b/g, "ATENCION")
         .replace(/\s+/g, " ")
         .trim();
 }
@@ -112,8 +116,16 @@ export function extraerCantidadAutorizacion(texto, textoEncontrado = "", servici
         }
     }
 
-    // 2. Búsqueda contextual alrededor de la columna o palabra "CANTIDAD" (autorizaciones Nueva EPS)
-    const idxCantidad = textoNorm.indexOf("CANTIDAD");
+    // 2. Búsqueda contextual alrededor de la columna o palabra "CANTIDAD" o "CANT" (autorizaciones Nueva EPS)
+    let idxCantidad = textoNorm.indexOf("CANTIDAD");
+    let longitudCabecera = 8;
+    if (idxCantidad === -1) {
+        const matchCant = textoNorm.match(/\bCANT\b/);
+        if (matchCant) {
+            idxCantidad = matchCant.index;
+            longitudCabecera = 4;
+        }
+    }
     if (idxCantidad !== -1) {
         const ventana = textoNorm.substring(idxCantidad, idxCantidad + 350);
 
@@ -124,8 +136,8 @@ export function extraerCantidadAutorizacion(texto, textoEncontrado = "", servici
             if (val > 0) return val;
         }
 
-        // Caso directo: "CANTIDAD: 1", "CANTIDAD 1", "CANTIDAD - 1"
-        const matchDirecto = ventana.match(/CANTIDAD\s*[:.\-]?\s*(\d{1,3})\b/i);
+        // Caso directo: "CANTIDAD: 1", "CANTIDAD 1", "CANT: 1", "CANT 1"
+        const matchDirecto = ventana.match(/(?:CANTIDAD|CANT)\s*[:.\-]?\s*(\d{1,3})\b/i);
         if (matchDirecto) {
             const val = parseInt(matchDirecto[1], 10);
             if (val > 0) return val;
@@ -138,8 +150,8 @@ export function extraerCantidadAutorizacion(texto, textoEncontrado = "", servici
             if (val > 0) return val;
         }
 
-        // Caso lectura de columnas: tokens numéricos tras CANTIDAD antes de secciones posteriores
-        const tokens = ventana.replace(/CANTIDAD/gi, "").trim().split(/\s+/);
+        // Caso lectura de columnas: tokens numéricos tras CANTIDAD/CANT antes de secciones posteriores
+        const tokens = ventana.replace(/\b(?:CANTIDAD|CANT)\b/gi, "").trim().split(/\s+/);
         for (const token of tokens) {
             if (/^\d{1,3}$/.test(token)) {
                 const val = parseInt(token, 10);

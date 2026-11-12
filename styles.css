@@ -952,10 +952,32 @@ td.missing {
     font-weight: 700 !important;
     color: var(--warning-text, #f59e0b);
     margin-bottom: 0;
-    line-height: 1.2;
+    line-height: 1.25;
     display: flex;
     align-items: flex-start;
-    gap: 4px;
+    gap: 5px;
+    position: relative;
+}
+
+.alerta-item:hover .btn-copy-error-single,
+.alerta-item:hover .btn-toggle-error-omitir {
+    opacity: 0.85;
+}
+
+.alerta-item-omitido {
+    opacity: 0.45;
+    text-decoration: line-through;
+    color: var(--text-muted, #94a3b8) !important;
+}
+
+.alerta-item-omitido .alerta-icon {
+    text-decoration: none !important;
+    color: var(--text-muted, #94a3b8) !important;
+}
+
+.alerta-item .alerta-text-content {
+    flex: 1;
+    min-width: 0;
 }
 
 .alerta-item span,
@@ -981,8 +1003,61 @@ td.missing {
     position: relative;
 }
 
-.error-item:hover .btn-copy-error-single {
+.error-item:hover .btn-copy-error-single,
+.error-item:hover .btn-toggle-error-omitir {
     opacity: 0.85;
+}
+
+.error-item-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.error-item-omitido {
+    opacity: 0.45;
+    text-decoration: line-through;
+    color: var(--text-muted, #94a3b8) !important;
+}
+
+.error-item-omitido .error-icon {
+    text-decoration: none !important;
+    color: var(--text-muted, #94a3b8) !important;
+}
+
+.btn-toggle-error-omitir {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 1px 3px;
+    margin: 0;
+    color: var(--text-muted, #94a3b8);
+    opacity: 0.35;
+    border-radius: 3px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+    line-height: 1;
+}
+
+.btn-toggle-error-omitir:hover {
+    opacity: 1 !important;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, 0.1);
+}
+
+.btn-toggle-error-omitir.is-omitido {
+    opacity: 0.9 !important;
+    color: #f59e0b;
+}
+
+.btn-omitir-error-icon {
+    width: 11px;
+    height: 11px;
 }
 
 .error-item span,
@@ -1287,11 +1362,25 @@ body.theme-dark .servicio-sigla-tag {
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.5);
     border-radius: 4px;
     background: #ffffff;
+    user-select: text;
+    -webkit-user-select: text;
 }
 
 .pdf-page-canvas {
     display: block;
     border-radius: 4px;
+}
+
+.pdf-page-wrapper .textLayer {
+    opacity: 1 !important;
+}
+
+.pdf-page-wrapper .textLayer ::selection {
+    background: rgba(0, 102, 204, 0.35) !important;
+}
+
+.pdf-page-wrapper .textLayer ::-moz-selection {
+    background: rgba(0, 102, 204, 0.35) !important;
 }
 
 /* ================= BADGE FLOTANTE DE FECHAS DEL 5 EN VISOR PDF ================= */

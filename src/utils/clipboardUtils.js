@@ -142,8 +142,10 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
             lineas.push(`${prefijo} - 📦 Paquete - N/A - Sin datos procesados`);
         } else {
             // 1. Errores y alertas generales / de paquete
-            const errsGen = [...(r.errores || []), ...(r.erroresPorServicio?.["General"] || [])];
-            const alertsGen = [...(r.alertas || []), ...(r.alertasPorServicio?.["General"] || [])];
+            const errsGen = [...(r.errores || []), ...(r.erroresPorServicio?.["General"] || [])]
+                .filter((err) => !(r.erroresOmitidos && (r.erroresOmitidos.has(err) || r.erroresOmitidos.has(err.trim()))));
+            const alertsGen = [...(r.alertas || []), ...(r.alertasPorServicio?.["General"] || [])]
+                .filter((alt) => !(r.erroresOmitidos && (r.erroresOmitidos.has(alt) || r.erroresOmitidos.has(alt.trim()))));
             const todosGen = [...new Set([...errsGen, ...alertsGen])];
 
             todosGen.forEach((err) => {
@@ -157,8 +159,10 @@ export async function copiarHallazgosCompletos(event, carpeta, resultadosGlobale
             servicios.forEach((s) => {
                 if (s === "General") return;
                 const sNombre = SERVICIOS_NOMBRES[s] || s;
-                const errs = r.erroresPorServicio?.[s] || [];
-                const alerts = r.alertasPorServicio?.[s] || [];
+                const errs = (r.erroresPorServicio?.[s] || [])
+                    .filter((err) => !(r.erroresOmitidos && (r.erroresOmitidos.has(err) || r.erroresOmitidos.has(err.trim()))));
+                const alerts = (r.alertasPorServicio?.[s] || [])
+                    .filter((alt) => !(r.erroresOmitidos && (r.erroresOmitidos.has(alt) || r.erroresOmitidos.has(alt.trim()))));
                 const all = [...new Set([...errs, ...alerts])];
 
                 all.forEach((err) => {

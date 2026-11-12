@@ -458,7 +458,52 @@ export function verArchivosCarpeta(
         seleccionarCarpetaCallback(carpeta);
     }
     const triggerBtn = triggerEl ? (triggerEl.closest("button") || triggerEl) : null;
-    const r = todosLosResultados ? todosLosResultados[carpeta] : null;
+    
+    // Búsqueda inteligente por clave exacta, normalizada o documento
+    let r = todosLosResultados ? todosLosResultados[carpeta] : null;
+    if (!r && todosLosResultados) {
+        const cNorm = String(carpeta || "").replace(/\\/g, "/").trim().toLowerCase();
+        for (const [k, v] of Object.entries(todosLosResultados)) {
+            if (k.replace(/\\/g, "/").trim().toLowerCase() === cNorm) {
+                r = v;
+                break;
+            }
+        }
+    }
+    if (!r && todosLosResultados) {
+        const docClean = String(carpeta || "").replace(/\D/g, "");
+        for (const [k, v] of Object.entries(todosLosResultados)) {
+            const kDoc = String(v.nroDocumento || k).replace(/\D/g, "");
+            const kLast = k.replace(/\\/g, "/").split("/").pop().trim().toLowerCase();
+            const carpetaNorm = String(carpeta || "").replace(/\\/g, "/").trim().toLowerCase();
+            const carpetaLast = carpetaNorm.split("/").pop().trim();
+            if ((docClean && kDoc === docClean) || kLast === carpetaNorm || kLast === carpetaLast || k.includes(carpeta) || String(carpeta).includes(k)) {
+                r = v;
+                break;
+            }
+        }
+    }
+
+    if (!r) {
+        // Fallback: buscar a través de la fila en el DOM
+        const trPadre = triggerBtn ? triggerBtn.closest("tr[data-carpeta]") : null;
+        const carpData = trPadre?.getAttribute("data-carpeta");
+        const docData = trPadre?.getAttribute("data-documento");
+        if (todosLosResultados && (carpData || docData)) {
+            r = todosLosResultados[carpData] || todosLosResultados[docData];
+            if (!r) {
+                const docClean = String(docData || carpData).replace(/\D/g, "");
+                for (const [k, v] of Object.entries(todosLosResultados)) {
+                    const kDoc = String(v.nroDocumento || k).replace(/\D/g, "");
+                    if (docClean && kDoc === docClean) {
+                        r = v;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     if (!r || !r.listaArchivos || r.listaArchivos.length === 0) return;
 
     const prev = document.getElementById("archivosPopoverActivo");
@@ -554,6 +599,11 @@ export function verArchivosCarpeta(
     const container = document.querySelector(".table-wrapper") || document.querySelector(".workspace-body") || document.body;
     container.appendChild(popover);
 
+    const header = popover.querySelector(".popover-header");
+    if (header) {
+        hacerDraggableYResizable(popover, header);
+    }
+
     if (triggerBtn) {
         const parent = popover.offsetParent || container;
         const parentRect = parent.getBoundingClientRect();
@@ -571,12 +621,16 @@ export function verArchivosCarpeta(
     }
 
     const closeListener = (e) => {
+        if (!popover.isConnected) {
+            document.removeEventListener("click", closeListener, true);
+            return;
+        }
         if (!popover.contains(e.target) && (!triggerBtn || !triggerBtn.contains(e.target))) {
             popover.remove();
-            document.removeEventListener("click", closeListener);
+            document.removeEventListener("click", closeListener, true);
         }
     };
-    setTimeout(() => document.addEventListener("click", closeListener), 50);
+    setTimeout(() => document.addEventListener("click", closeListener, true), 50);
 }
 
 /**
@@ -597,22 +651,43 @@ export function verProgramadoCarpeta(
     // Búsqueda inteligente y robusta del resultado del paciente
     let r = todosLosResultados ? todosLosResultados[carpeta] : null;
     if (!r && todosLosResultados) {
-        const cNorm = String(carpeta).replace(/\\/g, "/").trim();
+        const cNorm = String(carpeta || "").replace(/\\/g, "/").trim().toLowerCase();
         for (const [k, v] of Object.entries(todosLosResultados)) {
-            if (k.replace(/\\/g, "/").trim() === cNorm) {
+            if (k.replace(/\\/g, "/").trim().toLowerCase() === cNorm) {
                 r = v;
                 break;
             }
         }
     }
     if (!r && todosLosResultados) {
-        const docClean = String(carpeta).replace(/\D/g, "");
+        const docClean = String(carpeta || "").replace(/\D/g, "");
         for (const [k, v] of Object.entries(todosLosResultados)) {
-            const kDoc = (v.nroDocumento || k).replace(/\D/g, "");
-            const kLast = k.replace(/\\/g, "/").split("/").pop().trim();
-            if ((docClean && kDoc === docClean) || kLast === carpeta || k.includes(carpeta) || carpeta.includes(k)) {
+            const kDoc = String(v.nroDocumento || k).replace(/\D/g, "");
+            const kLast = k.replace(/\\/g, "/").split("/").pop().trim().toLowerCase();
+            const carpetaNorm = String(carpeta || "").replace(/\\/g, "/").trim().toLowerCase();
+            const carpetaLast = carpetaNorm.split("/").pop().trim();
+            if ((docClean && kDoc === docClean) || kLast === carpetaNorm || kLast === carpetaLast || k.includes(carpeta) || String(carpeta).includes(k)) {
                 r = v;
                 break;
+            }
+        }
+    }
+
+    if (!r) {
+        const trPadre = triggerBtn ? triggerBtn.closest("tr[data-carpeta]") : null;
+        const carpData = trPadre?.getAttribute("data-carpeta");
+        const docData = trPadre?.getAttribute("data-documento");
+        if (todosLosResultados && (carpData || docData)) {
+            r = todosLosResultados[carpData] || todosLosResultados[docData];
+            if (!r) {
+                const docClean = String(docData || carpData).replace(/\D/g, "");
+                for (const [k, v] of Object.entries(todosLosResultados)) {
+                    const kDoc = String(v.nroDocumento || k).replace(/\D/g, "");
+                    if (docClean && kDoc === docClean) {
+                        r = v;
+                        break;
+                    }
+                }
             }
         }
     }
@@ -1002,12 +1077,16 @@ export function verProgramadoCarpeta(
     }
 
     const closeListener = (e) => {
+        if (!popover.isConnected) {
+            document.removeEventListener("click", closeListener, true);
+            return;
+        }
         if (!popover.contains(e.target) && (!triggerBtn || !triggerBtn.contains(e.target))) {
             popover.remove();
-            document.removeEventListener("click", closeListener);
+            document.removeEventListener("click", closeListener, true);
         }
     };
-    setTimeout(() => document.addEventListener("click", closeListener), 50);
+    setTimeout(() => document.addEventListener("click", closeListener, true), 50);
 }
 
 /**

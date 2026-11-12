@@ -10,6 +10,7 @@ export const ALLOWED_TYPES = [
     "ENF",
     "ENF12",
     "CH",
+    "CS",
     "TF",
     "TR",
     "SUCCION",
@@ -279,6 +280,7 @@ export const ORDEN_SERVICIOS_CLINICOS = [
     "APL",
     "ENF12",
     "CH",
+    "CS",
     "NUT",
     "TR",
     "TF",
@@ -301,6 +303,7 @@ export const TEXTOS_SERVICIOS_FOMAG = {
     ENF: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
     ENF12: "ATENCION (VISITA) DOMICILIARIA, POR ENFERMERIA",
     CH: "CURACION DE HERIDAS",
+    CS: "CAMBIO DE SONDA",
     PSI: "ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA",
     TS: "ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL",
     TO: "ATENCION (VISITA) DOMICILIARIA, POR TERAPIA OCUPACIONAL",
@@ -372,6 +375,7 @@ export const TEXTOS_SERVICIOS_NUEVA_EPS = {
         "E891865",
         "E891866",
     ],
+    CS: ["CAMBIO DE SONDA", "SONDA", "CAMBIO SONDA"],
     PSI: ["ATENCION (VISITA) DOMICILIARIA, POR PSICOLOGIA", "PSICOLOGIA"],
     TS: ["ATENCION (VISITA) DOMICILIARIA, POR TRABAJO SOCIAL", "TRABAJO SOCIAL"],
     TO: [
@@ -425,8 +429,8 @@ export function obtenerTextoServicioNuevaEps(servicio) {
 export const IGNORAR_ARCHIVOS = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 
 export const REGEX_SERVICIO_ARCHIVO = FEATURE_RIESGO_JURIDICO_ACTIVO
-    ? /^[2-5]\s+(vmrj|vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i
-    : /^[2-5]\s+(vm|enf12|enf|venf|ch|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
+    ? /^([2-5])\s+(vmrj|vm|enf12|enf|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i
+    : /^([2-5])\s+(vm|enf12|enf|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
 
 /**
  * Obtiene el icono, tipo y estado de reconocimiento de un archivo de soporte
@@ -466,6 +470,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
             ENF12: "💉",
             APL: "💊",
             CH: "🩹",
+            CS: "🧪",
             TF: "🏃",
             TR: "🫁",
             TRS: "🫁",
@@ -479,6 +484,7 @@ export function obtenerInfoSoporte(nombreArchivo) {
         const icono = iconosServicios[s] || "📑";
         let tipoDesc = s;
         if (s === "CH") tipoDesc = "Curación de Heridas (CH)";
+        else if (s === "CS") tipoDesc = "Cambio de Sonda (CS)";
         else if (s === "APL") tipoDesc = "Aplicación Medicamentos (APL)";
         return { icono, tipo: s === "APL" ? tipoDesc : `Evolución ${tipoDesc}`, reconocido: true };
     }
@@ -495,6 +501,7 @@ export const SERVICIOS_NOMBRES = {
     APL: "💊 Aplicación Medicamentos (APL)",
     ENF12: "💉 Enfermería 12h",
     CH: "🩹 Curación de Heridas",
+    CS: "🧪 Cambio de Sonda",
     TF: "🏃 Terapia Física",
     TR: "🫁 Terapia Respiratoria",
     SUCCION: "🌬️ Succión",

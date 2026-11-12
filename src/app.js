@@ -51,6 +51,7 @@ import {
     copiarTextoSimple,
     copiarErrorMatriz,
     copiarErrorIndividual,
+    mostrarToastCopia,
 } from "./utils/clipboardUtils.js";
 import {
     agruparArchivosInteligente,
@@ -412,9 +413,13 @@ async function procesarValidacionEvento(
 
         if (archivo2Paq && serviciosCon5.size > 0) {
             estado.textContent = `Procesando: ${carpeta} / 2 paq.pdf`;
-            await procesarArchivo2PaqEvento(archivo2Paq, carpeta, resultados, [
-                ...serviciosCon5,
-            ]);
+            await procesarArchivo2PaqEvento(
+                archivo2Paq,
+                carpeta,
+                resultados,
+                [...serviciosCon5],
+                convenio
+            );
         }
 
         const serviciosDetectados = new Set();
@@ -553,6 +558,7 @@ async function procesarLoteArchivos(archivosLista) {
         filtrosDiv.classList.add("oculto");
 
         const resultados = {};
+        todosLosResultados = resultados;
         const tipoValidacion = tipoValidacionSelect.value;
         const tipoPaqueteFallback = tipoPaqueteSelect.value;
         const convenio = convenioSelect.value;
@@ -1522,5 +1528,60 @@ window.copiarErrorMatriz = (event, paquete, documento, erroresTexto) =>
     copiarErrorMatriz(event, paquete, documento, erroresTexto);
 window.copiarErrorIndividual = (event, carpeta, servicio, errorTexto) =>
     copiarErrorIndividual(event, carpeta, servicio, errorTexto, todosLosResultados);
+window.toggleOmitirError = (event, carpeta, servicio, errorTexto) => {
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+    const r = todosLosResultados && todosLosResultados[carpeta]
+        ? todosLosResultados[carpeta]
+        : (todosLosResultados
+            ? Object.values(todosLosResultados).find(item => item.carpetaNombre === carpeta || item.nroDocumento === carpeta)
+            : null);
+
+    if (!r) return;
+    if (!r.erroresOmitidos) {
+        r.erroresOmitidos = new Set();
+    }
+
+    const errorTrim = String(errorTexto || "").trim();
+    const estabaOmitido = r.erroresOmitidos.has(errorTrim) || r.erroresOmitidos.has(errorTexto);
+
+    if (estabaOmitido) {
+        r.erroresOmitidos.delete(errorTrim);
+        r.erroresOmitidos.delete(errorTexto);
+    } else {
+        r.erroresOmitidos.add(errorTrim);
+    }
+
+    // Actualizar visualmente la fila del error o alerta
+    const btn = event?.currentTarget || event?.target?.closest(".btn-toggle-error-omitir");
+    const itemContainer = btn?.closest(".error-item, .alerta-item");
+    const esAlerta = itemContainer?.classList.contains("alerta-item");
+    if (itemContainer) {
+        const omitidoClass = esAlerta ? "alerta-item-omitido" : "error-item-omitido";
+        const iconClass = esAlerta ? ".alerta-icon" : ".error-icon";
+        const defaultIcon = esAlerta ? "⚠️" : "✕";
+
+        if (!estabaOmitido) {
+            itemContainer.classList.add(omitidoClass);
+            btn.classList.add("is-omitido");
+            btn.title = `Restaurar ${esAlerta ? 'alerta' : 'error'} (incluir en copia)`;
+            const icon = itemContainer.querySelector(iconClass);
+            if (icon) icon.textContent = "👁️‍🗨️";
+        } else {
+            itemContainer.classList.remove(omitidoClass);
+            btn.classList.remove("is-omitido");
+            btn.title = `Omitir ${esAlerta ? 'alerta' : 'error'} (tachar y no incluir al copiar)`;
+            const icon = itemContainer.querySelector(iconClass);
+            if (icon) icon.textContent = defaultIcon;
+        }
+    }
+
+    // Actualizar contadores y tarjetas de resumen
+    actualizarResumen(todosLosResultados, domElements, appState, false, exportarResumenErroresXLSX);
+    const tipoItem = esAlerta ? "Alerta" : "Error";
+    mostrarToastCopia(estabaOmitido ? `${tipoItem} restaurada (se incluirá al copiar)` : `${tipoItem} omitida (no se copiará)`);
+};
 window.mostrarAvisoRevisionFirmas = mostrarAvisoRevisionFirmas;
 window.mostrarModalReglasPaquete = mostrarModalReglasPaquete;

@@ -31,6 +31,7 @@ import {
     validarOrdenFechas,
     tieneTextoCorrupto,
 } from "../utils/pdfUtils.js";
+import { procesarArchivo2PaqEvento } from "./eventoValidator.js";
 
 // Variable para controlar debug solo en primer servicio
 let primerServicioDebug = null;
@@ -179,6 +180,15 @@ export async function validarPorPaquete(
     if (archivo2Paq) {
         estado.textContent = `Procesando: ${carpeta} / ${archivo2Paq.name} (General)`;
         if (onProgresoArchivo) onProgresoArchivo(archivo2Paq.name);
+
+        // Si es evento o no es paquete integral con código fijo, extraer autorizaciones para todos los servicios presentes
+        if (esEventoValidacion || (!tipoPaquete.startsWith("CPF") && !PAQUETES_SOPORTADOS.includes(tipoPaquete))) {
+            const serviciosAExtraer = [...serviciosEncontrados].filter(s => s !== "General");
+            if (serviciosAExtraer.length > 0) {
+                await procesarArchivo2PaqEvento(archivo2Paq, carpeta, resultados, serviciosAExtraer, convenio);
+            }
+        }
+
         await validarPDFPaquete(
             archivo2Paq,
             carpeta,
@@ -593,8 +603,8 @@ function detectarServicios(nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
             FEATURE_RIESGO_JURIDICO_ACTIVO
-                ? /\d+\s+(VMRJ|VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
-                : /\d+\s+(VM|VENF|ENF12|ENF|CH|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
+                ? /\d+\s+(VMRJ|VM|VENF|ENF12|ENF|CH|CS|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
+                : /\d+\s+(VM|VENF|ENF12|ENF|CH|CS|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
         );
         if (match) {
             let servicio = match[1];

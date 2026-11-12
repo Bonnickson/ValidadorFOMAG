@@ -71,6 +71,26 @@ export async function renderizarDocumentoPDF() {
                 viewport: viewport,
             }).promise;
 
+            // Renderizar capa de texto transparente sobre el canvas para permitir selección y copia
+            try {
+                const textContent = await page.getTextContent();
+                const textLayerDiv = document.createElement("div");
+                textLayerDiv.className = "textLayer";
+                textLayerDiv.style.width = Math.floor(viewport.width) + "px";
+                textLayerDiv.style.height = Math.floor(viewport.height) + "px";
+                textLayerDiv.style.setProperty("--scale-factor", viewport.scale);
+                pageWrapper.appendChild(textLayerDiv);
+
+                const textLayerTask = pdfjsLib.renderTextLayer({
+                    textContentSource: textContent,
+                    container: textLayerDiv,
+                    viewport: viewport,
+                });
+                await textLayerTask.promise;
+            } catch (textErr) {
+                console.warn(`No se pudo renderizar la capa de texto en la página ${pageNum}:`, textErr);
+            }
+
             if (page.cleanup) page.cleanup();
         } catch (err) {
             console.warn(`Error renderizando página ${pageNum}:`, err);
