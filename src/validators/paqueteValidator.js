@@ -291,7 +291,7 @@ export async function validarPorPaquete(
         const mat = resultados[carpeta].datosMatriz;
         const servMatriz = mat.servicios || {};
         const servEventoMatriz = mat.serviciosEvento || {};
-        const esPacienteSoloEvento = tipoPaquete === "EVENTO" || Boolean(mat.esFacturarEvento);
+        const esPacienteSoloEvento = tipoPaquete === "EVENTO";
 
         // Validar si el paquete de la carpeta coincide con el de la matriz (no aplica si la carpeta es EVENTO)
         const matPaqCanonico = normalizarCodigoPaquete(mat.paquete);
