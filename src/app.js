@@ -374,6 +374,29 @@ async function procesarValidacionEvento(
         resultados[carpeta].pdfs["3.pdf"] = nombres.includes("3.pdf")
             ? "✔"
             : "—";
+
+        if (convenio === "nueva-eps") {
+            const tipoUpper = (resultados[carpeta].tipo || "").toUpperCase();
+            const carpetaUpper = (carpeta || "").toUpperCase();
+            const esMedicinaGeneral =
+                tipoUpper.includes("890101") ||
+                tipoUpper.includes("MEDICA GENERAL") ||
+                tipoUpper.includes("MEDICINA GENERAL") ||
+                tipoUpper === "VM" ||
+                carpetaUpper.includes("890101") ||
+                nombres.some((n) => /^2\s+vm\.pdf$/i.test(n));
+
+            if (!esMedicinaGeneral) {
+                const tiene6Om = nombres.some((n) => n.toLowerCase() === "6 om.pdf");
+                const tiene5Vm = nombres.some((n) => n.toLowerCase() === "5 vm.pdf");
+                if (!tiene6Om) {
+                    resultados[carpeta].errores.push("Falta 6 om.pdf");
+                }
+                if (!tiene5Vm) {
+                    resultados[carpeta].errores.push("Falta 5 vm.pdf");
+                }
+            }
+        }
     } else {
         ["2.pdf", "3.pdf", "4.pdf", "5.pdf"].forEach((p) => {
             if (nombres.includes(p)) {
@@ -436,6 +459,18 @@ async function procesarValidacionEvento(
         }
 
         for (const servicio of serviciosDetectados) {
+            if (convenio === "nueva-eps" && servicio === "VM") {
+                const tipoUpper = (resultados[carpeta].tipo || "").toUpperCase();
+                const carpetaUpper = (carpeta || "").toUpperCase();
+                const esMedicina =
+                    tipoUpper.includes("890101") ||
+                    tipoUpper.includes("MEDICA GENERAL") ||
+                    tipoUpper.includes("MEDICINA GENERAL") ||
+                    tipoUpper === "VM" ||
+                    carpetaUpper.includes("890101") ||
+                    nombres.some((n) => /^2\s+vm\.pdf$/i.test(n));
+                if (!esMedicina) continue;
+            }
             const srvLower = servicio.toLowerCase();
             const tiene5 = nombres.some((n) =>
                 new RegExp(`^5\\s+${srvLower}\\.pdf$`, "i").test(n)
@@ -850,6 +885,24 @@ async function procesarLoteArchivos(archivosLista) {
         });
 
         mostrarModalAlertaFinalValidacion(totalItems, totalConErrores, totalConAlertas);
+
+        // Activar filtro automático: Con novedades -> Alertas (si existe) -> Todos
+        if (grupoFiltroEstado) {
+            let estadoAuto = "";
+            if (totalConErrores > 0) {
+                estadoAuto = "con-novedades";
+            } else if (totalConAlertas > 0 && grupoFiltroEstado.querySelector('[data-estado="con-alertas"]')) {
+                estadoAuto = "con-alertas";
+            }
+            const btnAuto = grupoFiltroEstado.querySelector(`[data-estado="${estadoAuto}"]`)
+                || grupoFiltroEstado.querySelector('[data-estado=""]');
+            if (btnAuto) {
+                grupoFiltroEstado.querySelectorAll(".btn-segmented").forEach((b) => b.classList.remove("active"));
+                btnAuto.classList.add("active");
+                appState.estadoFiltroActivo = estadoAuto;
+                aplicarFiltros(domElements, appState);
+            }
+        }
     } catch (error) {
         console.error("❌ Error en procesamiento de lote:", error);
         estado.classList.remove("oculto");

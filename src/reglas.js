@@ -33,6 +33,7 @@ const REGLAS_ARCHIVO_5 = {
         debeContener: [
             "Registro De Historia Clínica",
             "Registro De Evolución Médica",
+            "Registro De Evolución",
             "Historia Clínica",
             "Evolución Médica",
         ],
@@ -78,8 +79,44 @@ const REGLAS_ARCHIVO_5 = {
         debeContener: ["Registro De Terapia Ocupacional"],
         igualarConFechas: true,
     },
+    ENF6: {
+        debeContener: ["REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA", "REGISTROS ASISTENCIALES", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    ENF8: {
+        debeContener: ["REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA", "REGISTROS ASISTENCIALES", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
     ENF12: {
-        debeContener: ["ENFERMERIA 12 HORAS"],
+        debeContener: ["ENFERMERIA 12 HORAS", "REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA", "REGISTROS ASISTENCIALES", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    ENF12N: {
+        debeContener: ["REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA", "REGISTROS ASISTENCIALES", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    ENF24: {
+        debeContener: ["REGISTRO DE ATENCIÓN DOMICILIARIA - ENFERMERÍA", "REGISTROS ASISTENCIALES", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    CUI6: {
+        debeContener: ["CUIDADOR", "TURNO POR AUXILIAR DE ENFERMERÍA", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    CUI8: {
+        debeContener: ["CUIDADOR", "TURNO POR AUXILIAR DE ENFERMERÍA", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    CUI12: {
+        debeContener: ["CUIDADOR", "TURNO POR AUXILIAR DE ENFERMERÍA", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    CUI12N: {
+        debeContener: ["CUIDADOR", "TURNO POR AUXILIAR DE ENFERMERÍA", "Registro de Enfermería"],
+        igualarConFechas: true,
+    },
+    CUI24: {
+        debeContener: ["CUIDADOR", "TURNO POR AUXILIAR DE ENFERMERÍA", "Registro de Enfermería"],
         igualarConFechas: true,
     },
     CH: {

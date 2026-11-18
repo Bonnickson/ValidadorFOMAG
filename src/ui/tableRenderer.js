@@ -79,11 +79,11 @@ const renderAlertaItem = (alertaText, carpeta = "", servicio = "", omitido = fal
     const safeServicio = String(servicio || "").replace(/'/g, "\\'");
 
     const copyBtn = carpeta
-        ? `<button type="button" class="btn-copy-error-single" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="Copiar esta alerta (Responsable - Documento - Paquete - Servicio - Archivo - Alerta)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
+        ? `<button type="button" class="btn-copy-error-single" data-error="${safeErrorAttr}" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', this.dataset.error)" title="Copiar esta alerta (Responsable - Documento - Paquete - Servicio - Archivo - Alerta)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
         : "";
 
     const omitirBtn = carpeta
-        ? `<button type="button" class="btn-toggle-error-omitir ${omitido ? 'is-omitido' : ''}" onclick="window.toggleOmitirError && window.toggleOmitirError(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="${omitido ? 'Restaurar alerta (incluir en copia)' : 'Omitir alerta (tachar y no incluir al copiar)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-omitir-error-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg></button>`
+        ? `<button type="button" class="btn-toggle-error-omitir ${omitido ? 'is-omitido' : ''}" data-error="${safeErrorAttr}" onclick="window.toggleOmitirError && window.toggleOmitirError(event, '${safeCarpeta}', '${safeServicio}', this.dataset.error)" title="${omitido ? 'Restaurar alerta (incluir en copia)' : 'Omitir alerta (tachar y no incluir al copiar)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-omitir-error-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg></button>`
         : "";
 
     const omitidoClass = omitido ? " alerta-item-omitido" : "";
@@ -106,11 +106,11 @@ const renderErrorItem = (errorText, carpeta = "", servicio = "", omitido = false
     const safeServicio = String(servicio || "").replace(/'/g, "\\'");
 
     const copyBtn = carpeta
-        ? `<button type="button" class="btn-copy-error-single" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="Copiar este error (Responsable - Documento - Paquete - Servicio - Archivo - Error)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
+        ? `<button type="button" class="btn-copy-error-single" data-error="${safeErrorAttr}" onclick="window.copiarErrorIndividual && window.copiarErrorIndividual(event, '${safeCarpeta}', '${safeServicio}', this.dataset.error)" title="Copiar este error (Responsable - Documento - Paquete - Servicio - Archivo - Error)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-copy-error-icon"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg></button>`
         : "";
 
     const omitirBtn = carpeta
-        ? `<button type="button" class="btn-toggle-error-omitir ${omitido ? 'is-omitido' : ''}" onclick="window.toggleOmitirError && window.toggleOmitirError(event, '${safeCarpeta}', '${safeServicio}', '${safeErrorAttr}')" title="${omitido ? 'Restaurar error (incluir en copia)' : 'Omitir error (tachar y no incluir al copiar)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-omitir-error-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg></button>`
+        ? `<button type="button" class="btn-toggle-error-omitir ${omitido ? 'is-omitido' : ''}" data-error="${safeErrorAttr}" onclick="window.toggleOmitirError && window.toggleOmitirError(event, '${safeCarpeta}', '${safeServicio}', this.dataset.error)" title="${omitido ? 'Restaurar error (incluir en copia)' : 'Omitir error (tachar y no incluir al copiar)'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="btn-omitir-error-icon"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg></button>`
         : "";
 
     const omitidoClass = omitido ? " error-item-omitido" : "";
@@ -470,8 +470,8 @@ function renderPaqueteFilas(
         const nombreArchivo3 = (r.listaArchivos || []).find(a => a.toLowerCase() === "3.pdf") || "3.pdf";
         const urlKey3 = Object.keys(r.fileUrls || {}).find(k => k.toLowerCase() === "3.pdf");
         const url3 = urlKey3 ? r.fileUrls[urlKey3] : null;
-        const status3 = r.pdfs?.["3.pdf"] || (tiene3 ? "✔" : "—");
-        const cls3 = status3 === "✔" ? "ok" : status3 === "—" ? "missing" : "fail";
+        const status3 = !tiene3 ? "—" : (r.pdfs?.["3.pdf"] || "✔");
+        const cls3 = !tiene3 || status3 === "—" ? "missing" : status3 === "✔" ? "ok" : "fail";
         const label3 = `3 ${status3}`;
         if (url3) {
             badge3AdresHTML = `<a href="#" onclick="abrirPDFModal('${url3}', '${nombreArchivo3}', this); return false;" class="archivo-link ${cls3}" title="Abrir ${nombreArchivo3} (ADRES)">${label3}</a>`;
@@ -615,9 +615,16 @@ function renderPaqueteFilas(
 
         const fechas5 = r.fechasPorServicio[s] || [];
         const cantUnicas = [...new Set(fechas5)].length;
-        const cant5 = fechas5.length !== cantUnicas
+        const servsMat = r.datosMatriz?.servicios || {};
+        const keyMatUpper = s === "SUCCION" ? "TRS" : s.toUpperCase();
+        const keyMatLower = keyMatUpper.toLowerCase();
+        const progMat = servsMat[keyMatUpper] ?? servsMat[keyMatLower] ?? servsMat[s] ?? null;
+        const progDiffHTML = (progMat !== null && progMat !== undefined && Number(progMat) !== fechas5.length)
+            ? `<span class="evol-prog-diff" title="Programado en matriz: ${progMat}" style="font-size: 10px; color: #b45309; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 4px; padding: 1px 5px; font-weight: 600; margin-left: 6px; white-space: nowrap;">${progMat} programado</span>`
+            : "";
+        const cant5 = (fechas5.length !== cantUnicas
             ? `<span title="${fechas5.length} evoluciones (${cantUnicas} fechas únicas)">${fechas5.length}</span>`
-            : `${fechas5.length}`;
+            : `${fechas5.length}`) + progDiffHTML;
         const servicioLower = s === "SUCCION" ? "succion" : s.toLowerCase();
 
         // Determinar estado para filtrado

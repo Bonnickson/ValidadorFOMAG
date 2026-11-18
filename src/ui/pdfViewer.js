@@ -87,6 +87,7 @@ export async function renderizarDocumentoPDF() {
                     viewport: viewport,
                 });
                 await textLayerTask.promise;
+                resaltarHallazgosEnCapaTexto(textLayerDiv, currentPdfDocumento);
             } catch (textErr) {
                 console.warn(`No se pudo renderizar la capa de texto en la página ${pageNum}:`, textErr);
             }
@@ -308,11 +309,169 @@ function renderizarWidgetFechas5(infoFechas5) {
 /**
  * Abre el modal y carga el PDF indicado
  */
+let currentPdfDocumento = null;
+let contadorFechasPDF = 0;
+let fechasDetectadasEls = [];
+let indiceFechaActualPDF = -1;
+
+function actualizarNavFechasPDF() {
+    const titleEl = document.getElementById("pdfModalTitle");
+    if (!titleEl) return;
+    let nav = document.getElementById("pdfFechaNav");
+    if (fechasDetectadasEls.length === 0) {
+        if (nav) nav.remove();
+        return;
+    }
+    if (!nav) {
+        nav = document.createElement("span");
+        nav.id = "pdfFechaNav";
+        nav.className = "pdf-fecha-nav";
+        titleEl.insertAdjacentElement("afterend", nav);
+    }
+    const actual = indiceFechaActualPDF >= 0 ? indiceFechaActualPDF + 1 : 0;
+    nav.innerHTML = `<button type="button" onclick="navegarFechaPDF(-1)" title="Fecha anterior">◀</button><span>${actual}/${fechasDetectadasEls.length}</span><button type="button" onclick="navegarFechaPDF(1)" title="Siguiente fecha">▶</button>`;
+}
+
+window.navegarFechaPDF = function (delta) {
+    if (fechasDetectadasEls.length === 0) return;
+    if (indiceFechaActualPDF < 0) {
+        indiceFechaActualPDF = delta > 0 ? 0 : fechasDetectadasEls.length - 1;
+    } else {
+        indiceFechaActualPDF = (indiceFechaActualPDF + delta + fechasDetectadasEls.length) % fechasDetectadasEls.length;
+    }
+    const el = fechasDetectadasEls[indiceFechaActualPDF];
+    const container = document.getElementById("pdfCanvasContainer");
+    if (el && container) {
+        const elRect = el.getBoundingClientRect();
+        const contRect = container.getBoundingClientRect();
+        const targetTop = container.scrollTop + (elRect.top - contRect.top) - (contRect.height / 2) + (elRect.height / 2);
+        container.scrollTo({ top: Math.max(0, targetTop), behavior: "smooth" });
+    }
+    actualizarNavFechasPDF();
+};
+
+/**
+ * Resalta de forma sutil (azul) fechas, número de documento y frases clave en la capa de texto del PDF.
+ */
+function resaltarHallazgosEnCapaTexto(textLayerDiv, nroDocumento) {
+    if (!textLayerDiv) return;
+    const regexFecha = /\b(?:\d{4}[\/-]\d{1,2}[\/-]\d{1,2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})\b/;
+    const docLimpio = nroDocumento ? String(nroDocumento).replace(/\D/g, "") : "";
+    const frasesClave = [
+        "nueva eps",
+        "registro de",
+        "registros asistenciales",
+        "historia cl",
+        "evolución médica",
+        "evolucion medica",
+        "atención domiciliaria",
+        "atencion domiciliaria",
+        "terapia f",
+        "terapia respiratoria",
+        "terapia ocupacional",
+        "fonoaudiolog",
+        "psicolog",
+        "trabajo social",
+        "enfermer",
+        "cuidador",
+        "turno por auxiliar",
+    ];
+
+    const spans = Array.from(textLayerDiv.querySelectorAll("span"));
+    const regexFechaGlobal = new RegExp(regexFecha.source, "g");
+    const ignorarTexto = (lower) =>
+        lower.includes("http") ||
+        lower.includes(".asp") ||
+        lower.includes("34.238.") ||
+        lower.includes("hf_fecha") ||
+        lower.includes("impresión hecha por") ||
+        lower.includes("impresion hecha por");
+
+    for (let i = 0; i < spans.length; i++) {
+        const span = spans[i];
+        const texto = (span.textContent || "").trim();
+        if (!texto) continue;
+        const lower = texto.toLowerCase();
+
+        // Ignorar encabezados/pies de impresión y URLs del navegador
+        if (ignorarTexto(lower)) continue;
+
+        const matchesEnSpan = texto.match(regexFechaGlobal) || [];
+        let cantFechas = matchesEnSpan.length;
+
+        // Si no hubo match completo, verificar si la fecha quedó partida con el span siguiente
+        if (cantFechas === 0 && i + 1 < spans.length) {
+            const nextTexto = (spans[i + 1].textContent || "").trim();
+            if (nextTexto && !ignorarTexto(nextTexto.toLowerCase())) {
+                const combinado = `${texto}${nextTexto}`;
+                const combinadoEsp = `${texto} ${nextTexto}`;
+                if (regexFecha.test(combinado) && !regexFecha.test(nextTexto)) {
+                    cantFechas = 1;
+                } else if (regexFecha.test(combinadoEsp) && !regexFecha.test(nextTexto)) {
+                    cantFechas = 1;
+                }
+            }
+        }
+
+        const esFecha = cantFechas > 0;
+        const esDoc = docLimpio.length >= 4 && texto.replace(/[.\s]/g, "").includes(docLimpio);
+        const esFrase = frasesClave.some((f) => lower.includes(f));
+
+        if (esFecha || esDoc || esFrase) {
+            const escapeHTML = (str) =>
+                str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            const escaparRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+            const partesRegex = [regexFecha.source];
+            if (esDoc) {
+                // Permitir puntos o espacios opcionales entre dígitos del documento
+                partesRegex.push(docLimpio.split("").join("[.\\s]*"));
+            }
+            if (esFrase) {
+                frasesClave.forEach((f) => {
+                    if (lower.includes(f)) partesRegex.push(escaparRegex(f));
+                });
+            }
+
+            const regexResaltado = new RegExp(`(${partesRegex.join("|")})`, "gi");
+            const rawText = span.textContent || "";
+            const fragmentos = rawText.split(regexResaltado);
+
+            if (fragmentos.length > 1) {
+                span.innerHTML = fragmentos
+                    .map((frag, idx) =>
+                        idx % 2 === 1
+                            ? `<span class="pdf-highlight-subtle">${escapeHTML(frag)}</span>`
+                            : escapeHTML(frag)
+                    )
+                    .join("");
+            } else {
+                // Caso de fecha partida entre dos spans: resaltar el span completo
+                span.classList.add("pdf-highlight-subtle");
+            }
+
+            if (esFecha) {
+                for (let k = 0; k < cantFechas; k++) {
+                    contadorFechasPDF += 1;
+                    const badge = document.createElement("span");
+                    badge.className = "pdf-fecha-num";
+                    badge.textContent = String(contadorFechasPDF);
+                    span.appendChild(badge);
+                    fechasDetectadasEls.push(span);
+                }
+            }
+        }
+    }
+    actualizarNavFechasPDF();
+}
+
 export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallback, infoFechas5 = null) {
     const modal = document.getElementById("pdfModal");
     const tituloElement = document.getElementById("pdfModalTitle");
     if (tituloElement) tituloElement.textContent = titulo;
     if (modal) modal.style.display = "flex";
+
+    currentPdfDocumento = anchorEl?.closest("tr")?.getAttribute("data-documento") || null;
 
     if (anchorEl && typeof seleccionarFilaCallback === "function") {
         const fila = anchorEl.closest("tr");
@@ -325,6 +484,10 @@ export async function abrirPDFModal(url, titulo, anchorEl, seleccionarFilaCallba
     currentPdfPage = 1;
     currentPdfScale = 1.0;
     currentPdfRotation = 0;
+    contadorFechasPDF = 0;
+    fechasDetectadasEls = [];
+    indiceFechaActualPDF = -1;
+    actualizarNavFechasPDF();
 
     const pageInfo = document.getElementById("pdfPageInfo");
     if (pageInfo) pageInfo.textContent = "Cargando...";

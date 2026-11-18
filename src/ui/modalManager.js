@@ -704,15 +704,15 @@ export function verProgramadoCarpeta(
 
         // 1. Clave canónica directa
         if (r.fechasPorServicio[cod] && Array.isArray(r.fechasPorServicio[cod])) {
-            return [...new Set(r.fechasPorServicio[cod])].length;
+            return r.fechasPorServicio[cod].length;
         }
 
         // 2. Succión / TRS
         if (cod === "TRS" && r.fechasPorServicio["SUCCION"] && Array.isArray(r.fechasPorServicio["SUCCION"])) {
-            return [...new Set(r.fechasPorServicio["SUCCION"])].length;
+            return r.fechasPorServicio["SUCCION"].length;
         }
         if (cod === "SUCCION" && r.fechasPorServicio["TRS"] && Array.isArray(r.fechasPorServicio["TRS"])) {
-            return [...new Set(r.fechasPorServicio["TRS"])].length;
+            return r.fechasPorServicio["TRS"].length;
         }
 
         // 3. Comparación estricta de nombres completos exactos (sin includes parcial)
@@ -752,7 +752,7 @@ export function verProgramadoCarpeta(
             const kNorm = k.toUpperCase().trim();
             if (validNames.includes(kNorm)) {
                 if (Array.isArray(fechas) && fechas.length > 0) {
-                    return [...new Set(fechas)].length;
+                    return fechas.length;
                 }
             }
         }
@@ -1129,15 +1129,15 @@ export function mostrarModalProgramadoDetallado(
 
         // 1. Clave canónica directa
         if (r.fechasPorServicio[cod] && Array.isArray(r.fechasPorServicio[cod])) {
-            return [...new Set(r.fechasPorServicio[cod])].length;
+            return r.fechasPorServicio[cod].length;
         }
 
         // 2. Succión / TRS
         if (cod === "TRS" && r.fechasPorServicio["SUCCION"] && Array.isArray(r.fechasPorServicio["SUCCION"])) {
-            return [...new Set(r.fechasPorServicio["SUCCION"])].length;
+            return r.fechasPorServicio["SUCCION"].length;
         }
         if (cod === "SUCCION" && r.fechasPorServicio["TRS"] && Array.isArray(r.fechasPorServicio["TRS"])) {
-            return [...new Set(r.fechasPorServicio["TRS"])].length;
+            return r.fechasPorServicio["TRS"].length;
         }
 
         // 3. Comparación estricta de nombres completos exactos (sin includes parcial)
@@ -1177,7 +1177,7 @@ export function mostrarModalProgramadoDetallado(
             const kNorm = k.toUpperCase().trim();
             if (validNames.includes(kNorm)) {
                 if (Array.isArray(fechas) && fechas.length > 0) {
-                    return [...new Set(fechas)].length;
+                    return fechas.length;
                 }
             }
         }
@@ -1781,6 +1781,14 @@ export function mostrarModalPrevalidacionMatriz(matrizData, registrosOmitidosSet
 
     const { diagnosticoGlobal, pacientesList } = matrizData;
 
+    const convenioEl = document.getElementById("convenio");
+    const convenioVal = convenioEl?.value || "fomag";
+    const convenioTexto = (convenioEl?.selectedOptions?.[0]?.textContent || convenioVal).trim();
+    const esNuevaEps = convenioVal === "nueva-eps";
+    const bannerBg = esNuevaEps
+        ? "linear-gradient(90deg, #0284c7 0%, #0369a1 100%)"
+        : "linear-gradient(90deg, #4f46e5 0%, #4338ca 100%)";
+
     const backdrop = document.createElement("div");
     backdrop.id = "modalPrevalidacionMatrizActivo";
     backdrop.className = "modal-rules-backdrop";
@@ -2142,6 +2150,14 @@ export function mostrarModalPrevalidacionMatriz(matrizData, registrosOmitidosSet
                     </div>
                     <button type="button" class="modal-rules-close" onclick="document.getElementById('modalPrevalidacionMatrizActivo')?.remove()" title="Cerrar">&times;</button>
                 </div>
+            </div>
+
+            <div style="background: ${bannerBg}; color: #ffffff; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.92rem; font-weight: 600; letter-spacing: 0.01em; box-shadow: inset 0 -1px 0 rgba(255,255,255,0.15);">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.15rem;">🏥</span>
+                    <span>CONVENIO ACTIVO PARA VALIDACIÓN: <strong style="background: rgba(255,255,255,0.22); padding: 2px 10px; border-radius: 999px; font-weight: 800; text-transform: uppercase;">${convenioTexto}</strong></span>
+                </div>
+                <span style="font-size: 0.8rem; opacity: 0.92; font-weight: 500;">Confirma que la matriz cargada corresponde a este convenio</span>
             </div>
 
             <!-- Modal Content Body -->

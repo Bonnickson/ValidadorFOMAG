@@ -223,7 +223,9 @@ export async function copiarErrorIndividual(event, carpeta, servicioKey, errorTe
         }
 
         // Archivo
-        const fileMatch = errorTexto ? errorTexto.match(/\b([0-9A-Za-z_-]+(?:\s+[0-9A-Za-z_-]+)?\.pdf)\b/i) : null;
+        const textoLimpio = (errorTexto || "").trim();
+        const fileMatch = textoLimpio.match(/(?:^|\b(?:Falta|Archivo)\s+)(\d+(?:\s+[A-Za-z0-9_-]+)?\.pdf|[A-Za-z0-9_-]+\.pdf)\b/i)
+            || textoLimpio.match(/\b([0-9A-Za-z_-]+(?:\s+[0-9A-Za-z_-]+)?\.pdf)\b/i);
         let archivo = fileMatch ? fileMatch[1] : "";
         if (!archivo) {
             if (servicioKey && servicioKey !== "General" && r?.pdfsPorServicio?.[servicioKey]) {
@@ -234,7 +236,12 @@ export async function copiarErrorIndividual(event, carpeta, servicioKey, errorTe
             }
         }
 
-        const linea = `${responsable} - ${documento} - ${paquete} - ${servicio} - ${archivo} - ${errorTexto.trim()}`;
+        const esSoloFaltaArchivo = archivo && archivo !== "N/A" &&
+            textoLimpio.toLowerCase() === `falta ${archivo.toLowerCase()}`;
+
+        const linea = esSoloFaltaArchivo
+            ? `${responsable} - ${documento} - ${paquete} - ${servicio} - ${textoLimpio}`
+            : `${responsable} - ${documento} - ${paquete} - ${servicio} - ${archivo} - ${textoLimpio}`;
         await copiarTextoAlPortapapeles(linea);
         mostrarToastCopia(linea);
     } catch (err) {

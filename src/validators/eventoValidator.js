@@ -55,7 +55,8 @@ export function validarArchivosPermitidosEvento(
         const esServicio =
             (convenio === "fomag" || convenio === "nueva-eps") && patronServicio.test(nombreLower);
         const esPaq = (convenio === "fomag" || convenio === "nueva-eps") && es2Paq(archivo.name);
-        if (!esGenerico && !esServicio && !esPaq) {
+        const es6OmNuevaEps = convenio === "nueva-eps" && nombreLower === "6 om.pdf";
+        if (!esGenerico && !esServicio && !esPaq && !es6OmNuevaEps) {
             archivosNoPermitidos.push(archivo.name);
         }
     }
@@ -522,10 +523,14 @@ export async function validarPDF(
 
             if (cantAuto !== cantHC) {
                 if (cantAuto < cantHC) {
-                    // ERROR: autorizaciones < evoluciones
-                    resultados[carpeta].erroresPorServicio[servicioKey].push(
-                        `Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
-                    );
+                    const esVmRequisitoNuevaEps =
+                        convenio === "nueva-eps" && servicioKey === "VM" && cantAuto === 0;
+                    if (!esVmRequisitoNuevaEps) {
+                        // ERROR: autorizaciones < evoluciones
+                        resultados[carpeta].erroresPorServicio[servicioKey].push(
+                            `Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
+                        );
+                    }
                 } else {
                     // ALERTA: autorizaciones > evoluciones
                     resultados[carpeta].alertasPorServicio =

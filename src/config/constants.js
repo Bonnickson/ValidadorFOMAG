@@ -429,8 +429,8 @@ export function obtenerTextoServicioNuevaEps(servicio) {
 export const IGNORAR_ARCHIVOS = new Set(["desktop.ini", "thumbs.db", ".ds_store"]);
 
 export const REGEX_SERVICIO_ARCHIVO = FEATURE_RIESGO_JURIDICO_ACTIVO
-    ? /^([2-5])\s+(vmrj|vm|enf12|enf|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i
-    : /^([2-5])\s+(vm|enf12|enf|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
+    ? /^([2-5])\s+(vmrj|vm|enf12n|enf12|enf24|enf6|enf8|enf|cui12n|cui12|cui24|cui6|cui8|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i
+    : /^([2-5])\s+(vm|enf12n|enf12|enf24|enf6|enf8|enf|cui12n|cui12|cui24|cui6|cui8|venf|ch|cs|tf|tr|succion|suc|trs|ts|psi|to|fon|nut|apl)\.pdf$/i;
 
 /**
  * Obtiene el icono, tipo y estado de reconocimiento de un archivo de soporte
@@ -438,6 +438,11 @@ export const REGEX_SERVICIO_ARCHIVO = FEATURE_RIESGO_JURIDICO_ACTIVO
 export function obtenerInfoSoporte(nombreArchivo) {
     if (!nombreArchivo) return { icono: "❌", tipo: "Archivo no reconocido", reconocido: false };
     const nombre = nombreArchivo.trim().toLowerCase();
+
+    // 6 OM / 6 om.pdf (Orden Médica)
+    if (/^6\s+om\.pdf$/i.test(nombre)) {
+        return { icono: "📝", tipo: "Orden Médica (6 OM)", reconocido: true };
+    }
 
     // 2 PAQ / 2 paq.pdf
     if (/^2\s+paq\.pdf$/i.test(nombre)) {

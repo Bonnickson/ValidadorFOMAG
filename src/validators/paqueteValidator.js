@@ -66,7 +66,7 @@ export function validarArchivosPermitidosPaquete(
         const esArchivoValido =
             patronServicio.test(nombreLower) ||
             ((convenio === "fomag" || convenio === "nueva-eps") && patron2Paq.test(nombreLower)) ||
-            (convenio === "nueva-eps" && patron3Adres.test(nombreLower));
+            (convenio === "nueva-eps" && (patron3Adres.test(nombreLower) || /^6\s+om\.pdf$/i.test(nombreLower)));
 
         if (!esArchivoValido) {
             archivosNoPermitidos.push(archivo.name);
@@ -406,7 +406,9 @@ export async function validarPorPaquete(
                 }
             } else {
                 // cantEsperada === 0
-                if (tieneArchivo && cantEncontrada > 0) {
+                const esVmRequisitoEventoNuevaEps =
+                    convenio === "nueva-eps" && tipoPaquete === "EVENTO" && s === "VM";
+                if (tieneArchivo && cantEncontrada > 0 && !esVmRequisitoEventoNuevaEps) {
                     resultados[carpeta].erroresPorServicio["General"].push(
                         `${s}: El soporte ${nombreSoporte} registra ${cantEncontrada} atención(es), pero en la matriz figura 0 programadas`
                     );
@@ -603,8 +605,8 @@ function detectarServicios(nombres) {
         const nombreUpper = nombre.toUpperCase();
         const match = nombreUpper.match(
             FEATURE_RIESGO_JURIDICO_ACTIVO
-                ? /\d+\s+(VMRJ|VM|VENF|ENF12|ENF|CH|CS|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
-                : /\d+\s+(VM|VENF|ENF12|ENF|CH|CS|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
+                ? /\d+\s+(VMRJ|VM|VENF|ENF12N|ENF12|ENF24|ENF6|ENF8|ENF|CUI12N|CUI12|CUI24|CUI6|CUI8|CH|CS|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
+                : /\d+\s+(VM|VENF|ENF12N|ENF12|ENF24|ENF6|ENF8|ENF|CUI12N|CUI12|CUI24|CUI6|CUI8|CH|CS|TF|TRS|TR|TS|PSI|FON|TO|NUT|APL)/
         );
         if (match) {
             let servicio = match[1];
@@ -790,7 +792,13 @@ function validarNuevoPaquete(
             }
         }
 
-        for (const num of ["4", "5"]) {
+        const esVmRequisitoEventoNuevaEps =
+            convenio === "nueva-eps" &&
+            esEvento &&
+            servicio === "VM" &&
+            !nombres.some((n) => n.toLowerCase() === "2 vm.pdf");
+
+        for (const num of esVmRequisitoEventoNuevaEps ? ["5"] : ["4", "5"]) {
             let existe = nombres.some(n => n.toLowerCase() === `${num} ${servicio.toLowerCase()}.pdf`);
             resultados[carpeta].pdfsPorServicio[servicio][num] = existe ? "✔" : "—";
             
@@ -837,7 +845,9 @@ async function validarPDFPaquete(
                 if (textoOCR && textoOCR.trim().length > 0) {
                     texto = (texto + " " + textoOCR).trim();
                     textoPlanoNorm = normalizeForSearch(texto);
-                    fechas = extraerFechas(texto);
+                    if (fechas.length === 0) {
+                        fechas = extraerFechas(texto);
+                    }
                 }
             }
         };
@@ -1169,20 +1179,27 @@ async function validarPDFPaquete(
                     if (cantAuto !== cantHC) {
                         // Si autorizaciones < evoluciones: ERROR
                         if (cantAuto < cantHC) {
-                            resultados[carpeta].erroresPorServicio[servicio] =
+                            const esVmRequisitoEventoNuevaEps =
+                                convenio === "nueva-eps" &&
+                                resultados[carpeta]?.tipoPaquete === "EVENTO" &&
+                                servicio === "VM" &&
+                                cantAuto === 0;
+                            if (!esVmRequisitoEventoNuevaEps) {
+                                resultados[carpeta].erroresPorServicio[servicio] =
+                                    resultados[carpeta].erroresPorServicio[
+                                    servicio
+                                    ] || [];
                                 resultados[carpeta].erroresPorServicio[
-                                servicio
-                                ] || [];
-                            resultados[carpeta].erroresPorServicio[
-                                servicio
-                            ].push(
-                                `5.pdf: Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
-                            );
-                            // Marcar el archivo con error
-                            if (resultados[carpeta].pdfsPorServicio[servicio]) {
-                                resultados[carpeta].pdfsPorServicio[servicio][
-                                    "5"
-                                ] = "✗";
+                                    servicio
+                                ].push(
+                                    `5.pdf: Cant autorizaciones ${cantAuto} < cant evoluciones ${cantHC}`
+                                );
+                                // Marcar el archivo con error
+                                if (resultados[carpeta].pdfsPorServicio[servicio]) {
+                                    resultados[carpeta].pdfsPorServicio[servicio][
+                                        "5"
+                                    ] = "✗";
+                                }
                             }
                         }
                         // Si autorizaciones > evoluciones: ALERTA
@@ -1359,12 +1376,16 @@ async function validarArchivo3(
         let texto = await extraerTextoPDF(pdf);
         let textoNorm = normalizeForSearch(texto);
 
+        const docNorm = normalizeForSearch(nroDocumento).replace(/[\s.]/g, "");
+        let textoSinEspacios = textoNorm.replace(/[\s.]/g, "");
+
         // Si no contiene el documento o está vacío, probar OCR
-        if (!textoNorm.includes(nroDocumento) || textoNorm.length < 20) {
+        if ((docNorm && !textoSinEspacios.includes(docNorm)) || textoNorm.length < 20) {
             const textoOCR = await extraerTextoOCRDePDF(pdf, Math.min(pdf.numPages, 3), nroDocumento);
             if (textoOCR && textoOCR.trim().length > 0) {
                 texto = (texto + " " + textoOCR).trim();
                 textoNorm = normalizeForSearch(texto);
+                textoSinEspacios = textoNorm.replace(/[\s.]/g, "");
             }
         }
 
@@ -1376,8 +1397,7 @@ async function validarArchivo3(
         let tieneErrores3 = false;
 
         // 1. Validar número de documento
-        const docNorm = normalizeForSearch(nroDocumento);
-        if (docNorm && !textoNorm.includes(docNorm)) {
+        if (docNorm && !textoSinEspacios.includes(docNorm)) {
             resultados[carpeta].erroresPorServicio["General"].push(`3.pdf: no contiene número ${nroDocumento}`);
             tieneErrores3 = true;
         } else if (docNorm) {
